@@ -118,33 +118,36 @@ export async function getOrder(req, res) {
  * Obtener histórico de pedidos del cliente
  */
 export async function getClientOrders(req, res) {
-  try {
-    if (req.user.tipo_usuario !== 'cliente') {
-      return res.status(403).json({ 
-        error: 'Solo clientes pueden ver su histórico' 
-      });
+    try {
+        if (req.user.tipo_usuario !== 'cliente') {
+            return res.status(403).json({
+                error: 'Solo clientes pueden ver su histórico'
+            });
+        }
+
+        // 1. Convertimos 'limit' explícitamente a número aquí
+        const { estado, limit } = req.query;
+        const limitNum = parseInt(limit, 10) || 20;
+
+        // 2. Pasamos el valor numérico limpio
+        let pedidos = await OrderModel.getOrdersByUser(req.user.id, limitNum);
+
+        // Filtrar por estado si se especifica
+        if (estado) {
+            pedidos = pedidos.filter(p => p.estado === estado);
+        }
+
+        res.json({
+            total: pedidos.length,
+            pedidos
+        });
+    } catch (error) {
+        console.error('Error obteniendo pedidos del cliente:', error);
+        res.status(500).json({
+            error: 'Error obteniendo pedidos',
+            detalles: error.message
+        });
     }
-
-    const { estado, limit = 20 } = req.query;
-
-    let pedidos = await OrderModel.getOrdersByUser(req.user.id, limit);
-
-    // Filtrar por estado si se especifica
-    if (estado) {
-      pedidos = pedidos.filter(p => p.estado === estado);
-    }
-
-    res.json({
-      total: pedidos.length,
-      pedidos
-    });
-  } catch (error) {
-    console.error('Error obteniendo pedidos del cliente:', error);
-    res.status(500).json({ 
-      error: 'Error obteniendo pedidos',
-      detalles: error.message 
-    });
-  }
 }
 
 /**

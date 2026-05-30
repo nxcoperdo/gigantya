@@ -119,19 +119,19 @@ export async function getOrderById(id) {
 /**
  * Obtener pedidos del usuario
  */
-export async function getOrdersByUser(usuario_id, limit = 20) {
-  const sql = `
+export async function getOrdersByUser(usuario_id, limit) {
+    // Aseguramos valores numéricos/definidos
+    const safeId = usuario_id;
+    const safeLimit = parseInt(limit, 10) || 20;
+
+    if (safeId === undefined || safeId === null) {
+        throw new Error("El ID del usuario es necesario para consultar pedidos.");
+    }
+
+    const sql = `
     SELECT 
-      p.id,
-      p.usuario_id,
-      p.restaurante_id,
-      p.total,
-      p.estado,
-      p.notas,
-      p.direccion_entrega,
-      p.telefono_contacto,
-      p.creado_en,
-      p.actualizado_en,
+      p.id, p.usuario_id, p.restaurante_id, p.total, p.estado, p.notas,
+      p.direccion_entrega, p.telefono_contacto, p.creado_en, p.actualizado_en,
       r.nombre as restaurante_nombre,
       (SELECT COUNT(*) FROM items_pedido WHERE pedido_id = p.id) as items_count
     FROM pedidos p
@@ -141,13 +141,9 @@ export async function getOrdersByUser(usuario_id, limit = 20) {
     LIMIT ?
   `;
 
-  try {
-    return await query(sql, [usuario_id, parseInt(limit)]);
-  } catch (error) {
-    throw new Error(`Error obteniendo pedidos del usuario: ${error.message}`);
-  }
+    // Forzamos que los parámetros sean estrictamente un array de dos elementos
+    return await query(sql, [safeId, safeLimit]);
 }
-
 /**
  * Obtener pedidos del restaurante
  */
