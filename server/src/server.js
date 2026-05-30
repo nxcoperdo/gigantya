@@ -115,12 +115,16 @@ app.use((req, res) => {
   });
 });
 
+
 // Iniciar servidor
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
-  console.log(`📝 Modo: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔐 CORS habilitado para: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+
+// Al poner '0.0.0.0', le indicas al servidor que escuche
+// en todas las interfaces de red disponibles.
+httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor ejecutándose en http://0.0.0.0:${PORT}`);
+    console.log(`📝 Modo: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔐 CORS habilitado para: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
 });
 
 export default app;
