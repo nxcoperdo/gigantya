@@ -1,8 +1,16 @@
 import express from 'express';
 import * as productController from '../controllers/productController.js';
 import { verifyToken, requireRestaurant } from '../middleware/authMiddleware.js';
+import { upload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
+
+/**
+ * @route   POST /api/products/upload
+ * @desc    Subir imagen de producto (solo restaurante)
+ * @access  Private - Restaurant
+ */
+router.post('/upload', verifyToken, requireRestaurant, upload.single('image'), productController.uploadProductImage);
 
 /**
  * @route   GET /api/products/restaurant/:restaurante_id

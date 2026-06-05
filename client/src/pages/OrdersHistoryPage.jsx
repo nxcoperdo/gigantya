@@ -1,16 +1,51 @@
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, TrendingUp, Package } from 'lucide-react';
+import { Clock, CheckCircle, TrendingUp, Package, Star, Eye } from 'lucide-react';
 import api from '../services/api';
 import Loading from '../components/Loading';
+import RatingModal from '../components/RatingModal';
+import ThankYouModal from '../components/ThankYouModal';
+import OrderDetailsModal from '../components/OrderDetailsModal';
+import { ratingService } from '../services/api';
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState(null);
+  const [ratingModal, setRatingModal] = useState({ isOpen: false, pedidoId: null, restauranteId: null, restauranteNombre: '' });
+  const [thankYouOpen, setThankYouOpen] = useState(false);
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
+  const [isOrderDetailsModalOpen, setIsOrderDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const handleRateRestaurant = (pedido_id, restaurante_id, restaurante_nombre) => {
+    setRatingModal({ isOpen: true, pedidoId: pedido_id, restauranteId: restaurante_id, restauranteNombre: restaurante_nombre });
+  };
+
+  const handleViewOrderDetails = (order) => {
+    setSelectedOrderForDetails(order);
+    setIsOrderDetailsModalOpen(true);
+  };
+
+  const submitRating = async ({ rating, comment }) => {
+    try {
+      await ratingService.rateRestaurant({
+        pedido_id: ratingModal.pedidoId,
+        restaurante_id: ratingModal.restauranteId,
+        puntuacion: rating,
+        comentario: comment
+      });
+      // Cerrar modal de calificación y abrir modal de agradecimiento animado
+      setRatingModal({ ...ratingModal, isOpen: false });
+      setThankYouOpen(true);
+      // Cerrar automáticamente tras 2.5s
+      setTimeout(() => setThankYouOpen(false), 2500);
+    } catch (error) {
+      throw error;
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -160,10 +195,31 @@ export default function OrdersHistoryPage() {
                   </>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-3 flex-wrap">
                   <p className="text-sm text-gray-500">
                     Última actualización: {new Date(order.actualizado_en).toLocaleString('es-CO')}
                   </p>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleViewOrderDetails(order)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all duration-300 active:scale-95 border border-gray-200"
+                      title="Ver detalles del pedido"
+                    >
+                      <Eye size={16} />
+                      Detalles
+                    </button>
+
+                    {order.estado === 'Entregado' && (
+                      <button
+                        onClick={() => handleRateRestaurant(order.id, order.restaurante_id, order.restaurante_nombre)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-primary hover:bg-primary/10 transition-all duration-300 active:scale-95"
+                      >
+                        <Star size={16} fill="currentColor" />
+                        Calificar
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -185,6 +241,19 @@ export default function OrdersHistoryPage() {
           </div>
         )}
       </div>
+
+      <RatingModal
+        isOpen={ratingModal.isOpen}
+        onClose={() => setRatingModal({ ...ratingModal, isOpen: false })}
+        restaurantName={ratingModal.restauranteNombre}
+        onSubmit={submitRating}
+      />
+      <ThankYouModal isOpen={thankYouOpen} onClose={() => setThankYouOpen(false)} />
+      <OrderDetailsModal
+        isOpen={isOrderDetailsModalOpen}
+        onClose={() => setIsOrderDetailsModalOpen(false)}
+        order={selectedOrderForDetails}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Check, ShoppingCart, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency } from '../utils/formatHelper';
 
 export default function AddToCartModal({ isOpen, onClose, producto, cantidad }) {
   const navigate = useNavigate();
@@ -60,13 +61,13 @@ export default function AddToCartModal({ isOpen, onClose, producto, cantidad }) 
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Precio unitario:</span>
                 <span className="text-xl font-semibold text-dark">
-                  ${producto.precio?.toLocaleString('es-CO')}
+                  {formatCurrency(producto.precio)}
                 </span>
               </div>
               <div className="border-t border-gray-200 mt-3 pt-3 flex items-center justify-between">
                 <span className="text-gray-700 font-semibold">Subtotal:</span>
                 <span className="text-2xl font-bold text-primary">
-                  ${(producto.precio * cantidad).toLocaleString('es-CO')}
+                  {formatCurrency(producto.precio * cantidad)}
                 </span>
               </div>
             </div>

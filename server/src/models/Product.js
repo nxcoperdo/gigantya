@@ -66,10 +66,11 @@ export async function createProduct(productData) {
  */
 export async function getProductsByRestaurant(restaurante_id) {
   const sql = `
-    SELECT p.* 
+    SELECT p.*, c.nombre as categoria_nombre, c.orden as categoria_orden
     FROM productos p
+    LEFT JOIN categorias c ON p.categoria_id = c.id
     WHERE p.restaurante_id = ? AND p.estado = 'activo'
-    ORDER BY p.nombre
+    ORDER BY c.orden ASC, p.nombre ASC
   `;
 
   try {

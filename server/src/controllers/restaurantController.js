@@ -123,6 +123,12 @@ export async function updateRestaurant(req, res) {
     const { id } = req.params;
     const updateData = req.body;
 
+    if ((!updateData || Object.keys(updateData).length === 0) && !req.file) {
+      return res.status(400).json({
+        error: 'No se proporcionaron datos ni imágenes para actualizar'
+      });
+    }
+
     // Verificar que sea el dueño
     const restaurante = await RestaurantModel.getRestaurantById(id);
 
@@ -138,7 +144,15 @@ export async function updateRestaurant(req, res) {
       });
     }
 
-    await RestaurantModel.updateRestaurant(id, updateData);
+    if (updateData && Object.keys(updateData).length > 0) {
+      await RestaurantModel.updateRestaurant(id, updateData);
+    }
+
+    // Si se ha subido un archivo, actualizar la imagen_url en la DB
+    if (req.file) {
+      const filePath = `/uploads/${req.file.filename}`;
+      await RestaurantModel.updateRestaurant(id, { imagen_url: filePath });
+    }
 
     res.json({
       mensaje: 'Restaurante actualizado exitosamente'

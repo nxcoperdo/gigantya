@@ -14,6 +14,8 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersHistoryPage from './pages/OrdersHistoryPage';
 import ProfilePage from './pages/ProfilePage';
+import RestaurantDashboardPage from './pages/RestaurantDashboardPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 export default function App() {
   return (
@@ -68,6 +70,22 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute requiredRole="restaurante">
+                      <RestaurantDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminDashboardPage />
                     </ProtectedRoute>
                   }
                 />

@@ -51,20 +51,30 @@ export const restaurantService = {
   getAll: (filtros = {}) => api.get('/restaurants', { params: filtros }),
   getById: (id) => api.get(`/restaurants/${id}`),
   create: (data) => api.post('/restaurants', data),
-  update: (id, data) => api.put(`/restaurants/${id}`, data),
+  update: (id, data) => {
+    const isFormData = data instanceof FormData;
+    return api.put(`/restaurants/${id}`, data, {
+      headers: {
+        ...(isFormData ? { 'Content-Type': 'multipart/form-data' } : {}),
+      },
+    });
+  },
 };
 
 // ========== PRODUCTOS ==========
 
 export const productService = {
-  getByRestaurant: (restaurante_id) => 
+  getByRestaurant: (restaurante_id) =>
     api.get(`/products/restaurant/${restaurante_id}`),
   getById: (id) => api.get(`/products/${id}`),
   create: (data) => api.post('/products', data),
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
   toggle: (id) => api.patch(`/products/${id}/toggle`),
-  search: (restaurante_id, query) => 
+  uploadImage: (formData) => api.post('/products/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  search: (restaurante_id, query) =>
     api.get(`/products/search/${restaurante_id}`, { params: { q: query } }),
 };
 
@@ -92,6 +102,7 @@ export const userService = {
 // ========== DIRECCIONES ==========
 
 export const addressService = {
+
   getAll: () => api.get('/addresses'),
   getDefault: () => api.get('/addresses/default'),
   create: (data) => api.post('/addresses', data),
@@ -108,6 +119,38 @@ export const adminService = {
   approveRestaurant: (id) => api.put(`/admin/restaurants/${id}/approve`),
   rejectRestaurant: (id) => api.put(`/admin/restaurants/${id}/reject`),
   getStats: () => api.get('/admin/stats'),
+};
+
+// ========== NOTIFICACIONES ==========
+
+export const notificationService = {
+  getNotifications: () => api.get('/notifications'),
+  markAsRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all'),
+};
+
+// ========== PREFERENCIAS (FAVORITOS Y BÚSQUEDA) ==========
+
+export const preferenceService = {
+  addFavorite: (data) => api.post('/preferences/favorites', data),
+  removeFavorite: (data) => api.delete('/preferences/favorites', { data }),
+  getFavorites: (tipo) => api.get(`/preferences/favorites/${tipo}`),
+  getSearchHistory: () => api.get('/preferences/search-history'),
+  clearSearchHistory: () => api.delete('/preferences/search-history'),
+};
+
+// ========== CALIFICACIONES ==========
+
+export const ratingService = {
+  rateRestaurant: (data) => api.post('/ratings', data),
+  getMyRatings: () => api.get('/ratings/me'),
+  editRating: (restaurante_id, data) => api.put(`/ratings/${restaurante_id}`, data),
+};
+
+// ========== CATEGORÍAS ==========
+
+export const categoryService = {
+  getAll: () => api.get('/categorias'),
 };
 
 export default api;

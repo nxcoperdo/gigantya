@@ -1,6 +1,6 @@
 ﻿-- ====================================================
 -- Base de Datos: Sistema de Pedidos para Restaurantes
--- LocalizaciÃ³n: GigantÃ¡, Huila, Colombia
+-- Localización: Gigantá, Huila, Colombia
 -- ====================================================
 
 CREATE DATABASE IF NOT EXISTS restaurante_pedidos_gigantya;
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre VARCHAR(100) NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
   telefono VARCHAR(20),
-  contraseÃ±a_hash VARCHAR(255) NOT NULL,
+  contraseña_hash VARCHAR(255) NOT NULL,
   tipo_usuario ENUM('cliente', 'restaurante', 'admin') NOT NULL,
   documento_identidad VARCHAR(50),
   otros_datos JSON,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS restaurantes (
   descripcion TEXT,
   direccion VARCHAR(255),
   telefono VARCHAR(20),
-  ciudad VARCHAR(100) DEFAULT 'GigantÃ¡, Huila',
+  ciudad VARCHAR(100) DEFAULT 'Gigantá, Huila',
   horario_apertura TIME,
   horario_cierre TIME,
   imagen_url VARCHAR(255),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS restaurantes (
 );
 
 -- ====================================================
--- Tabla: CATEGORÃAS
+-- Tabla: CATEGORÍAS
 -- ====================================================
 CREATE TABLE IF NOT EXISTS categorias (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -168,10 +168,10 @@ CREATE TABLE IF NOT EXISTS notificaciones (
 );
 
 -- ====================================================
--- Ãndices Adicionales para OptimizaciÃ³n
+-- Índices Adicionales para Optimización
 -- ====================================================
 
--- Historial de cambios de estado de pedidos (futura implementaciÃ³n)
+-- Historial de cambios de estado de pedidos (futura implementación)
 CREATE TABLE IF NOT EXISTS historial_pedidos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   pedido_id INT NOT NULL,
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS historial_pedidos (
 -- ====================================================
 
 -- Usuario Admin
-INSERT INTO usuarios (nombre, email, telefono, contraseÃ±a_hash, tipo_usuario, estado)
+INSERT INTO usuarios (nombre, email, telefono, contraseña_hash, tipo_usuario, estado)
 VALUES (
   'Administrador',
   'admin@restaurantes.local',
@@ -201,7 +201,7 @@ VALUES (
 );
 
 -- ====================================================
--- Vistas Ãštiles
+-- Vistas Útiles
 -- ====================================================
 
 -- Vista: Resumen de restaurantes
@@ -223,7 +223,7 @@ LEFT JOIN calificaciones c ON pd.id = c.pedido_id
 WHERE r.estado = 'activo'
 GROUP BY r.id;
 
--- Vista: EstadÃ­sticas generales
+-- Vista: Estadísticas generales
 CREATE OR REPLACE VIEW vw_estadisticas_general AS
 SELECT
   (SELECT COUNT(*) FROM usuarios WHERE estado = 'activo') as usuarios_activos,

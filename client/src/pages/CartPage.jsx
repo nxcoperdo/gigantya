@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { getImageUrl } from '../utils/imageHelper';
+import { formatCurrency } from '../utils/formatHelper';
 import { useCart } from '../context/CartContext';
 
 export default function CartPage() {
@@ -44,7 +46,7 @@ export default function CartPage() {
                   <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-light">
                     {item.imagen_url ? (
                       <img
-                        src={item.imagen_url}
+                        src={getImageUrl(item.imagen_url)}
                         alt={item.nombre}
                         className="w-full h-full object-cover"
                       />
@@ -58,7 +60,7 @@ export default function CartPage() {
                   {/* Info */}
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-dark">{item.nombre}</h3>
-                    <p className="text-gray-600 mb-2">${item.precio?.toLocaleString('es-CO')}</p>
+                    <p className="text-gray-600 mb-2">{formatCurrency(item.precio)}</p>
                   </div>
 
                   {/* Cantidad */}
@@ -83,7 +85,7 @@ export default function CartPage() {
                   {/* Subtotal */}
                   <div className="flex flex-col items-end gap-2">
                     <p className="text-xl font-bold text-primary">
-                      ${(item.precio * item.cantidad).toLocaleString('es-CO')}
+                      {formatCurrency(item.precio * item.cantidad)}
                     </p>
                     <button
                       onClick={() => removeFromCart(item.id)}
@@ -119,7 +121,7 @@ export default function CartPage() {
               <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal:</span>
-                  <span>${total.toLocaleString('es-CO')}</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Envío:</span>
@@ -127,7 +129,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Impuestos:</span>
-                  <span>${(total * 0.08).toLocaleString('es-CO')}</span>
+                  <span>{formatCurrency(total * 0.08)}</span>
                 </div>
               </div>
 

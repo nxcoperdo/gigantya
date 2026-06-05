@@ -150,6 +150,10 @@ export async function updateRestaurant(id, updateData) {
     'imagen_url'
   ];
 
+  if (!updateData || typeof updateData !== 'object') {
+    throw new Error('Los datos de actualización deben ser un objeto válido');
+  }
+
   const fields = Object.keys(updateData).filter(key => allowedFields.includes(key));
 
   if (fields.length === 0) {

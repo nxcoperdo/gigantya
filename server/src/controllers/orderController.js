@@ -1,12 +1,13 @@
 import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
+import * as NotificationModel from '../models/Notification.js';
 
 /**
  * Crear nuevo pedido
  */
 export async function createOrder(req, res) {
   try {
-    const { restaurante_id, items, total, notas, direccion_entrega, telefono_contacto } = req.body;
+    const { restaurante_id, items, notas, direccion_entrega, telefono_contacto } = req.body;
 
     // Validar que sea cliente
     if (req.user.tipo_usuario !== 'cliente') {
@@ -22,12 +23,6 @@ export async function createOrder(req, res) {
       });
     }
 
-    if (!total || isNaN(total) || total <= 0) {
-      return res.status(400).json({ 
-        error: 'total debe ser un número positivo' 
-      });
-    }
-
     // Verificar que el restaurante existe
     const restaurante = await RestaurantModel.getRestaurantById(restaurante_id);
     if (!restaurante) {
@@ -36,27 +31,33 @@ export async function createOrder(req, res) {
       });
     }
 
-    // Crear pedido
-    const pedidoId = await OrderModel.createOrder({
+    // Crear pedido de forma transaccional. El total y los precios se recalculan desde la BD.
+    const pedidoId = await OrderModel.createOrderWithItems({
       usuario_id: req.user.id,
       restaurante_id,
-      total,
+      items,
       notas,
       direccion_entrega,
       telefono_contacto
     });
 
-    // Agregar items
-    for (const item of items) {
-      await OrderModel.addOrderItem(
-        pedidoId,
-        item.producto_id,
-        item.cantidad,
-        item.precio_unitario
-      );
-    }
-
     const pedido = await OrderModel.getOrderById(pedidoId);
+
+    // Notificar al restaurante
+    try {
+      const restauranteData = await RestaurantModel.getRestaurantById(restaurante_id);
+      if (restauranteData && restauranteData.usuario_id) {
+        await NotificationModel.createNotification({
+          usuario_id: restauranteData.usuario_id,
+          tipo: 'pedido',
+          titulo: 'Nuevo Pedido Recibido',
+          mensaje: `Has recibido un nuevo pedido #${pedidoId}`,
+          data: { pedido_id: pedidoId }
+        });
+      }
+    } catch (notifError) {
+      console.error('Error enviando notificación de nuevo pedido:', notifError);
+    }
 
     res.status(201).json({
       mensaje: 'Pedido creado exitosamente',
@@ -64,7 +65,7 @@ export async function createOrder(req, res) {
     });
   } catch (error) {
     console.error('Error creando pedido:', error);
-    res.status(500).json({ 
+    res.status(error.statusCode || 500).json({ 
       error: 'Error creando pedido',
       detalles: error.message 
     });
@@ -137,7 +138,7 @@ export async function getClientOrders(req, res) {
             pedidos = pedidos.filter(p => p.estado === estado);
         }
 
-        res.json({
+    res.json({
             total: pedidos.length,
             pedidos
         });
@@ -193,56 +194,76 @@ export async function getRestaurantOrders(req, res) {
 export async function updateOrderStatus(req, res) {
   try {
     const { id } = req.params;
+
+    // 1. Validación robusta del cuerpo
+    if (!req.body || typeof req.body !== 'object') {
+      console.error('SISTEMA: req.body no es un objeto. Recibido:', req.body);
+      return res.status(400).json({ error: 'Cuerpo de la petición inválido' });
+    }
+
     const { estado } = req.body;
-
     if (!estado) {
-      return res.status(400).json({ 
-        error: 'estado es requerido' 
+      console.error('SISTEMA: Falta el campo "estado" en req.body. Recibido:', req.body);
+      return res.status(400).json({ error: 'El campo "estado" es requerido' });
+    }
+
+    // 2. Normalización flexible del estado (ignora mayúsculas/minúsculas y espacios)
+    const cleanEstado = estado.toString().trim();
+    const validStates = Object.values(OrderModel.ORDER_STATES);
+    const matchedState = validStates.find(
+      s => s.toLowerCase() === cleanEstado.toLowerCase()
+    );
+
+    if (!matchedState) {
+      console.error(`SISTEMA: Estado inválido recibido: "${estado}". Permitidos:`, validStates);
+      return res.status(400).json({
+        error: `Estado "${estado}" no es válido. Use: ${validStates.join(', ')}`
       });
     }
 
-    // Validar estado
-    if (!Object.values(OrderModel.ORDER_STATES).includes(estado)) {
-      return res.status(400).json({ 
-        error: `Estado inválido. Opciones: ${Object.values(OrderModel.ORDER_STATES).join(', ')}` 
-      });
-    }
-
+    // 3. Proceso de actualización
     const pedido = await OrderModel.getOrderById(id);
-
     if (!pedido) {
-      return res.status(404).json({ 
-        error: 'Pedido no encontrado' 
-      });
+      return res.status(404).json({ error: 'Pedido no encontrado' });
     }
 
-    // Validar permiso (solo restaurante owner)
+    // Validar permisos
     if (req.user.tipo_usuario === 'restaurante') {
       const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
       if (!restaurante || restaurante.id !== pedido.restaurante_id) {
-        return res.status(403).json({ 
-          error: 'No tienes permiso para cambiar este pedido' 
-        });
+        return res.status(403).json({ error: 'No tienes permiso para cambiar este pedido' });
       }
     } else if (req.user.tipo_usuario !== 'admin') {
-      return res.status(403).json({ 
-        error: 'No tienes permiso para cambiar el estado' 
-      });
+      return res.status(403).json({ error: 'No tienes permiso para cambiar el estado' });
     }
 
-    await OrderModel.updateOrderStatus(id, estado);
+    // Usar el estado normalizado (matchedState) para asegurar compatibilidad con la DB
+    await OrderModel.updateOrderStatus(id, matchedState);
 
-    const pedidoActualizado = await OrderModel.getOrderById(id);
+    // Notificar al cliente
+    try {
+      const pedidoActualizado = await OrderModel.getOrderById(id);
+      await NotificationModel.createNotification({
+        usuario_id: pedidoActualizado.usuario_id,
+        tipo: 'pedido',
+        titulo: 'Actualización de Pedido',
+        mensaje: `Tu pedido #${id} ahora está en estado: ${matchedState}`,
+        data: { pedido_id: id, estado: matchedState }
+      });
+    } catch (notifError) {
+      console.error('Error en notificación:', notifError);
+    }
 
+    const pedidoFinal = await OrderModel.getOrderById(id);
     res.json({
       mensaje: 'Estado del pedido actualizado',
-      pedido: pedidoActualizado
+      pedido: pedidoFinal
     });
   } catch (error) {
-    console.error('Error actualizando estado del pedido:', error);
-    res.status(500).json({ 
-      error: 'Error actualizando pedido',
-      detalles: error.message 
+    console.error('Error crítico en updateOrderStatus:', error);
+    res.status(500).json({
+      error: 'Error interno del servidor al actualizar pedido',
+      detalles: error.message
     });
   }
 }
@@ -277,6 +298,23 @@ export async function cancelOrder(req, res) {
     }
 
     await OrderModel.cancelOrder(id);
+
+    // Notificar al restaurante que el pedido fue cancelado
+    try {
+      const pedido = await OrderModel.getOrderById(id);
+      const restauranteData = await RestaurantModel.getRestaurantById(pedido.restaurante_id);
+      if (restauranteData && restauranteData.usuario_id) {
+        await NotificationModel.createNotification({
+          usuario_id: restauranteData.usuario_id,
+          tipo: 'pedido',
+          titulo: 'Pedido Cancelado',
+          mensaje: `El pedido #${id} ha sido cancelado por el cliente`,
+          data: { pedido_id: id }
+        });
+      }
+    } catch (notifError) {
+      console.error('Error enviando notificación de cancelación:', notifError);
+    }
 
     res.json({
       mensaje: 'Pedido cancelado exitosamente'

@@ -1,6 +1,7 @@
 import express from 'express';
 import * as restaurantController from '../controllers/restaurantController.js';
 import { verifyToken, requireRestaurant } from '../middleware/authMiddleware.js';
+import { upload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.post('/', verifyToken, requireRestaurant, restaurantController.createRest
  * @desc    Actualizar restaurante (solo owner)
  * @access  Private - Restaurant
  */
-router.put('/:id', verifyToken, requireRestaurant, restaurantController.updateRestaurant);
+router.put('/:id', verifyToken, requireRestaurant, upload.single('imagen_url'), restaurantController.updateRestaurant);
 
 export default router;
 

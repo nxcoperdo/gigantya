@@ -289,6 +289,33 @@ export async function searchProducts(req, res) {
   }
 }
 
+/**
+ * Subir imagen de producto
+ */
+export async function uploadProductImage(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No se ha proporcionado ninguna imagen'
+      });
+    }
+
+    // Guardamos la ruta relativa para que sea consistente con el helper del frontend
+    const relativeUrl = `uploads/${req.file.filename}`;
+
+    res.json({
+      mensaje: 'Imagen subida exitosamente',
+      url: relativeUrl
+    });
+  } catch (error) {
+    console.error('Error subiendo imagen de producto:', error);
+    res.status(500).json({
+      error: 'Error al subir la imagen',
+      detalles: error.message
+    });
+  }
+}
+
 export default {
   getProductsByRestaurant,
   getProduct,
@@ -296,6 +323,7 @@ export default {
   updateProduct,
   deleteProduct,
   toggleProduct,
-  searchProducts
+  searchProducts,
+  uploadProductImage // Add this
 };
 

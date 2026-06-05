@@ -1,4 +1,4 @@
-import { query, queryOne } from '../config/database.js';
+import pool, { query, queryOne } from '../config/database.js';
 
 /**
  * Estados posibles de un pedido
@@ -10,6 +10,49 @@ export const ORDER_STATES = {
   ENTREGADO: 'Entregado',
   CANCELADO: 'Cancelado'
 };
+
+const ORDER_TAX_RATE = Number(process.env.ORDER_TAX_RATE ?? 0.08);
+
+function createValidationError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+export function normalizeOrderItems(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw createValidationError('items debe ser un array no vacio');
+  }
+
+  const grouped = new Map();
+
+  for (const item of items) {
+    const producto_id = Number(item?.producto_id);
+    const cantidad = Number(item?.cantidad);
+
+    if (!Number.isInteger(producto_id) || producto_id <= 0) {
+      throw createValidationError('Cada item debe tener un producto_id valido');
+    }
+
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      throw createValidationError('Cada item debe tener una cantidad entera positiva');
+    }
+
+    grouped.set(producto_id, (grouped.get(producto_id) || 0) + cantidad);
+  }
+
+  return Array.from(grouped, ([producto_id, cantidad]) => ({ producto_id, cantidad }));
+}
+
+export function calculateOrderTotal(items, taxRate = ORDER_TAX_RATE) {
+  const subtotal = items.reduce(
+    (sum, item) => sum + Number(item.precio_unitario) * Number(item.cantidad),
+    0
+  );
+  const total = subtotal * (1 + taxRate);
+
+  return Number(total.toFixed(2));
+}
 
 /**
  * Crear nuevo pedido
@@ -50,6 +93,109 @@ export async function createOrder(orderData) {
     return result.insertId;
   } catch (error) {
     throw new Error(`Error creando pedido: ${error.message}`);
+  }
+}
+
+/**
+ * Crear pedido completo de forma atomica recalculando precios desde la BD.
+ */
+export async function createOrderWithItems(orderData) {
+  const {
+    usuario_id,
+    restaurante_id,
+    items,
+    notas = '',
+    direccion_entrega,
+    telefono_contacto
+  } = orderData;
+
+  const normalizedItems = normalizeOrderItems(items);
+  const productIds = normalizedItems.map(item => item.producto_id);
+  const placeholders = productIds.map(() => '?').join(', ');
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [products] = await connection.query(
+      `
+        SELECT id, restaurante_id, precio, disponible, estado
+        FROM productos
+        WHERE id IN (${placeholders})
+        FOR UPDATE
+      `,
+      productIds
+    );
+
+    if (products.length !== normalizedItems.length) {
+      throw createValidationError('Uno o mas productos no existen');
+    }
+
+    const productsById = new Map(products.map(product => [Number(product.id), product]));
+    const pricedItems = normalizedItems.map(item => {
+      const product = productsById.get(item.producto_id);
+
+      if (Number(product.restaurante_id) !== Number(restaurante_id)) {
+        throw createValidationError('Todos los productos deben pertenecer al restaurante seleccionado');
+      }
+
+      if (product.estado !== 'activo' || Number(product.disponible) !== 1) {
+        throw createValidationError('Uno o mas productos no estan disponibles');
+      }
+
+      return {
+        ...item,
+        precio_unitario: Number(product.precio)
+      };
+    });
+
+    const total = calculateOrderTotal(pricedItems);
+
+    const [orderResult] = await connection.query(
+      `
+        INSERT INTO pedidos (
+          usuario_id,
+          restaurante_id,
+          total,
+          estado,
+          notas,
+          direccion_entrega,
+          telefono_contacto,
+          creado_en
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+      `,
+      [
+        usuario_id,
+        restaurante_id,
+        total,
+        ORDER_STATES.PENDIENTE,
+        notas,
+        direccion_entrega,
+        telefono_contacto
+      ]
+    );
+
+    const pedidoId = orderResult.insertId;
+
+    for (const item of pricedItems) {
+      const subtotal = Number((item.cantidad * item.precio_unitario).toFixed(2));
+      await connection.query(
+        `
+          INSERT INTO items_pedido (pedido_id, producto_id, cantidad, precio_unitario, subtotal)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [pedidoId, item.producto_id, item.cantidad, item.precio_unitario, subtotal]
+      );
+    }
+
+    await connection.commit();
+    return pedidoId;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
 }
 
@@ -227,7 +373,10 @@ export async function getOrderStats(restaurante_id, days = 30) {
 
 export default {
   ORDER_STATES,
+  normalizeOrderItems,
+  calculateOrderTotal,
   createOrder,
+  createOrderWithItems,
   addOrderItem,
   getOrderById,
   getOrdersByUser,

@@ -1,18 +1,38 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Utensils } from 'lucide-react';
-import { restaurantService } from '../services/api';
+import { restaurantService, preferenceService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/imageHelper';
 import Loading from '../components/Loading';
+import RecentSearches from '../components/RecentSearches';
 
 export default function HomePage() {
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => {
+    // Redirigir restaurantes al dashboard
+    if (isAuthenticated && user?.tipo_usuario === 'restaurante') {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    // Redirigir admins al admin panel
+    if (isAuthenticated && user?.tipo_usuario === 'admin') {
+      navigate('/admin', { replace: true });
+      return;
+    }
+
     loadRestaurants();
-  }, []);
+    loadSearchHistory();
+  }, [isAuthenticated, user, navigate]);
 
   const loadRestaurants = async () => {
     try {
@@ -25,6 +45,36 @@ export default function HomePage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSearchHistory = async () => {
+    try {
+      const res = await preferenceService.getSearchHistory();
+      setSearchHistory(res.data);
+    } catch (error) {
+      console.error('Error loading search history:', error);
+    }
+  };
+
+  const handleSearchChange = async (term) => {
+    setSearchTerm(term);
+    if (term.trim()) {
+      try {
+        // Aquí asumimos que el backend guarda el historial automáticamente
+        // o podrías llamar a un servicio de guardado aquí.
+      } catch (e) {
+        console.error('Error saving search:', e);
+      }
+    }
+  };
+
+  const clearHistory = async () => {
+    try {
+      await preferenceService.clearSearchHistory();
+      setSearchHistory([]);
+    } catch (e) {
+      console.error('Error clearing history:', e);
     }
   };
 
@@ -54,17 +104,29 @@ export default function HomePage() {
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-3xl mx-auto animate-slideUp">
+          <div className="max-w-3xl mx-auto animate-slideUp relative">
             <div className="relative flex items-center bg-white rounded-xl overflow-hidden shadow-lg-soft">
               <Search className="text-primary absolute left-4" size={24} />
               <input
                 type="text"
                 placeholder="Buscar restaurante, comida, bebida..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 className="flex-1 pl-14 pr-6 py-4 outline-none text-gray-800 text-lg"
               />
             </div>
+            {isSearchFocused && (
+              <RecentSearches
+                searches={searchHistory.map(h => h.termino)}
+                onSelect={(term) => {
+                  handleSearchChange(term);
+                  setIsSearchFocused(false);
+                }}
+                onClear={clearHistory}
+              />
+            )}
             <p className="text-sm mt-3 opacity-75">Más de {restaurants.length} restaurantes disponibles</p>
           </div>
         </div>
@@ -112,7 +174,7 @@ export default function HomePage() {
                 <div className="relative mb-5 rounded-xl overflow-hidden bg-gradient-warm h-48">
                   {restaurant.imagen_url ? (
                     <img
-                      src={restaurant.imagen_url}
+                      src={getImageUrl(restaurant.imagen_url)}
                       alt={restaurant.nombre}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
