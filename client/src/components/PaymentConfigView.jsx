@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { paymentService } from '../services/api';
 import { Wallet, Smartphone, QrCode, Save, CheckCircle, AlertCircle } from 'lucide-react';
 
+const DEFAULT_CONFIG = {
+  nequi: { telefono: '', titular: '' },
+  daviplata: { telefono: '', titular: '' },
+  bre_b: { clave: '', titular: '' }
+};
+
 export default function PaymentConfigView() {
-  const [paymentConfig, setPaymentConfig] = useState({
-    nequi: { telefono: '', titular: '' },
-    daviplata: { telefono: '', titular: '' },
-    bre_b: { clave: '', titular: '' }
-  });
+  const [paymentConfig, setPaymentConfig] = useState(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -22,10 +24,11 @@ export default function PaymentConfigView() {
       setLoading(true);
       setError('');
       const response = await paymentService.getPaymentConfig('me');
-      setPaymentConfig(response.data.configuracion || {
-        nequi: { telefono: '', titular: '' },
-        daviplata: { telefono: '', titular: '' },
-        bre_b: { clave: '', titular: '' }
+      const config = response.data.configuracion || {};
+      setPaymentConfig({
+        nequi: { ...DEFAULT_CONFIG.nequi, ...config.nequi },
+        daviplata: { ...DEFAULT_CONFIG.daviplata, ...config.daviplata },
+        bre_b: { ...DEFAULT_CONFIG.bre_b, ...config.bre_b },
       });
     } catch (err) {
       console.error('Error cargando configuración de pagos:', err);
