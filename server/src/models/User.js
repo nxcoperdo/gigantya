@@ -75,7 +75,7 @@ export async function verifyPassword(contrasena, contrasena_hash) {
  * Actualizar usuario
  */
 export async function updateUser(id, updateData) {
-  const allowedFields = ['nombre', 'telefono', 'otros_datos'];
+  const allowedFields = ['nombre', 'email', 'telefono', 'tipo_usuario', 'documento_identidad', 'otros_datos'];
   const fields = Object.keys(updateData).filter(key => allowedFields.includes(key));
 
   if (fields.length === 0) {

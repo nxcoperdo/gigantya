@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { paymentService } from '../services/api';
 import { addressService } from '../services/api';
 import { CheckCircle, MapPin, Plus } from 'lucide-react';
+import PaymentMethodSelector from '../components/PaymentMethodSelector';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ export default function CheckoutPage() {
   const [addressesLoading, setAddressesLoading] = useState(true);
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('contra_entrega');
+  const [comprobanteFile, setComprobanteFile] = useState(null);
+  const [restauranteId, setRestauranteId] = useState(null);
   const [formData, setFormData] = useState({
     nombre: user?.nombre || '',
     email: user?.email || '',
@@ -99,14 +103,20 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // Obtener restaurante_id del primer producto en el carrito
-      // En un caso real, podrías tener múltiples restaurantes
       if (cart.length === 0) {
         alert('El carrito está vacío');
         return;
       }
 
       const restaurante_id = cart[0].restaurante_id || 1;
+      setRestauranteId(restaurante_id);
+
+      // Validar comprobante para pagos electrónicos (Nequi, Daviplata, BRE-B)
+      if ((paymentMethod === 'nequi' || paymentMethod === 'daviplata' || paymentMethod === 'bre_b') && !comprobanteFile) {
+        alert('Debes subir el comprobante de pago para continuar');
+        setLoading(false);
+        return;
+      }
 
       const orderData = {
         restaurante_id,
@@ -119,12 +129,25 @@ export default function CheckoutPage() {
         notas: formData.notas,
         direccion_entrega: formData.direccion_entrega,
         telefono_contacto: formData.telefono_contacto,
+        metodo_pago: paymentMethod,
       };
 
-       const response = await api.post('/orders', orderData);
+      const response = await api.post('/orders', orderData);
+      const pedido = response.data.pedido;
+
+      // Si hay comprobante, subirlo después de crear el pedido
+      if (comprobanteFile && pedido?.id) {
+        const proofFormData = new FormData();
+        proofFormData.append('comprobante', comprobanteFile);
+        proofFormData.append('pedido_id', pedido.id);
+        proofFormData.append('metodo_pago', paymentMethod);
+
+        await paymentService.uploadProof(proofFormData);
+      }
+
       setSuccess(true);
       clearCart();
-      
+
       setTimeout(() => {
         navigate('/orders');
       }, 2000);
@@ -320,6 +343,17 @@ export default function CheckoutPage() {
                      />
                    </div>
                  </div>
+              </div>
+
+              {/* Método de Pago */}
+              <div className="card-lg">
+                <h2 className="text-2xl font-bold text-dark mb-6">Método de Pago</h2>
+                <PaymentMethodSelector
+                  selectedMethod={paymentMethod}
+                  onMethodChange={setPaymentMethod}
+                  restauranteId={cart[0]?.restaurante_id}
+                  onProofSelect={setComprobanteFile}
+                />
               </div>
 
               <button

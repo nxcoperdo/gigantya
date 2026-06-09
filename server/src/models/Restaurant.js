@@ -13,7 +13,9 @@ export async function createRestaurant(restaurantData) {
     horario_apertura,
     horario_cierre,
     imagen_url,
-    ciudad = 'Gigantá, Huila'
+    // FIX: la migración inicial define la ciudad sin tilde ('Giganta, Huila').
+    // Unificamos para evitar inconsistencias al filtrar por ciudad.
+    ciudad = 'Giganta, Huila'
   } = restaurantData;
 
   const sql = `
@@ -55,7 +57,11 @@ export async function createRestaurant(restaurantData) {
  * Obtener todos los restaurantes aprobados
  */
 export async function getRestaurants(filtros = {}) {
-  let sql = 'SELECT * FROM restaurantes WHERE estado = "activo" AND aprobado = 1';
+  let sql = `
+    SELECT * FROM restaurantes
+    WHERE estado = 'activo' AND aprobado = 1
+      AND (plan = 'basico' OR fecha_vencimiento_plan IS NULL OR fecha_vencimiento_plan >= NOW())
+  `;
   const params = [];
 
   if (filtros.ciudad) {
@@ -68,7 +74,7 @@ export async function getRestaurants(filtros = {}) {
     params.push(`%${filtros.nombre}%`);
   }
 
-  sql += ' ORDER BY creado_en DESC';
+  sql += ' ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
 
   try {
     return await query(sql, params);
@@ -147,7 +153,11 @@ export async function updateRestaurant(id, updateData) {
     'telefono',
     'horario_apertura',
     'horario_cierre',
-    'imagen_url'
+    'imagen_url',
+    'plan',
+    'banner_url',
+    'custom_config',
+    'fecha_vencimiento_plan',
   ];
 
   if (!updateData || typeof updateData !== 'object') {

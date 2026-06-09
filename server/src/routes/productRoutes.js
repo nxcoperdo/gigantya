@@ -62,5 +62,38 @@ router.delete('/:id', verifyToken, requireRestaurant, productController.deletePr
  */
 router.patch('/:id/toggle', verifyToken, requireRestaurant, productController.toggleProduct);
 
+/**
+ * @route   POST /api/products/gallery
+ * @desc    Subir varias imágenes a la galería de un producto
+ *          (plan Profesional/Premium). Campo multipart: `images` (max 5)
+ * @access  Private - Restaurant
+ */
+router.post(
+  '/gallery',
+  verifyToken,
+  requireRestaurant,
+  upload.array('images', 5),
+  productController.addProductGallery
+);
+
+/**
+ * @route   GET /api/products/gallery/:producto_id
+ * @desc    Listar galería de un producto
+ * @access  Public
+ */
+router.get('/gallery/:producto_id', productController.getProductGallery);
+
+/**
+ * @route   DELETE /api/products/gallery/:producto_id/:imagen_id
+ * @desc    Eliminar imagen de la galería
+ * @access  Private - Restaurant
+ */
+router.delete(
+  '/gallery/:producto_id/:imagen_id',
+  verifyToken,
+  requireRestaurant,
+  productController.deleteProductGalleryImage
+);
+
 export default router;
 

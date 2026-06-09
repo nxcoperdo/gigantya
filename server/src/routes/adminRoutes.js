@@ -5,39 +5,39 @@ import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 /**
- * @route   GET /api/admin/restaurants
- * @desc    Obtener todos los restaurantes
- * @access  Private - Admin
+ * Rutas de Usuarios (Gestión Total)
+ */
+router.get('/users', verifyToken, requireAdmin, adminController.getAllUsers);
+router.post('/users', verifyToken, requireAdmin, adminController.adminCreateUser);
+router.put('/users/:id/status', verifyToken, requireAdmin, adminController.updateUserStatus);
+router.put('/users/:id', verifyToken, requireAdmin, adminController.updateUser);
+router.delete('/users/:id', verifyToken, requireAdmin, adminController.deleteUser);
+
+/**
+ * Rutas de Restaurantes
  */
 router.get('/restaurants', verifyToken, requireAdmin, adminController.getAllRestaurants);
-
-/**
- * @route   GET /api/admin/restaurants/pending
- * @desc    Obtener restaurantes pendientes de aprobación
- * @access  Private - Admin
- */
 router.get('/restaurants/pending', verifyToken, requireAdmin, adminController.getPendingRestaurants);
-
-/**
- * @route   PUT /api/admin/restaurants/:id/approve
- * @desc    Aprobar restaurante
- * @access  Private - Admin
- */
 router.put('/restaurants/:id/approve', verifyToken, requireAdmin, adminController.approveRestaurant);
-
-/**
- * @route   PUT /api/admin/restaurants/:id/reject
- * @desc    Rechazar restaurante
- * @access  Private - Admin
- */
 router.put('/restaurants/:id/reject', verifyToken, requireAdmin, adminController.rejectRestaurant);
+router.put('/restaurants/:id/plan', verifyToken, requireAdmin, adminController.updateRestaurantPlan);
+router.get('/restaurants/:id/subscriptions', verifyToken, requireAdmin, adminController.getRestaurantSubscriptionHistory);
 
 /**
- * @route   GET /api/admin/stats
- * @desc    Obtener estadísticas generales
- * @access  Private - Admin
+ * Rutas de Pedidos Globales
+ */
+router.get('/orders', verifyToken, requireAdmin, adminController.getAllOrders);
+router.put('/orders/:id/status', verifyToken, requireAdmin, adminController.updateOrderStatus);
+
+/**
+ * Comunicación y Notificaciones
+ */
+router.post('/notifications/global', verifyToken, requireAdmin, adminController.sendGlobalNotification);
+
+/**
+ * Rutas de Estadísticas y Analytics
  */
 router.get('/stats', verifyToken, requireAdmin, adminController.getStats);
+router.get('/analytics', verifyToken, requireAdmin, adminController.getAdvancedAnalytics);
 
 export default router;
-

@@ -83,6 +83,10 @@ export default function HomePage() {
     r.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const featuredBanners = restaurants.filter(r =>
+    r.plan === 'premium' && r.banner_url
+  );
+
   if (loading) return <Loading />;
 
   return (
@@ -151,6 +155,37 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* Featured Banners Carousel/Grid */}
+        {featuredBanners.length > 0 && (
+          <div className="mb-12 overflow-x-auto pb-4 flex gap-6 snap-x scroll-smooth">
+            {featuredBanners.map((res) => (
+              <Link
+                key={`banner-${res.id}`}
+                to={`/restaurant/${res.id}`}
+                className="min-w-[300px] md:min-w-[450px] h-48 rounded-2xl overflow-hidden relative group snap-start shadow-lg-soft hover:shadow-xl transition-all"
+              >
+                <img
+                  src={getImageUrl(res.banner_url)}
+                  alt={res.nombre}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 p-6 text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                      res.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
+                    }`}>
+                      {res.plan}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold">{res.nombre}</h3>
+                  <p className="text-sm opacity-80 line-clamp-1">{res.descripcion}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+
         {filteredRestaurants.length === 0 ? (
           <div className="text-center py-16">
             <Utensils size={80} className="text-primary mb-6 mx-auto opacity-30" />
@@ -190,6 +225,11 @@ export default function HomePage() {
                        {Number(restaurant.calificacion)?.toFixed(1) || '5.0'}
                      </span>
                    </div>
+                   {restaurant.plan && restaurant.plan !== 'basico' && (
+                     <div className="absolute top-3 left-3 bg-primary/90 text-white px-2 py-1 rounded-full text-[10px] font-bold uppercase shadow-sm">
+                       {restaurant.plan}
+                     </div>
+                   )}
                 </div>
 
                 {/* Content Section */}

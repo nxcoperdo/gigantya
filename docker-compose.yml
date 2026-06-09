@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: gigantya-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: restaurante_pedidos_gigantya
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: gigantya_user
+      MYSQL_PASSWORD: gigantya123456
+    ports:
+      - '3306:3306'
+    volumes:
+      - db_data:/var/lib/mysql
+
+  server:
+    build: ./server
+    container_name: gigantya-server
+    restart: always
+    ports:
+      - '5000:5000'
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=gigantya_user
+      - DB_PASSWORD=gigantya123456
+      - DB_NAME=restaurante_pedidos_gigantya
+      - CORS_ORIGIN=http://localhost:80
+      - JWT_SECRET=cambiar_esta_clave_en_produccion
+    depends_on:
+      - db
+
+  client:
+    build: ./client
+    container_name: gigantya-client
+    restart: always
+    ports:
+      - '80:80'
+    depends_on:
+      - server
+
+volumes:
+  db_data:

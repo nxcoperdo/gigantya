@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { authService, orderService, productService } from '../services/api';
+import { authService, orderService, productService, couponService, restaurantService, paymentService } from '../services/api';
 import Loading from '../components/Loading';
 import ProductModal from '../components/ProductModal';
 import RestaurantModal from '../components/RestaurantModal';
 import OrderDetailsModal from '../components/OrderDetailsModal';
+import CouponsView from '../components/CouponsView';
+import PaymentTabs from '../components/PaymentTabs';
 import {
   LayoutDashboard,
   Clock3,
@@ -23,6 +25,11 @@ import {
   Settings,
   Eye,
   Image as ImageIcon,
+  BarChart3,
+  Banknote,
+  ShieldCheck,
+  Ticket,
+  FileText,
 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 
@@ -32,6 +39,9 @@ const ORDER_STATE_STYLES = {
   Listo: 'bg-purple-50 text-purple-800 border-purple-200',
   Entregado: 'bg-green-50 text-green-800 border-green-200',
   Cancelado: 'bg-red-50 text-red-800 border-red-200',
+  'Comprobante Enviado': 'bg-orange-50 text-orange-800 border-orange-200',
+  'Pago Confirmado': 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  'Pago Rechazado': 'bg-red-50 text-red-800 border-red-200',
 };
 
 const NEXT_STATUS_BY_STATE = {
@@ -138,6 +148,7 @@ export default function RestaurantDashboardPage() {
   const [error, setError] = useState('');
   const [profile, setProfile] = useState(null);
   const [restaurant, setRestaurant] = useState(null);
+  const [statsData, setStatsData] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
@@ -161,6 +172,15 @@ export default function RestaurantDashboardPage() {
         const usuario = response.data?.usuario || null;
         setProfile(usuario);
         setRestaurant(usuario?.restaurante || null);
+
+        if (usuario?.restaurante?.plan && usuario.restaurante.plan !== 'basico') {
+          try {
+            const statsRes = await restaurantService.getStats();
+            setStatsData(statsRes.data?.estadisticas || null);
+          } catch (e) {
+            console.error('Error cargando estadísticas avanzadas:', e);
+          }
+        }
       } catch (err) {
         console.error('Error cargando perfil del restaurante:', err);
         setError(err.response?.data?.error || 'No se pudo cargar la información del restaurante');
@@ -395,6 +415,11 @@ export default function RestaurantDashboardPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm mb-4">
                 <LayoutDashboard size={16} />
                 Dashboard restaurante
+                {restaurant.plan && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-white text-primary text-[10px] uppercase shadow-sm border border-primary/20">
+                    Plan {restaurant.plan}
+                  </span>
+                )}
               </div>
               <h1 className="text-3xl md:text-4xl font-heading font-bold text-dark mb-2">
                 {restaurant.nombre}
@@ -428,6 +453,41 @@ export default function RestaurantDashboardPage() {
                   <Settings size={16} />
                   Gestión
                 </button>
+                <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    activeTab === 'payments'
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-gray-500 hover:text-dark'
+                  }`}
+                >
+                  <FileText size={16} />
+                  Pagos
+                </button>
+                <button
+                  onClick={() => setActiveTab('coupons')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    activeTab === 'coupons'
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-gray-500 hover:text-dark'
+                  }`}
+                >
+                  <Ticket size={16} />
+                  Cupones
+                </button>
+                {restaurant?.plan && restaurant.plan !== 'basico' && (
+                  <button
+                    onClick={() => setActiveTab('stats')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                      activeTab === 'stats'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-500 hover:text-dark'
+                    }`}
+                  >
+                    <BarChart3 size={16} />
+                    Estadísticas
+                  </button>
+                )}
               </div>
 
               <button
@@ -454,6 +514,37 @@ export default function RestaurantDashboardPage() {
           </div>
         )}
 
+        {restaurant?.fecha_vencimiento_plan && (() => {
+          const dias = Math.ceil(
+            (new Date(restaurant.fecha_vencimiento_plan) - new Date()) / (1000 * 60 * 60 * 24)
+          );
+          if (dias > 5) return null;
+          const esVencido = dias <= 0;
+          return (
+            <div
+              className={`rounded-2xl p-4 border-2 flex items-start gap-3 ${
+                esVencido
+                  ? 'bg-red-50 border-red-200 text-red-800'
+                  : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}
+            >
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">
+                  {esVencido
+                    ? 'Tu suscripción ha vencido'
+                    : `Tu plan vence en ${dias} día${dias === 1 ? '' : 's'}`}
+                </p>
+                <p className="text-sm opacity-90">
+                  {esVencido
+                    ? 'Tu restaurante pasó a plan Básico. Contacta al administrador para renovar.'
+                    : `Renueva antes del ${new Date(restaurant.fecha_vencimiento_plan).toLocaleDateString('es-CO')} para no perder funciones.`}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
         {activeTab === 'orders' ? (
           <OrdersView
             orders={orders}
@@ -462,6 +553,15 @@ export default function RestaurantDashboardPage() {
             handleStatusChange={handleStatusChange}
             handleViewOrderDetails={handleViewOrderDetails}
             stats={stats}
+          />
+        ) : activeTab === 'payments' ? (
+          <PaymentTabs refreshData={refreshData} />
+        ) : activeTab === 'stats' ? (
+          <StatsView statsData={statsData} restaurant={restaurant} />
+        ) : activeTab === 'coupons' ? (
+          <CouponsView
+            restaurant={restaurant}
+            refreshData={refreshData}
           />
         ) : (
           <ManagementView
@@ -774,6 +874,75 @@ function InfoRow({ label, value }) {
     <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
       <span className="font-semibold text-gray-500">{label}</span>
       <span className="text-right text-gray-800">{value}</span>
+    </div>
+  );
+}
+
+function StatsView({ statsData, restaurant }) {
+  if (!statsData) {
+    return (
+      <div className="card-lg p-12 text-center text-gray-500">
+        <BarChart3 size={48} className="mx-auto mb-4 opacity-30" />
+        <p>Cargando estadísticas avanzadas...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 animate-fadeIn">
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <StatCard
+          title="Ingresos Totales"
+          value={`$${Number(statsData.ingresos_totales || 0).toLocaleString('es-CO')}`}
+          icon={<Banknote size={20} />}
+          description="Suma de todos los pedidos entregados"
+        />
+        <StatCard
+          title="Total Pedidos"
+          value={statsData.pedidos_totales || 0}
+          icon={<ShoppingBag size={20} />}
+          description="Cantidad de pedidos procesados"
+        />
+        <StatCard
+          title="Plan Actual"
+          value={restaurant?.plan?.toUpperCase() || 'BÁSICO'}
+          icon={<ShieldCheck size={20} />}
+          description="Suscripción activa"
+        />
+      </section>
+
+      <section className="card-lg p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <BarChart3 className="text-primary" size={24} />
+          <h2 className="text-2xl font-bold text-dark">Ventas Diarias (Últimos 30 días)</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+              <tr>
+                <th className="px-6 py-3">Fecha</th>
+                <th className="px-6 py-3 text-right">Total Ventas</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {statsData.ventas_diarias?.length === 0 ? (
+                <tr><td colSpan="2" className="px-6 py-10 text-center text-gray-500">No hay datos de ventas registrados.</td></tr>
+              ) : (
+                statsData.ventas_diarias?.map((day, i) => (
+                  <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-medium text-dark">
+                      {new Date(day.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-bold text-primary">
+                      ${Number(day.total || 0).toLocaleString('es-CO')}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Star } from 'lucide-react';
 import { restaurantService, productService } from '../services/api';
 
 export default function RestaurantModal({ isOpen, onClose, onSave, restaurant }) {
@@ -14,6 +14,8 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,9 +30,12 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         horario_apertura: restaurant.horario_apertura || '',
         horario_cierre: restaurant.horario_cierre || '',
         imagen_url: restaurant.imagen_url || '',
+        banner_url: restaurant.banner_url || '',
       });
       setImagePreview(restaurant.imagen_url || '');
+      setBannerPreview(restaurant.banner_url || '');
       setImageFile(null);
+      setBannerFile(null);
     } else {
       setFormData({
         nombre: '',
@@ -40,9 +45,12 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         horario_apertura: '',
         horario_cierre: '',
         imagen_url: '',
+        banner_url: '',
       });
       setImagePreview('');
+      setBannerPreview('');
       setImageFile(null);
+      setBannerFile(null);
     }
     setError('');
   }, [restaurant]);
@@ -60,6 +68,22 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
     reader.readAsDataURL(file);
+  };
+
+  const handleBannerChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setBannerFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setBannerPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveBanner = () => {
+    setBannerFile(null);
+    setBannerPreview('');
+    setFormData(prev => ({ ...prev, banner_url: '' }));
   };
 
   const uploadImage = async () => {
@@ -97,6 +121,11 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         payload.append('imagen_url', imageFile);
       }
 
+      // Si hay un archivo de banner nuevo, agregarlo al FormData
+      if (bannerFile) {
+        payload.append('banner_url', bannerFile);
+      }
+
       await restaurantService.update(restaurant.id, payload);
 
       // Actualizar el estado local para reflejar los cambios
@@ -118,15 +147,15 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-slideUp">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-slideUp">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-xl font-bold text-dark">Editar Datos del Restaurante</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <X size={20} className="text-gray-500" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
               {error}
@@ -232,6 +261,56 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                 />
               </div>
             </div>
+
+            {restaurant?.plan === 'premium' && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
+                <div className="flex items-center gap-2 text-amber-700 font-bold text-sm">
+                  <Star size={16} />
+                  Banner Promocional (exclusivo Premium)
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-amber-600 uppercase mb-1">Imagen del Banner</label>
+                  <div className="relative w-full h-32 rounded-xl border-2 border-dashed border-amber-300 bg-white flex items-center justify-center overflow-hidden group">
+                    {bannerPreview || formData.banner_url ? (
+                      <>
+                        <img src={bannerPreview || formData.banner_url} alt="Banner promocional" className="w-full h-full object-cover" />
+                        <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                          <Upload size={20} className="text-white" />
+                          <input type="file" className="hidden" accept="image/*" onChange={handleBannerChange} />
+                        </label>
+                      </>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-amber-50 transition-colors">
+                        <ImageIcon size={32} className="text-amber-400 mb-2" />
+                        <span className="text-xs text-amber-600 font-medium">Subir banner</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={handleBannerChange} />
+                      </label>
+                    )}
+                  </div>
+                  {(bannerPreview || formData.banner_url) && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveBanner}
+                      className="mt-2 text-xs text-red-500 hover:underline flex items-center gap-1"
+                    >
+                      <Trash2 size={12} /> Quitar banner
+                    </button>
+                  )}
+                  <p className="text-[10px] text-amber-500 mt-2 flex items-center gap-1">
+                    <ImageIcon size={10} />
+                    Tamaño recomendado: <span className="font-semibold">1920x600 px</span> (proporción 16:5)
+                  </p>
+                  <p className="text-[10px] text-amber-500">Aparecerá en la página de inicio (carousel principal).</p>
+                </div>
+              </div>
+            )}
+
+            {restaurant?.plan === 'profesional' && (
+              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-600">
+                <p className="font-semibold text-gray-700">💡 Sube a Premium</p>
+                <p>El banner promocional en la página de inicio es exclusivo del plan Premium.</p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

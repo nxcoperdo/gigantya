@@ -32,7 +32,17 @@ router.post('/', verifyToken, requireRestaurant, restaurantController.createRest
  * @desc    Actualizar restaurante (solo owner)
  * @access  Private - Restaurant
  */
-router.put('/:id', verifyToken, requireRestaurant, upload.single('imagen_url'), restaurantController.updateRestaurant);
+router.put('/:id', verifyToken, requireRestaurant, upload.fields([
+  { name: 'imagen_url', maxCount: 1 },
+  { name: 'banner_url', maxCount: 1 }
+]), restaurantController.updateRestaurant);
+
+/**
+ * @route   GET /api/restaurants/me/stats
+ * @desc    Obtener estadísticas del restaurante propio
+ * @access  Private - Restaurant
+ */
+router.get('/me/stats', verifyToken, requireRestaurant, restaurantController.getRestaurantStats);
 
 export default router;
 

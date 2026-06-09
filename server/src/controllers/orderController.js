@@ -1,34 +1,65 @@
 import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
 import * as NotificationModel from '../models/Notification.js';
+import * as CouponModel from '../models/Coupon.js';
+import pool from '../config/database.js';
 
 /**
  * Crear nuevo pedido
  */
 export async function createOrder(req, res) {
   try {
-    const { restaurante_id, items, notas, direccion_entrega, telefono_contacto } = req.body;
+    const { restaurante_id, items, notas, direccion_entrega, telefono_contacto, coupon_code, metodo_pago } = req.body;
 
     // Validar que sea cliente
     if (req.user.tipo_usuario !== 'cliente') {
-      return res.status(403).json({ 
-        error: 'Solo clientes pueden crear pedidos' 
+      return res.status(403).json({
+        error: 'Solo clientes pueden crear pedidos'
       });
     }
 
     // Validaciones
     if (!restaurante_id || !items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ 
-        error: 'restaurante_id e items (array no vacío) son requeridos' 
+      return res.status(400).json({
+        error: 'restaurante_id e items (array no vacío) son requeridos'
       });
     }
 
     // Verificar que el restaurante existe
     const restaurante = await RestaurantModel.getRestaurantById(restaurante_id);
     if (!restaurante) {
-      return res.status(404).json({ 
-        error: 'Restaurante no encontrado' 
+      return res.status(404).json({
+        error: 'Restaurante no encontrado'
       });
+    }
+
+    // Validar método de pago
+    const validPaymentMethods = ['contra_entrega', 'nequi', 'daviplata', 'bre_b'];
+    const paymentMethod = metodo_pago || 'contra_entrega';
+    if (!validPaymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({
+        error: 'Método de pago no válido. Use: contra_entrega, nequi, daviplata, bre_b'
+      });
+    }
+
+    // Validar cupón si se proporciona
+    let couponId = null;
+    if (coupon_code) {
+      try {
+        const normalizedItems = OrderModel.normalizeOrderItems(items);
+        const productIds = normalizedItems.map(i => i.producto_id);
+        const [products] = await pool.query('SELECT precio FROM productos WHERE id IN (?)', [productIds]);
+
+        const subtotal = normalizedItems.reduce((sum, item) => {
+          const p = products.find(prod => prod.id === item.producto_id);
+          return sum + (p ? p.precio * item.cantidad : 0);
+        }, 0);
+
+        const coupon = await CouponModel.validateCoupon(coupon_code, restaurante_id, subtotal);
+        couponId = coupon.id;
+      } catch (couponError) {
+        return res.status(400).json({ error: couponError.message });
+      }
     }
 
     // Crear pedido de forma transaccional. El total y los precios se recalculan desde la BD.
@@ -38,8 +69,15 @@ export async function createOrder(req, res) {
       items,
       notas,
       direccion_entrega,
-      telefono_contacto
+      telefono_contacto,
+      coupon_id: couponId,
+      metodo_pago: paymentMethod
     });
+
+    // Registrar uso del cupón si se aplicó
+    if (couponId) {
+      await CouponModel.recordCouponUsage(couponId);
+    }
 
     const pedido = await OrderModel.getOrderById(pedidoId);
 
@@ -65,9 +103,9 @@ export async function createOrder(req, res) {
     });
   } catch (error) {
     console.error('Error creando pedido:', error);
-    res.status(error.statusCode || 500).json({ 
+    res.status(error.statusCode || 500).json({
       error: 'Error creando pedido',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 }

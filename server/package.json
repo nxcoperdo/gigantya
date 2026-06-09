@@ -18,6 +18,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@sentry/node": "^10.56.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -26,12 +27,20 @@
     "express-validator": "^7.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
+    "knex": "^3.2.10",
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
     "mysql2": "^3.6.5",
-    "socket.io": "^4.7.2"
+    "node-cron": "^3.0.3",
+    "socket.io": "^4.7.2",
+    "supertest": "^7.2.2",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^29.1.1",
+    "nodemon": "^3.0.2",
+    "vitest": "^4.1.8"
   }
 }

@@ -1,5 +1,6 @@
 import * as ProductModel from '../models/Product.js';
 import * as RestaurantModel from '../models/Restaurant.js';
+import { canAccessPlan, getPlanLimit } from '../utils/planFeatures.js';
 
 /**
  * Obtener productos por restaurante
@@ -143,10 +144,19 @@ export async function updateProduct(req, res) {
       });
     }
 
+    // Validar que sea el dueño y el plan permita destacar el producto
+    if (updateData.destacado === 1 || updateData.destacado === true) {
+      if (restaurante.plan === 'basico') {
+        return res.status(403).json({
+          error: 'La función de destacar productos solo está disponible para planes Profesional y Premium'
+        });
+      }
+    }
+
     // Validar precio si se actualiza
     if (updateData.precio && (isNaN(updateData.precio) || updateData.precio <= 0)) {
-      return res.status(400).json({ 
-        error: 'El precio debe ser un número positivo' 
+      return res.status(400).json({
+        error: 'El precio debe ser un número positivo'
       });
     }
 
@@ -290,7 +300,8 @@ export async function searchProducts(req, res) {
 }
 
 /**
- * Subir imagen de producto
+ * Subir imagen de producto (foto principal — funciona para todos los planes).
+ * Para galería de fotos adicionales usar `addProductGallery`.
  */
 export async function uploadProductImage(req, res) {
   try {
@@ -300,19 +311,131 @@ export async function uploadProductImage(req, res) {
       });
     }
 
-    // Guardamos la ruta relativa para que sea consistente con el helper del frontend
     const relativeUrl = `uploads/${req.file.filename}`;
-
-    res.json({
-      mensaje: 'Imagen subida exitosamente',
-      url: relativeUrl
-    });
+    res.json({ mensaje: 'Imagen subida exitosamente', url: relativeUrl });
   } catch (error) {
     console.error('Error subiendo imagen de producto:', error);
     res.status(500).json({
       error: 'Error al subir la imagen',
       detalles: error.message
     });
+  }
+}
+
+/**
+ * Subir varias imágenes a la galería de un producto.
+ * Requiere plan Profesional o Premium (`multiples_fotos: true`).
+ *
+ * El frontend debe hacer POST a este endpoint con `multipart/form-data`
+ * y campo `images` (múltiples archivos). El servidor valida que la
+ * cantidad total no supere el límite del plan.
+ */
+export async function addProductGallery(req, res) {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron imágenes' });
+    }
+
+    if (req.user.tipo_usuario !== 'restaurante') {
+      return res.status(403).json({ error: 'Solo restaurantes pueden subir imágenes' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'No tienes un restaurante asociado' });
+    }
+
+    if (!canAccessPlan(restaurante.plan, 'multiples_fotos')) {
+      return res.status(403).json({
+        error: 'La galería de fotos está disponible en planes Profesional y Premium',
+        currentPlan: restaurante.plan,
+        code: 'FEATURE_NOT_IN_PLAN',
+      });
+    }
+
+    const { producto_id } = req.body;
+    if (!producto_id) {
+      return res.status(400).json({ error: 'Falta producto_id' });
+    }
+
+    const producto = await ProductModel.getProductById(producto_id);
+    if (!producto || producto.restaurante_id !== restaurante.id) {
+      return res.status(403).json({ error: 'Producto no encontrado o sin permiso' });
+    }
+
+    const limite = getPlanLimit(restaurante.plan, 'fotos_por_producto');
+    const existentes = await ProductModel.countProductImages(producto_id);
+    const disponibles = Math.max(0, limite - existentes);
+
+    if (req.files.length > disponibles) {
+      return res.status(400).json({
+        error: `Tu plan permite hasta ${limite} fotos por producto. Ya tienes ${existentes}, puedes agregar ${disponibles} más.`,
+        limite,
+        existentes,
+      });
+    }
+
+    // La primera imagen subida también actualiza `imagen_url` del producto
+    // (foto principal legacy). El resto se inserta en producto_imagenes.
+    const urls = req.files.map((f) => `uploads/${f.filename}`);
+    const insertedIds = [];
+    for (let i = 0; i < req.files.length; i++) {
+      const newId = await ProductModel.addProductImage(producto_id, urls[i], existentes + i);
+      insertedIds.push(newId);
+    }
+
+    // Si el producto aún no tiene foto principal, usar la primera
+    if (!producto.imagen_url) {
+      await ProductModel.updateProduct(producto_id, { imagen_url: urls[0] });
+    }
+
+    res.status(201).json({
+      mensaje: 'Imágenes agregadas a la galería',
+      imagenes: req.files.map((f, i) => ({ id: insertedIds[i], url: urls[i] })),
+      total: existentes + req.files.length,
+      limite,
+    });
+  } catch (error) {
+    console.error('Error subiendo galería:', error);
+    res.status(500).json({ error: 'Error al subir imágenes', detalles: error.message });
+  }
+}
+
+/**
+ * Listar galería completa de un producto.
+ */
+export async function getProductGallery(req, res) {
+  try {
+    const { producto_id } = req.params;
+    const imagenes = await ProductModel.getProductImages(producto_id);
+    res.json({ total: imagenes.length, imagenes });
+  } catch (error) {
+    res.status(500).json({ error: 'Error listando galería', detalles: error.message });
+  }
+}
+
+/**
+ * Eliminar una imagen de la galería.
+ */
+export async function deleteProductGalleryImage(req, res) {
+  try {
+    const { producto_id, imagen_id } = req.params;
+
+    if (req.user.tipo_usuario !== 'restaurante') {
+      return res.status(403).json({ error: 'Solo restaurantes pueden eliminar imágenes' });
+    }
+    const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
+    if (!restaurante) return res.status(404).json({ error: 'Restaurante no encontrado' });
+
+    const producto = await ProductModel.getProductById(producto_id);
+    if (!producto || producto.restaurante_id !== restaurante.id) {
+      return res.status(403).json({ error: 'Producto no encontrado o sin permiso' });
+    }
+
+    await ProductModel.deleteProductImage(imagen_id, producto_id);
+    res.json({ mensaje: 'Imagen eliminada' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error eliminando imagen', detalles: error.message });
   }
 }
 
@@ -324,6 +447,10 @@ export default {
   deleteProduct,
   toggleProduct,
   searchProducts,
-  uploadProductImage // Add this
+  uploadProductImage,
+  // Galería (planes Profesional/Premium)
+  addProductGallery,
+  getProductGallery,
+  deleteProductGalleryImage,
 };
 

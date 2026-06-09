@@ -98,7 +98,11 @@ export async function updateProduct(id, updateData) {
     'descripcion',
     'precio',
     'imagen_url',
-    'disponible'
+    'disponible',
+    // FIX: el campo `destacado` se validaba por plan en
+    // productController pero no estaba en allowedFields → era código muerto.
+    // Ahora el toggle de destacado realmente persiste.
+    'destacado',
   ];
 
   const fields = Object.keys(updateData).filter(key => allowedFields.includes(key));
@@ -113,9 +117,9 @@ export async function updateProduct(id, updateData) {
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';
     sql += `${field} = ?`;
-    
-    // Convertir boolean a 0/1 para disponible
-    if (field === 'disponible') {
+
+    // Convertir boolean a 0/1 para los flags
+    if (field === 'disponible' || field === 'destacado') {
       values.push(updateData[field] ? 1 : 0);
     } else {
       values.push(updateData[field]);
@@ -182,6 +186,55 @@ export async function searchProducts(restaurante_id, query_text) {
   }
 }
 
+// =============================================================
+// Galería de imágenes (plan Profesional/Premium)
+// =============================================================
+
+/**
+ * Añadir una imagen a la galería del producto.
+ * El campo legacy `imagen_url` de la tabla `productos` se mantiene
+ * como "foto principal" (la primera imagen que se subió).
+ */
+export async function addProductImage(producto_id, imagen_url, orden = 0) {
+  const sql = `
+    INSERT INTO producto_imagenes (producto_id, imagen_url, orden)
+    VALUES (?, ?, ?)
+  `;
+  const result = await query(sql, [producto_id, imagen_url, orden]);
+  return result.insertId;
+}
+
+/**
+ * Listar todas las imágenes de un producto, ordenadas.
+ */
+export async function getProductImages(producto_id) {
+  const sql = `
+    SELECT id, imagen_url, orden, creado_en
+    FROM producto_imagenes
+    WHERE producto_id = ?
+    ORDER BY orden ASC, id ASC
+  `;
+  return query(sql, [producto_id]);
+}
+
+/**
+ * Eliminar una imagen de la galería.
+ */
+export async function deleteProductImage(imagen_id, producto_id) {
+  const sql = 'DELETE FROM producto_imagenes WHERE id = ? AND producto_id = ?';
+  return query(sql, [imagen_id, producto_id]);
+}
+
+/**
+ * Cuántas imágenes tiene ya un producto (para validar el límite del plan
+ * antes de subir más).
+ */
+export async function countProductImages(producto_id) {
+  const sql = 'SELECT COUNT(*) AS total FROM producto_imagenes WHERE producto_id = ?';
+  const row = await queryOne(sql, [producto_id]);
+  return row?.total || 0;
+}
+
 export default {
   createCategory,
   createProduct,
@@ -190,6 +243,11 @@ export default {
   updateProduct,
   deleteProduct,
   toggleProductAvailability,
-  searchProducts
+  searchProducts,
+  // Galería de imágenes (plan Profesional/Premium)
+  addProductImage,
+  getProductImages,
+  deleteProductImage,
+  countProductImages,
 };
 

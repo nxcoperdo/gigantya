@@ -27,13 +27,14 @@ export const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
-    const isMimeTypeValid = allowedTypes.test(file.mimetype);
-    const isExtValid = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const allowedTypesWithSvg = /jpeg|jpg|png|webp|svg/;
+    const isMimeTypeValid = allowedTypesWithSvg.test(file.mimetype);
+    const isExtValid = allowedTypesWithSvg.test(path.extname(file.originalname).toLowerCase());
 
     if (isMimeTypeValid && isExtValid) {
       return cb(null, true);
     }
-    cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp)'));
+    cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp, svg)'));
   },
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB

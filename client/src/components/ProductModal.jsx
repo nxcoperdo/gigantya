@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { productService, categoryService } from '../services/api';
+import { X, Upload, Image as ImageIcon, Trash2, Sparkles } from 'lucide-react';
+import { productService, categoryService, authService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
+
+const PLAN_LIMITS = { basico: 1, profesional: 5, premium: 5 };
 
 export default function ProductModal({ isOpen, onClose, onSave, product = null, restaurantId }) {
   const [formData, setFormData] = useState({
@@ -18,6 +20,11 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [categories, setCategories] = useState([]);
+  // Galería de fotos (plan Profesional/Premium)
+  const [gallery, setGallery] = useState([]);
+  const [galleryFiles, setGalleryFiles] = useState([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [plan, setPlan] = useState('basico');
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -28,7 +35,18 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         console.error('Error fetching categories:', err);
       }
     };
+    const fetchRestaurantPlan = async () => {
+      try {
+        const res = await authService.getProfile();
+        const p = res.data?.usuario?.restaurante?.plan || 'basico';
+        setPlan(p);
+      } catch (e) {
+        // Sin auth de restaurante (ej. admin creando producto) → basico
+        setPlan('basico');
+      }
+    };
     fetchCategories();
+    fetchRestaurantPlan();
   }, []);
 
   useEffect(() => {
@@ -42,6 +60,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         disponible: product.disponible === 1 || product.disponible === true,
       });
       setImagePreview(product.imagen_url ? getImageUrl(product.imagen_url) : '');
+      loadGallery(product.id);
     } else {
       setFormData({
         nombre: '',
@@ -52,9 +71,21 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         disponible: true,
       });
       setImagePreview('');
+      setGallery([]);
     }
+    setGalleryFiles([]);
     setError('');
   }, [product]);
+
+  const loadGallery = async (productId) => {
+    if (!productId) return;
+    try {
+      const res = await productService.getGallery(productId);
+      setGallery(res.data?.imagenes || []);
+    } catch (e) {
+      setGallery([]);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -71,6 +102,11 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
     }
   };
 
+  const handleGalleryChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    setGalleryFiles(files);
+  };
+
   const uploadImage = async () => {
     if (!imageFile) return '';
 
@@ -82,6 +118,34 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       return response.data.url;
     } catch (err) {
       throw new Error('Error al subir la imagen');
+    }
+  };
+
+  const uploadGallery = async (productoId) => {
+    if (!galleryFiles.length) return;
+    const fd = new FormData();
+    fd.append('producto_id', productoId);
+    galleryFiles.forEach((f) => fd.append('images', f));
+    setGalleryUploading(true);
+    try {
+      await productService.uploadGallery(productoId, fd);
+      setGalleryFiles([]);
+      await loadGallery(productoId);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al subir la galería');
+    } finally {
+      setGalleryUploading(false);
+    }
+  };
+
+  const deleteGalleryImage = async (imagenId) => {
+    if (!product?.id) return;
+    if (!window.confirm('¿Eliminar esta imagen de la galería?')) return;
+    try {
+      await productService.deleteGalleryImage(product.id, imagenId);
+      await loadGallery(product.id);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al eliminar la imagen');
     }
   };
 
@@ -105,10 +169,17 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         disponible: formData.disponible,
       };
 
-      if (product?.id) {
-        await productService.update(product.id, dataToSave);
+      let productoId = product?.id;
+      if (productoId) {
+        await productService.update(productoId, dataToSave);
       } else {
-        await productService.create(dataToSave);
+        const res = await productService.create(dataToSave);
+        productoId = res.data?.producto_id;
+      }
+
+      // Si hay archivos pendientes en la galería, subirlos tras guardar
+      if (galleryFiles.length > 0 && productoId) {
+        await uploadGallery(productoId);
       }
 
       onSave();
@@ -119,6 +190,10 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       setSaving(false);
     }
   };
+
+  const galleryLimit = PLAN_LIMITS[plan] || 1;
+  const gallerySlotsRemaining = Math.max(0, galleryLimit - gallery.length - galleryFiles.length);
+  const allowGallery = plan === 'profesional' || plan === 'premium';
 
   if (!isOpen) return null;
 
@@ -243,6 +318,70 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                 <span className="text-sm font-medium text-gray-700">Producto disponible para la venta</span>
               </div>
             </div>
+
+            {/* Galería (plan Profesional/Premium) */}
+            <div className="border-t border-gray-100 pt-4">
+              {allowGallery ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-dark flex items-center gap-2">
+                      <Sparkles size={16} className="text-amber-500" />
+                      Galería de fotos
+                    </p>
+                    <span className="text-xs text-gray-500">
+                      {gallery.length} / {galleryLimit}
+                    </span>
+                  </div>
+
+                  {gallery.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {gallery.map((img) => (
+                        <div key={img.id} className="relative group rounded-lg overflow-hidden aspect-square">
+                          <img src={getImageUrl(img.imagen_url)} alt="galería" className="w-full h-full object-cover" />
+                          {product?.id && (
+                            <button
+                              type="button"
+                              onClick={() => deleteGalleryImage(img.id)}
+                              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {gallerySlotsRemaining > 0 && (
+                    <div>
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                        <Upload size={20} className="text-gray-400 mb-1" />
+                        <span className="text-xs text-gray-500">
+                          Subir hasta {gallerySlotsRemaining} imagen(es) más
+                        </span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          multiple
+                          onChange={handleGalleryChange}
+                        />
+                      </label>
+                      {galleryFiles.length > 0 && (
+                        <p className="text-xs text-primary mt-1">
+                          {galleryFiles.length} archivo(s) listo(s) — se subirán al guardar el producto
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-500 flex items-start gap-2">
+                  <Sparkles size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                  <span>La galería de fotos está disponible en los planes Profesional y Premium.</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -255,10 +394,10 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
             </button>
             <button
               type="submit"
-              disabled={saving || uploading}
+              disabled={saving || uploading || galleryUploading}
               className="px-6 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primaryDark transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              {saving || uploading ? 'Guardando...' : product ? 'Actualizar' : 'Crear Producto'}
+              {saving || uploading || galleryUploading ? 'Guardando...' : product ? 'Actualizar' : 'Crear Producto'}
             </button>
           </div>
         </form>

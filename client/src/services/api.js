@@ -59,6 +59,7 @@ export const restaurantService = {
       },
     });
   },
+  getStats: () => api.get('/restaurants/me/stats'),
 };
 
 // ========== PRODUCTOS ==========
@@ -76,6 +77,12 @@ export const productService = {
   }),
   search: (restaurante_id, query) =>
     api.get(`/products/search/${restaurante_id}`, { params: { q: query } }),
+  // Galería de fotos (plan Profesional/Premium)
+  uploadGallery: (producto_id, formData) => api.post(`/products/gallery`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getGallery: (producto_id) => api.get(`/products/gallery/${producto_id}`),
+  deleteGalleryImage: (producto_id, imagen_id) => api.delete(`/products/gallery/${producto_id}/${imagen_id}`),
 };
 
 // ========== PEDIDOS ==========
@@ -119,6 +126,18 @@ export const adminService = {
   approveRestaurant: (id) => api.put(`/admin/restaurants/${id}/approve`),
   rejectRestaurant: (id) => api.put(`/admin/restaurants/${id}/reject`),
   getStats: () => api.get('/admin/stats'),
+  getAnalytics: () => api.get('/admin/analytics'),
+  sendGlobalNotification: (data) => api.post('/admin/notifications/global', data),
+  getOrders: () => api.get('/admin/orders'),
+  updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}/status`, { estado: status }),
+  // User management
+  getUsers: () => api.get('/admin/users'),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { estado: status }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  updateRestaurantPlan: (id, payload) => api.put(`/admin/restaurants/${id}/plan`, payload),
+  getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
 };
 
 // ========== NOTIFICACIONES ==========
@@ -151,6 +170,38 @@ export const ratingService = {
 
 export const categoryService = {
   getAll: () => api.get('/categorias'),
+};
+
+// ========== CUPONES ==========
+
+export const couponService = {
+  getMyCoupons: () => api.get('/coupons/my-coupons'),
+  create: (data) => api.post('/coupons', data),
+  update: (id, data) => api.put(`/coupons/${id}`, data),
+  delete: (id) => api.delete(`/coupons/${id}`),
+};
+
+// ========== SUSCRIPCIONES / PLANES ==========
+
+export const subscriptionService = {
+  getCurrent: () => api.get('/subscriptions/me'),
+  getHistory: () => api.get('/subscriptions/me/history'),
+  getPlans: () => api.get('/subscriptions/plans'),
+};
+
+// ========== PAGOS / COMPROBANTES ==========
+
+export const paymentService = {
+  getPaymentConfig: (restaurante_id) => api.get(`/payments/config/${restaurante_id}`),
+  updatePaymentConfig: (data) => api.put('/payments/config', data),
+  uploadProof: (formData) => api.post('/payments/proof', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getProof: (pedido_id) => api.get(`/payments/proof/${pedido_id}`),
+  getPendingProofs: () => api.get('/payments/pending'),
+  getProofsHistory: (estado) => api.get('/payments/history', { params: { estado } }),
+  approveProof: (id) => api.post(`/payments/proof/${id}/approve`),
+  rejectProof: (id, motivo_rechazo) => api.post(`/payments/proof/${id}/reject`, { motivo_rechazo }),
 };
 
 export default api;

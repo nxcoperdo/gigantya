@@ -8,7 +8,20 @@ export const ORDER_STATES = {
   PREPARANDO: 'Preparando',
   LISTO: 'Listo',
   ENTREGADO: 'Entregado',
-  CANCELADO: 'Cancelado'
+  CANCELADO: 'Cancelado',
+  COMPROBANTE_ENVIADO: 'Comprobante Enviado',
+  PAGO_CONFIRMADO: 'Pago Confirmado',
+  PAGO_RECHAZADO: 'Pago Rechazado'
+};
+
+/**
+ * Métodos de pago disponibles
+ */
+export const PAYMENT_METHODS = {
+  CONTRA_ENTREGA: 'contra_entrega',
+  NEQUI: 'nequi',
+  DAVIPLATA: 'daviplata',
+  BRE_B: 'bre_b'
 };
 
 const ORDER_TAX_RATE = Number(process.env.ORDER_TAX_RATE ?? 0.08);
@@ -44,12 +57,24 @@ export function normalizeOrderItems(items) {
   return Array.from(grouped, ([producto_id, cantidad]) => ({ producto_id, cantidad }));
 }
 
-export function calculateOrderTotal(items, taxRate = ORDER_TAX_RATE) {
+export function calculateOrderTotal(items, coupon = null, taxRate = ORDER_TAX_RATE) {
   const subtotal = items.reduce(
     (sum, item) => sum + Number(item.precio_unitario) * Number(item.cantidad),
     0
   );
-  const total = subtotal * (1 + taxRate);
+
+  let discountAmount = 0;
+  if (coupon) {
+    if (coupon.tipo_descuento === 'porcentaje') {
+      discountAmount = subtotal * (Number(coupon.descuento) / 100);
+    } else {
+      discountAmount = Number(coupon.descuento);
+    }
+    // El descuento no puede superar el subtotal
+    discountAmount = Math.min(discountAmount, subtotal);
+  }
+
+  const total = (subtotal - discountAmount) * (1 + taxRate);
 
   return Number(total.toFixed(2));
 }
@@ -106,7 +131,9 @@ export async function createOrderWithItems(orderData) {
     items,
     notas = '',
     direccion_entrega,
-    telefono_contacto
+    telefono_contacto,
+    coupon_id = null,
+    metodo_pago = 'contra_entrega'
   } = orderData;
 
   const normalizedItems = normalizeOrderItems(items);
@@ -150,7 +177,25 @@ export async function createOrderWithItems(orderData) {
       };
     });
 
-    const total = calculateOrderTotal(pricedItems);
+    // Obtener datos del cupón si se proporcionó
+    let coupon = null;
+    if (coupon_id) {
+      // FIX: validar también que el cupón pertenece al mismo restaurante.
+      // Sin este filtro, un cupón creado por el restaurante A podría
+      // aplicarse a pedidos del restaurante B (vulnerabilidad menor).
+      const [couponResult] = await connection.query(
+        'SELECT * FROM cupones WHERE id = ? AND restaurante_id = ?',
+        [coupon_id, restaurante_id]
+      );
+      coupon = couponResult[0];
+    }
+
+    const total = calculateOrderTotal(pricedItems, coupon);
+
+    // Determinar estado inicial según método de pago
+    const estadoInicial = metodo_pago === 'contra_entrega'
+      ? ORDER_STATES.PENDIENTE
+      : ORDER_STATES.COMPROBANTE_ENVIADO;
 
     const [orderResult] = await connection.query(
       `
@@ -159,17 +204,21 @@ export async function createOrderWithItems(orderData) {
           restaurante_id,
           total,
           estado,
+          metodo_pago,
+          estado_validacion_pago,
           notas,
           direccion_entrega,
           telefono_contacto,
           creado_en
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         usuario_id,
         restaurante_id,
         total,
-        ORDER_STATES.PENDIENTE,
+        estadoInicial,
+        metodo_pago,
+        metodo_pago === 'contra_entrega' ? 'aprobado' : 'pendiente',
         notas,
         direccion_entrega,
         telefono_contacto
@@ -342,6 +391,66 @@ export async function updateOrderStatus(id, nuevoEstado) {
 }
 
 /**
+ * Actualizar estado de validación de pago
+ */
+export async function updatePaymentValidation(id, estado) {
+  const validStates = ['pendiente', 'aprobado', 'rechazado'];
+  if (!validStates.includes(estado)) {
+    throw new Error(`Estado de validación inválido: ${estado}`);
+  }
+
+  const sql = 'UPDATE pedidos SET estado_validacion_pago = ?, actualizado_en = NOW() WHERE id = ?';
+
+  try {
+    await query(sql, [estado, id]);
+    return true;
+  } catch (error) {
+    throw new Error(`Error actualizando validación de pago: ${error.message}`);
+  }
+}
+
+/**
+ * Obtener pedido con información de pago
+ */
+export async function getOrderWithPaymentInfo(id) {
+  const sql = `
+    SELECT
+      p.*,
+      r.nombre as restaurante_nombre,
+      r.telefono as restaurante_telefono,
+      u.nombre as cliente_nombre,
+      u.email as cliente_email,
+      u.telefono as cliente_telefono,
+      cp.url_imagen as comprobante_url,
+      cp.estado_validacion as comprobante_estado,
+      cp.metodo_pago as comprobante_metodo
+    FROM pedidos p
+    LEFT JOIN restaurantes r ON p.restaurante_id = r.id
+    LEFT JOIN usuarios u ON p.usuario_id = u.id
+    LEFT JOIN comprobantes_pago cp ON p.id = cp.pedido_id
+    WHERE p.id = ?
+  `;
+
+  const pedido = await queryOne(sql, [id]);
+  if (!pedido) return null;
+
+  // Obtener items del pedido
+  const items = await query(`
+    SELECT
+      ip.*,
+      pr.nombre as producto_nombre,
+      pr.descripcion as producto_descripcion,
+      pr.imagen_url as producto_imagen
+    FROM items_pedido ip
+    LEFT JOIN productos pr ON ip.producto_id = pr.id
+    WHERE ip.pedido_id = ?
+  `, [id]);
+
+  pedido.items = items;
+  return pedido;
+}
+
+/**
  * Cancelar pedido
  */
 export async function cancelOrder(id) {
@@ -373,15 +482,18 @@ export async function getOrderStats(restaurante_id, days = 30) {
 
 export default {
   ORDER_STATES,
+  PAYMENT_METHODS,
   normalizeOrderItems,
   calculateOrderTotal,
   createOrder,
   createOrderWithItems,
   addOrderItem,
   getOrderById,
+  getOrderWithPaymentInfo,
   getOrdersByUser,
   getOrdersByRestaurant,
   updateOrderStatus,
+  updatePaymentValidation,
   cancelOrder,
   getOrderStats
 };
