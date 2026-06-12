@@ -10,6 +10,13 @@ const ORDER_STATE_STYLES = {
   Cancelado: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200' },
 };
 
+const PAYMENT_METHOD_LABELS = {
+  contra_entrega: 'Contra entrega',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  bre_b: 'BreezB',
+};
+
 export default function OrderDetailsModal({ isOpen, onClose, order }) {
   const [fullOrderData, setFullOrderData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -100,6 +107,15 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                       Teléfono
                     </p>
                     <p className="text-dark font-semibold mt-1">{displayOrder.cliente_telefono || 'No disponible'}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs text-gray-500 font-semibold uppercase flex items-center gap-1">
+                      <DollarSign size={14} />
+                      Método de Pago
+                    </p>
+                    <p className="text-dark font-semibold mt-1">
+                      {PAYMENT_METHOD_LABELS[displayOrder.metodo_pago] || displayOrder.metodo_pago || 'No definido'}
+                    </p>
                   </div>
                 </div>
               </section>

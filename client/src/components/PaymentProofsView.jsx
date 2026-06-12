@@ -10,7 +10,10 @@ export default function PaymentProofsView({ refreshData }) {
   const [error, setError] = useState('');
   const [selectedProof, setSelectedProof] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmProofId, setConfirmProofId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
@@ -37,12 +40,18 @@ export default function PaymentProofsView({ refreshData }) {
     }
   };
 
-  const handleApprove = async (proofId) => {
-    if (!window.confirm('¿Estás seguro de aprobar este pago?')) return;
+  const handleApprove = (proofId) => {
+    setConfirmProofId(proofId);
+    setConfirmOpen(true);
+  };
+
+  const confirmApprove = async () => {
+    if (!confirmProofId) return;
 
     try {
-      setProcessingId(proofId);
-      await paymentService.approveProof(proofId);
+      setProcessingId(confirmProofId);
+      setConfirmOpen(false);
+      await paymentService.approveProof(confirmProofId);
       await loadProofs();
       if (refreshData) await refreshData();
     } catch (err) {
@@ -50,14 +59,19 @@ export default function PaymentProofsView({ refreshData }) {
       alert(err.response?.data?.error || 'Error aprobando el pago');
     } finally {
       setProcessingId(null);
+      setConfirmProofId(null);
     }
   };
 
   const handleReject = async (proofId) => {
-    if (!window.confirm('¿Estás seguro de rechazar este pago?')) return;
+    if (!rejectReason.trim()) {
+      setRejectError('El motivo del rechazo es obligatorio. Por favor, explica por qué estás rechazando este comprobante.');
+      return;
+    }
 
     try {
       setProcessingId(proofId);
+      setRejectError('');
       await paymentService.rejectProof(proofId, rejectReason);
       setRejectReason('');
       setIsModalOpen(false);
@@ -205,21 +219,21 @@ export default function PaymentProofsView({ refreshData }) {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => handleApprove(proof.pedido_id)}
-                    disabled={processingId === proof.pedido_id}
+                    onClick={() => handleApprove(proof.id)}
+                    disabled={processingId === proof.id}
                     className="flex-1 btn btn-success btn-small inline-flex items-center justify-center gap-2"
                   >
                     <CheckCircle size={16} />
-                    {processingId === proof.pedido_id ? 'Procesando...' : 'Aprobar'}
+                    {processingId === proof.id ? 'Procesando...' : 'Aprobar'}
                   </button>
                   <button
                     type="button"
                     onClick={() => openRejectModal(proof)}
-                    disabled={processingId === proof.pedido_id}
+                    disabled={processingId === proof.id}
                     className="flex-1 btn btn-error btn-small inline-flex items-center justify-center gap-2"
                   >
                     <XCircle size={16} />
-                    {processingId === proof.pedido_id ? 'Procesando...' : 'Rechazar'}
+                    {processingId === proof.id ? 'Procesando...' : 'Rechazar'}
                   </button>
                 </div>
               </div>
@@ -285,6 +299,7 @@ export default function PaymentProofsView({ refreshData }) {
                   setIsModalOpen(false);
                   setSelectedProof(null);
                   setRejectReason('');
+                  setRejectError('');
                 }}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -345,39 +360,104 @@ export default function PaymentProofsView({ refreshData }) {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => handleApprove(selectedProof.pedido_id)}
-                      disabled={processingId === selectedProof.pedido_id}
+                      onClick={() => handleApprove(selectedProof.id)}
+                      disabled={processingId === selectedProof.id}
                       className="flex-1 btn btn-success inline-flex items-center justify-center gap-2"
                     >
                       <CheckCircle size={16} />
-                      {processingId === selectedProof.pedido_id ? 'Procesando...' : 'Aprobar Pago'}
+                      {processingId === selectedProof.id ? 'Procesando...' : 'Aprobar Pago'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => openRejectModal(selectedProof)}
-                      disabled={processingId === selectedProof.pedido_id}
+                      onClick={() => handleReject(selectedProof.id)}
+                      disabled={processingId === selectedProof.id}
                       className="flex-1 btn btn-error inline-flex items-center justify-center gap-2"
                     >
                       <XCircle size={16} />
-                      {processingId === selectedProof.pedido_id ? 'Procesando...' : 'Rechazar Pago'}
+                      {processingId === selectedProof.id ? 'Procesando...' : 'Rechazar Pago'}
                     </button>
                   </div>
 
                   {/* Input para motivo de rechazo */}
-                  <div>
+                  <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Motivo de Rechazo (opcional)
+                      Motivo de Rechazo *
                     </label>
                     <textarea
                       value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
+                      onChange={(e) => {
+                        setRejectReason(e.target.value);
+                        if (rejectError) setRejectError('');
+                      }}
                       placeholder="Ej: El comprobante no es legible, el monto no coincide..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors ${
+                        rejectError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       rows="3"
                     />
+                    {rejectError && (
+                      <div className="flex items-center gap-1.5 text-red-600 text-xs font-medium animate-shake">
+                        <AlertCircle size={14} />
+                        <span>{rejectError}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación de aprobación */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl animate-scaleUp">
+            <button
+              onClick={() => {
+                setConfirmOpen(false);
+                setConfirmProofId(null);
+              }}
+              className="absolute right-4 top-4 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Cerrar"
+            >
+              <XCircle size={18} />
+            </button>
+
+            <div className="p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <CheckCircle size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Confirmación</p>
+                  <h3 className="text-xl font-bold text-gray-800">¿Está seguro de aprobar este pago?</h3>
+                </div>
+              </div>
+
+              <p className="mb-5 text-gray-600">
+                Al aprobar este comprobante, el pago será marcado como válido y no podrá ser revertido.
+                ¿Desea continuar con la aprobación?
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    setConfirmProofId(null);
+                  }}
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmApprove}
+                  disabled={processingId === confirmProofId}
+                  className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primaryDark transition-colors"
+                >
+                  {processingId === confirmProofId ? 'Procesando...' : 'Confirmar Aprobación'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags } from 'lucide-react';
 import UserManagementModal from '../components/UserManagementModal';
 
 export default function AdminDashboardPage() {
@@ -17,6 +17,7 @@ export default function AdminDashboardPage() {
   const [pendingRestaurants, setPendingRestaurants] = useState([]);
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   // UI States
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -26,6 +27,9 @@ export default function AdminDashboardPage() {
   const [actionType, setActionType] = useState('');
   // Modal para asignar plan Profesional/Premium con fecha de vencimiento
   const [planModal, setPlanModal] = useState({ isOpen: false, restaurantId: null, plan: null });
+  // Modal para crear/editar categorías
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categoryToEdit, setCategoryToEdit] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -35,13 +39,14 @@ export default function AdminDashboardPage() {
     try {
       setError('');
       setLoading(true);
-      const [statsRes, restaurantsRes, pendingRes, usersRes, ordersRes, analyticsRes] = await Promise.all([
+      const [statsRes, restaurantsRes, pendingRes, usersRes, ordersRes, analyticsRes, categoriesRes] = await Promise.all([
         adminService.getStats(),
         adminService.getRestaurants(),
         adminService.getPendingRestaurants(),
         adminService.getUsers(),
         adminService.getOrders(),
         adminService.getAnalytics(),
+        adminService.getCategories(),
       ]);
 
       setStats(statsRes.data?.estadisticas || null);
@@ -50,6 +55,7 @@ export default function AdminDashboardPage() {
       setUsers(usersRes.data?.usuarios || []);
       setOrders(ordersRes.data?.pedidos || []);
       setAnalytics(analyticsRes.data?.analytics || { topRestaurants: [], topProducts: [] });
+      setCategories(categoriesRes.data?.categorias || []);
     } catch (err) {
       console.error('Error cargando panel admin:', err);
       setError(err.response?.data?.error || 'No se pudo cargar la información del panel');
@@ -120,6 +126,38 @@ export default function AdminDashboardPage() {
       await loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al actualizar el plan');
+    }
+  };
+
+  const handleCreateCategory = async (data) => {
+    try {
+      setError('');
+      await adminService.createCategory(data);
+      setIsCategoryModalOpen(false);
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al crear la categoría');
+    }
+  };
+
+  const handleUpdateCategory = async (id, data) => {
+    try {
+      setError('');
+      await adminService.updateCategory(id, data);
+      setIsCategoryModalOpen(false);
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al actualizar la categoría');
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      setError('');
+      await adminService.deleteCategory(id);
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al eliminar la categoría');
     }
   };
 
@@ -233,6 +271,7 @@ export default function AdminDashboardPage() {
             { id: 'users', label: 'Usuarios', icon: <Users size={16} /> },
             { id: 'restaurants', label: 'Restaurantes', icon: <Store size={16} /> },
             { id: 'orders', label: 'Pedidos', icon: <ClipboardList size={16} /> },
+            { id: 'categories', label: 'Categorías', icon: <Tags size={16} /> },
             { id: 'analytics', label: 'Analíticas', icon: <Package size={16} /> },
           ].map(tab => (
             <button
@@ -478,6 +517,86 @@ export default function AdminDashboardPage() {
             </section>
           )}
 
+          {/* TAB: CATEGORIES */}
+          {activeTab === 'categories' && (
+            <section className="card-lg overflow-hidden animate-fadeIn">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-dark">Gestión de Categorías</h2>
+                <Tags className="text-primary" size={24} />
+              </div>
+
+              {/* Button to add new category */}
+              <div className="mb-6">
+                <button
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="btn btn-primary inline-flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  Nueva Categoría
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                    <tr>
+                      <th className="px-6 py-3">Restaurante</th>
+                      <th className="px-6 py-3">Nombre</th>
+                      <th className="px-6 py-3">Descripción</th>
+                      <th className="px-6 py-3">Orden</th>
+                      <th className="px-6 py-3 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {categories.length === 0 ? (
+                      <tr><td colSpan="5" className="px-6 py-10 text-center text-gray-500">No hay categorías registradas.</td></tr>
+                    ) : (
+                      categories.map(cat => (
+                        <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <p className="font-semibold text-dark">{cat.restaurante_nombre || 'Restaurante desconocido'}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="font-semibold text-dark">{cat.nombre}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="text-sm text-gray-600">{cat.descripcion || 'Sin descripción'}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-xs font-bold text-gray-600">{cat.orden}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setCategoryToEdit(cat);
+                                  setIsCategoryModalOpen(true);
+                                }}
+                                className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+                              >
+                                <Save size={18} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('¿Estás seguro de que deseas eliminar esta categoría? Esta acción eliminará la categoría y afectará a los productos asociados.')) {
+                                    handleDeleteCategory(cat.id);
+                                  }
+                                }}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
           {/* TAB: ANALYTICS */}
           {activeTab === 'analytics' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
@@ -585,6 +704,18 @@ export default function AdminDashboardPage() {
             onSubmit={submitPlanModal}
           />
         )}
+
+        {/* CATEGORY MODAL */}
+        {isCategoryModalOpen && (
+          <CategoryModal
+            isOpen={isCategoryModalOpen}
+            onClose={() => setIsCategoryModalOpen(false)}
+            onSubmit={handleCreateCategory}
+            onUpdate={handleUpdateCategory}
+            categoryToEdit={categoryToEdit}
+            restaurants={restaurants}
+          />
+        )}
       </div>
     </div>
   );
@@ -661,6 +792,118 @@ function PlanAssignmentModal({ plan, onClose, onSubmit }) {
             </button>
             <button type="submit" className="flex-1 py-2.5 rounded-xl font-bold text-white bg-primary hover:bg-primaryDark shadow-md inline-flex items-center justify-center gap-2">
               <Save size={18} /> Asignar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, restaurants }) {
+  const [formData, setFormData] = useState({
+    restaurante_id: '',
+    nombre: '',
+    descripcion: '',
+    orden: '0'
+  });
+
+  useEffect(() => {
+    if (categoryToEdit) {
+      setFormData({
+        restaurante_id: categoryToEdit.restaurante_id || '',
+        nombre: categoryToEdit.nombre || '',
+        descripcion: categoryToEdit.descripcion || '',
+        orden: categoryToEdit.orden?.toString() || '0'
+      });
+    }
+  }, [categoryToEdit]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Tags size={20} />
+            <h2 className="text-xl font-bold">
+              {categoryToEdit ? 'Editar Categoría' : 'Nueva Categoría'}
+            </h2>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Restaurante *</label>
+            <select
+              name="restaurante_id"
+              value={formData.restaurante_id}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">Seleccione un restaurante</option>
+              {restaurants.map(rest => (
+                <option key={rest.id} value={rest.id}>
+                  {rest.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Nombre *</label>
+            <input
+              name="nombre"
+              value={formData.nombre}
+              onChange={handleChange}
+              required
+              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Ej: Bebidas, Entrantes, Postres"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Descripción</label>
+            <textarea
+              name="descripcion"
+              value={formData.descripcion}
+              onChange={handleChange}
+              rows="3"
+              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Descripción opcional de la categoría"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Orden</label>
+            <input
+              name="orden"
+              value={formData.orden}
+              onChange={handleChange}
+              type="number"
+              min="0"
+              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="0"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">
+              Cancelar
+            </button>
+            <button type="submit" className="flex-1 py-2.5 rounded-xl font-bold text-white bg-primary hover:bg-primaryDark shadow-md inline-flex items-center justify-center gap-2">
+              <Save size={18} />
+              {categoryToEdit ? 'Actualizar' : 'Crear'}
             </button>
           </div>
         </form>

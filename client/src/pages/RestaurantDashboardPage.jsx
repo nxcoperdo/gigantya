@@ -50,10 +50,17 @@ const NEXT_STATUS_BY_STATE = {
   Listo: 'Entregado',
 };
 
+const PAYMENT_METHOD_LABELS = {
+  contra_entrega: 'Contra entrega',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  bre_b: 'BreezB',
+};
+
 function OrderCard({ order, updatingOrderId, handleStatusChange, onViewDetails, isMuted = false }) {
   const nextStatus = NEXT_STATUS_BY_STATE[order.estado];
   return (
-    <article className={`border border-gray-200 rounded-2xl p-4 md:p-5 bg-white hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
+    <article className={`border border-gray- la-200 rounded-2xl p-4 md:p-5 bg-white hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="space-y-2 flex-1">
           <div className="flex items-center gap-3 flex-wrap">
@@ -61,11 +68,16 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, onViewDetails, 
             <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${ORDER_STATE_STYLES[order.estado] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
               {order.estado}
             </span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 flex items-center gap-1">
+              <Banknote size={12} />
+              {PAYMENT_METHOD_LABELS[order.metodo_pago] || order.metodo_pago || 'No definido'}
+            </span>
           </div>
           <p className="text-gray-600 text-sm">Cliente: <span className="font-semibold text-gray-800">{order.cliente_nombre || 'Sin nombre'}</span></p>
           <p className="text-gray-600 text-sm">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
           <p className="text-gray-600 text-sm">Fecha: {order.creado_en ? new Date(order.creado_en).toLocaleString('es-CO') : 'No disponible'}</p>
         </div>
+
 
         <div className="text-left lg:text-right space-y-2">
           <p className="text-2xl font-heading font-bold text-primary">${Number(order.total || 0).toLocaleString('es-CO')}</p>
@@ -151,6 +163,7 @@ export default function RestaurantDashboardPage() {
   const [statsData, setStatsData] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [pendingProofsCount, setPendingProofsCount] = useState(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -190,6 +203,7 @@ export default function RestaurantDashboardPage() {
     };
 
     loadProfile();
+    loadPendingProofsCount();
   }, []);
 
   const loadOrders = async ({ silent = false } = {}) => {
@@ -214,6 +228,15 @@ export default function RestaurantDashboardPage() {
     }
   };
 
+  const loadPendingProofsCount = async () => {
+    try {
+      const response = await paymentService.getPendingProofs();
+      setPendingProofsCount(response.data?.comprobantes?.length || 0);
+    } catch (err) {
+      console.error('Error cargando contador de comprobantes:', err);
+    }
+  };
+
   useEffect(() => {
     if (!restaurant?.id) return;
 
@@ -230,6 +253,7 @@ export default function RestaurantDashboardPage() {
 
     ordersPollingRef.current = setInterval(() => {
       loadOrders({ silent: true });
+      loadPendingProofsCount();
     }, 7000);
 
     return () => {
@@ -433,7 +457,7 @@ export default function RestaurantDashboardPage() {
               <div className="flex p-1 bg-gray-100 rounded-xl">
                 <button
                   onClick={() => setActiveTab('orders')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                     activeTab === 'orders'
                       ? 'bg-white text-primary shadow-sm'
                       : 'text-gray-500 hover:text-dark'
@@ -441,6 +465,12 @@ export default function RestaurantDashboardPage() {
                 >
                   <ClipboardList size={16} />
                   Pedidos
+                  {stats.pendingOrders > 0 && (
+                    <span className="absolute top-2 right-2 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab('management')}
@@ -454,8 +484,11 @@ export default function RestaurantDashboardPage() {
                   Gestión
                 </button>
                 <button
-                  onClick={() => setActiveTab('payments')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  onClick={() => {
+                    setActiveTab('payments');
+                    setPendingProofsCount(0); // Reset count when visiting the tab
+                  }}
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                     activeTab === 'payments'
                       ? 'bg-white text-primary shadow-sm'
                       : 'text-gray-500 hover:text-dark'
@@ -463,6 +496,12 @@ export default function RestaurantDashboardPage() {
                 >
                   <FileText size={16} />
                   Pagos
+                  {pendingProofsCount > 0 && (
+                    <span className="absolute top-2 right-2 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab('coupons')}

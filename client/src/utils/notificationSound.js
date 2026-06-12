@@ -4,14 +4,23 @@
  */
 
 let audioCtx = null;
+let audioContextInitialized = false;
 
 const initAudioContext = async () => {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContextClass();
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+      audioContextInitialized = true;
+    }
   }
-  if (audioCtx.state === 'suspended') {
-    await audioCtx.resume();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    try {
+      await audioCtx.resume();
+    } catch (e) {
+      // Audio context still suspended, user interaction needed
+      console.warn('Audio context suspended, waiting for user interaction');
+    }
   }
   return audioCtx;
 };

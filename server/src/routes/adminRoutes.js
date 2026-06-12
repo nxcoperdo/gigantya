@@ -1,5 +1,6 @@
 import express from 'express';
 import * as adminController from '../controllers/adminController.js';
+import * as categoryController from '../controllers/categoryController.js';
 import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -39,5 +40,13 @@ router.post('/notifications/global', verifyToken, requireAdmin, adminController.
  */
 router.get('/stats', verifyToken, requireAdmin, adminController.getStats);
 router.get('/analytics', verifyToken, requireAdmin, adminController.getAdvancedAnalytics);
+
+/**
+ * Rutas de Gestión de Categorías (Admin)
+ */
+router.get('/categorias', verifyToken, requireAdmin, categoryController.getCategories);
+router.post('/categorias', verifyToken, requireAdmin, categoryController.createCategory);
+router.put('/categorias/:id', verifyToken, requireAdmin, categoryController.updateCategory);
+router.delete('/categorias/:id', verifyToken, requireAdmin, categoryController.deleteCategory);
 
 export default router;

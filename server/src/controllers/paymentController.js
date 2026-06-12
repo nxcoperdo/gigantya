@@ -129,7 +129,7 @@ export async function uploadPaymentProof(req, res) {
       return res.status(400).json({ error: 'Debe subir un comprobante de pago' });
     }
 
-    const url_imagen = `/uploads/payment-proofs/${req.file.filename}`;
+    const url_imagen = `/uploads/${req.file.filename}`;
 
     // Verificar si ya existe un comprobante para este pedido
     const existingProof = await PaymentProofModel.getProofByOrderId(pedido_id);
@@ -312,8 +312,8 @@ export async function approvePaymentProof(req, res) {
     // Actualizar estado del comprobante
     await PaymentProofModel.updateProofStatus(id, 'aprobado', req.user.id);
 
-    // Actualizar estado del pedido
-    await OrderModel.updateOrderStatus(proof.pedido_id, OrderModel.ORDER_STATES.PAGO_CONFIRMADO);
+    // Actualizar estado del pedido - pasa directamente a Preparando
+    await OrderModel.updateOrderStatus(proof.pedido_id, OrderModel.ORDER_STATES.PREPARANDO);
     await OrderModel.updatePaymentValidation(proof.pedido_id, 'aprobado');
 
     // Notificar al cliente

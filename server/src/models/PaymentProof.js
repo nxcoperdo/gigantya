@@ -187,7 +187,15 @@ export async function getRestaurantPaymentConfig(restaurante_id) {
 
   try {
     const result = await queryOne(sql, [restaurante_id]);
-    return result?.configuracion_pagos ? JSON.parse(result.configuracion_pagos) : null;
+    if (!result || !result.configuracion_pagos) return null;
+
+    try {
+      return typeof result.configuracion_pagos === 'string'
+        ? JSON.parse(result.configuracion_pagos)
+        : result.configuracion_pagos;
+    } catch (error) {
+      throw new Error(`Error parseando configuración de pagos: ${error.message}`);
+    }
   } catch (error) {
     throw new Error(`Error obteniendo configuración de pagos: ${error.message}`);
   }

@@ -63,6 +63,12 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
     }
   };
 
+  useEffect(() => {
+    if (comprobanteFile && onProofSelect) {
+      onProofSelect(comprobanteFile);
+    }
+  }, [comprobanteFile, onProofSelect]);
+
   const methods = [
     {
       id: 'contra_entrega',
@@ -133,7 +139,7 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
                 {isSelected && (
                   <div className="mt-2 flex items-center gap-1 text-xs text-green-600 font-semibold">
                     <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    Seleccionado
+                    <span>Seleccionado</span>
                   </div>
                 )}
               </button>
@@ -182,7 +188,7 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
             )}
 
             {/* Subida de comprobante */}
-            {paymentConfig[selectedMethod]?.telefono && (
+            {(paymentConfig[selectedMethod]?.telefono || paymentConfig[selectedMethod]?.clave) && (
               <div className="mt-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Subir Comprobante de Pago *
@@ -218,16 +224,16 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
                   )}
                 </div>
                 {comprobanteFile && (
-                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                  <div className="text-xs text-green-600 mt-2 flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    Archivo seleccionado: {comprobanteFile.name}
-                  </p>
+                    <span>Archivo seleccionado: {comprobanteFile.name}</span>
+                  </div>
                 )}
                 {error && (
-                  <p className="text-xs text-red-600 mt-2 flex items-center gap-1">
+                  <div className="text-xs text-red-600 mt-2 flex items-center gap-1">
                     <AlertCircle size={12} />
-                    {error}
-                  </p>
+                    <span>{error}</span>
+                  </div>
                 )}
               </div>
             )}

@@ -3,7 +3,7 @@ import { X, CheckCheck, Bell } from 'lucide-react';
 import { notificationService } from '../services/api';
 import { playNotificationSound, resumeAudioContext } from '../utils/notificationSound';
 
-const NotificationCenter = ({ isOpen, onClose, onUnreadCountChange, onNotificationArrived }) => {
+const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -64,7 +64,6 @@ const NotificationCenter = ({ isOpen, onClose, onUnreadCountChange, onNotificati
       setNotifications(data);
       const nextUnreadCount = data.filter(n => n.leido === 0).length;
       setUnreadCount(nextUnreadCount);
-      onUnreadCountChange?.(nextUnreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -78,7 +77,6 @@ const NotificationCenter = ({ isOpen, onClose, onUnreadCountChange, onNotificati
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, leido: 1 } : n));
       setUnreadCount(prev => {
         const nextUnread = Math.max(0, prev - 1);
-        onUnreadCountChange?.(nextUnread);
         return nextUnread;
       });
     } catch (error) {
@@ -91,7 +89,6 @@ const NotificationCenter = ({ isOpen, onClose, onUnreadCountChange, onNotificati
       await notificationService.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, leido: 1 })));
       setUnreadCount(0);
-      onUnreadCountChange?.(0);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }

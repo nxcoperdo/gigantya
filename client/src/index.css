@@ -248,6 +248,10 @@ label {
   @apply bg-red-100 text-red-800;
 }
 
+.badge-info {
+  @apply bg-blue-50 border border-blue-200 text-blue-800;
+}
+
 /* Alerts */
 .alert {
   @apply p-4 rounded-lg mb-4 flex items-start gap-3;
@@ -306,3 +310,15 @@ label {
   animation: scaleIn 0.3s ease-out;
 }
 
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+.pause-marquee:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}

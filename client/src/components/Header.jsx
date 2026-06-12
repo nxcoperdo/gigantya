@@ -120,13 +120,20 @@ export default function Header() {
   }, [isAuthenticated]);
 
 
-  // try to resume audio context on first user interaction (autoplay policy)
+  // Resume audio context on first user interaction (autoplay policy)
   useEffect(() => {
     const resume = () => {
       resumeAudioContext();
     };
+    // Listen to multiple interaction types for better reliability
     document.addEventListener('click', resume, { once: true });
-    return () => document.removeEventListener('click', resume);
+    document.addEventListener('touchstart', resume, { once: true });
+    document.addEventListener('keydown', resume, { once: true });
+    return () => {
+      document.removeEventListener('click', resume);
+      document.removeEventListener('touchstart', resume);
+      document.removeEventListener('keydown', resume);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -335,7 +342,6 @@ export default function Header() {
       <NotificationCenter
         isOpen={notifOpen}
         onClose={() => setNotifOpen(false)}
-        onUnreadCountChange={handleUnreadCountChange}
         onNotificationArrived={(notification, count) => showNotificationAlert(notification, count)}
       />
       <NotificationAlertModal

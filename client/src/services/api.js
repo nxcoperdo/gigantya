@@ -136,6 +136,12 @@ export const adminService = {
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { estado: status }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  // Category management
+  getCategories: () => api.get('/admin/categorias'),
+  createCategory: (data) => api.post('/admin/categorias', data),
+  updateCategory: (id, data) => api.put(`/admin/categorias/${id}`, data),
+  deleteCategory: (id) => api.delete(`/admin/categorias/${id}`),
+  // Restaurant management
   updateRestaurantPlan: (id, payload) => api.put(`/admin/restaurants/${id}/plan`, payload),
   getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
 };

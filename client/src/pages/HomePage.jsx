@@ -155,36 +155,76 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Featured Banners Carousel/Grid */}
+        {/* Featured Banners Marquee */}
         {featuredBanners.length > 0 && (
-          <div className="mb-12 overflow-x-auto pb-4 flex gap-6 snap-x scroll-smooth">
-            {featuredBanners.map((res) => (
-              <Link
-                key={`banner-${res.id}`}
-                to={`/restaurant/${res.id}`}
-                className="min-w-[300px] md:min-w-[450px] h-48 rounded-2xl overflow-hidden relative group snap-start shadow-lg-soft hover:shadow-xl transition-all"
-              >
-                <img
-                  src={getImageUrl(res.banner_url)}
-                  alt={res.nombre}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 p-6 text-white">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                      res.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
-                    }`}>
-                      {res.plan}
-                    </span>
+          <div className="mb-24 overflow-hidden relative pause-marquee">
+            <div className="flex gap-6 animate-marquee w-max">
+              {/* First set of banners */}
+              {featuredBanners.map((res) => (
+                <Link
+                  key={`banner-1-${res.id}`}
+                  to={`/restaurant/${res.id}`}
+                  className="w-[300px] md:w-[450px] h-48 rounded-2xl overflow-hidden relative group shadow-lg-soft hover:shadow-xl transition-all"
+                >
+                  <img
+                    src={getImageUrl(res.banner_url)}
+                    alt={res.nombre}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 p-6 text-white">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                        res.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
+                      }`}>
+                        {res.plan}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-bold">{res.nombre}</h3>
+                    <p className="text-sm opacity-80 line-clamp-1">{res.descripcion}</p>
                   </div>
-                  <h3 className="text-2xl font-bold">{res.nombre}</h3>
-                  <p className="text-sm opacity-80 line-clamp-1">{res.descripcion}</p>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+              {/* Duplicate set for seamless loop */}
+              {featuredBanners.map((res) => (
+                <Link
+                  key={`banner-2-${res.id}`}
+                  to={`/restaurant/${res.id}`}
+                  className="w-[300px] md:w-[450px] h-48 rounded-2xl overflow-hidden relative group shadow-lg-soft hover:shadow-xl transition-all"
+                >
+                  <img
+                    src={getImageUrl(res.banner_url)}
+                    alt={res.nombre}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 p-6 text-white">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                        res.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
+                      }`}>
+                        {res.plan}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-bold">{res.nombre}</h3>
+                    <p className="text-sm opacity-80 line-clamp-1">{res.descripcion}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* All Restaurants Section */}
+        <div className="mb-12">
+          <h2 className="text-4xl md:text-5xl font-heading font-bold text-dark mb-3">
+            Nuestros Restaurantes
+          </h2>
+          <div className="w-20 h-1 bg-gradient-primary rounded-full"></div>
+          <p className="mt-4 text-gray-600 text-lg">
+            Explora la variedad gastronómica de nuestra ciudad
+          </p>
+        </div>
 
         {filteredRestaurants.length === 0 ? (
           <div className="text-center py-16">
