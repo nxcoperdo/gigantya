@@ -206,11 +206,12 @@ export async function createOrderWithItems(orderData) {
           estado,
           metodo_pago,
           estado_validacion_pago,
+          cupon_id,
           notas,
           direccion_entrega,
           telefono_contacto,
           creado_en
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         usuario_id,
@@ -219,6 +220,7 @@ export async function createOrderWithItems(orderData) {
         estadoInicial,
         metodo_pago,
         metodo_pago === 'contra_entrega' ? 'aprobado' : 'pendiente',
+        coupon_id,
         notas,
         direccion_entrega,
         telefono_contacto
@@ -278,16 +280,20 @@ export async function addOrderItem(pedido_id, producto_id, cantidad, precio_unit
  */
 export async function getOrderById(id) {
   const sql = `
-    SELECT 
+    SELECT
       p.*,
       r.nombre as restaurante_nombre,
       r.telefono as restaurante_telefono,
       u.nombre as cliente_nombre,
       u.email as cliente_email,
-      u.telefono as cliente_telefono
+      u.telefono as cliente_telefono,
+      c.codigo as cupon_codigo,
+      c.descuento as cupon_descuento,
+      c.tipo_descuento as cupon_tipo_descuento
     FROM pedidos p
     LEFT JOIN restaurantes r ON p.restaurante_id = r.id
     LEFT JOIN usuarios u ON p.usuario_id = u.id
+    LEFT JOIN cupones c ON p.cupon_id = c.id
     WHERE p.id = ?
   `;
 
@@ -295,9 +301,9 @@ export async function getOrderById(id) {
 
   if (!pedido) return null;
 
-  // Obtener items del pedido
+  // Calcular subtotal y descuento para la vista
   const items = await query(`
-    SELECT 
+    SELECT
       ip.*,
       pr.nombre as producto_nombre,
       pr.descripcion as producto_descripcion,
@@ -306,6 +312,17 @@ export async function getOrderById(id) {
     LEFT JOIN productos pr ON ip.producto_id = pr.id
     WHERE ip.pedido_id = ?
   `, [id]);
+
+  const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
+
+  // Calcular descuento basado en el total y subtotal
+  const totalConImpuestos = Number(pedido.total);
+  const subtotalConImpuestos = subtotal * 1.08;
+  const descuento = Math.max(0, subtotalConImpuestos - totalConImpuestos);
+
+  // Agregar descuento al objeto pedido
+  pedido.subtotal = subtotal;
+  pedido.descuento = descuento;
 
   pedido.items = items;
   return pedido;
@@ -423,11 +440,15 @@ export async function getOrderWithPaymentInfo(id) {
       u.telefono as cliente_telefono,
       cp.url_imagen as comprobante_url,
       cp.estado_validacion as comprobante_estado,
-      cp.metodo_pago as comprobante_metodo
+      cp.metodo_pago as comprobante_metodo,
+      c.codigo as cupon_codigo,
+      c.descuento as cupon_descuento,
+      c.tipo_descuento as cupon_tipo_descuento
     FROM pedidos p
     LEFT JOIN restaurantes r ON p.restaurante_id = r.id
     LEFT JOIN usuarios u ON p.usuario_id = u.id
     LEFT JOIN comprobantes_pago cp ON p.id = cp.pedido_id
+    LEFT JOIN cupones c ON p.cupon_id = c.id
     WHERE p.id = ?
   `;
 
@@ -446,6 +467,15 @@ export async function getOrderWithPaymentInfo(id) {
     WHERE ip.pedido_id = ?
   `, [id]);
 
+  // Calcular subtotal y descuento
+  const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
+  const totalConImpuestos = Number(pedido.total);
+  const subtotalConImpuestos = subtotal * 1.08;
+  const descuento = Math.max(0, subtotalConImpuestos - totalConImpuestos);
+
+  pedido.subtotal = subtotal;
+  pedido.descuento = descuento;
+
   pedido.items = items;
   return pedido;
 }
@@ -453,8 +483,14 @@ export async function getOrderWithPaymentInfo(id) {
 /**
  * Cancelar pedido
  */
-export async function cancelOrder(id) {
-  return updateOrderStatus(id, ORDER_STATES.CANCELADO);
+export async function cancelOrder(id, motivo = null) {
+  const sql = 'UPDATE pedidos SET estado = ?, motivo_cancelacion = ?, actualizado_en = NOW() WHERE id = ?';
+  try {
+    await query(sql, [ORDER_STATES.CANCELADO, motivo, id]);
+    return true;
+  } catch (error) {
+    throw new Error(`Error cancelando pedido: ${error.message}`);
+  }
 }
 
 /**

@@ -176,7 +176,13 @@ export async function updateRestaurant(id, updateData) {
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';
     sql += `${field} = ?`;
-    values.push(updateData[field]);
+
+    let value = updateData[field];
+    // Stringify objects for JSON columns
+    if ((field === 'custom_config' || field === 'configuracion_pagos') && typeof value === 'object' && value !== null) {
+      value = JSON.stringify(value);
+    }
+    values.push(value);
   });
 
   sql += ', actualizado_en = NOW() WHERE id = ?';

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Star, MapPin, Clock, Phone, Plus, Minus } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
@@ -66,12 +66,35 @@ export default function RestaurantDetailsPage() {
     .sort(([, a], [, b]) => a.orden - b.orden);
 
    const handleAddToCart = (producto) => {
-     addToCart(producto);
+     const result = addToCart(producto);
+
+     if (!result.success) {
+       alert(result.error);
+       return;
+     }
+
      const nuevaCantidad = (cantidades[producto.id] || 0) + 1;
      setCantidades(prev => ({ ...prev, [producto.id]: nuevaCantidad }));
      setProductAdded({ ...producto, cantidad: nuevaCantidad });
      setShowModal(true);
    };
+
+  const radiusMap = {
+    small: '4px',
+    medium: '12px',
+    large: '24px',
+  };
+
+  const dynamicStyles = useMemo(() => {
+    if (!restaurante?.custom_config) return {};
+    const config = restaurante.custom_config;
+    return {
+      '--color-primary': config.primaryColor || 'var(--color-primary)',
+      '--color-secondary': config.secondaryColor || 'var(--color-secondary)',
+      '--font-family': config.fontFamily || 'Inter',
+      '--border-radius': radiusMap[config.borderRadius] || '12px',
+    };
+  }, [restaurante]);
 
   if (loading) return <Loading />;
 
@@ -87,7 +110,13 @@ export default function RestaurantDetailsPage() {
   }
 
    return (
-     <div className="min-h-screen bg-light">
+     <div
+       className="min-h-screen bg-light"
+       style={{
+         ...dynamicStyles,
+         fontFamily: 'var(--font-family), sans-serif'
+       }}
+     >
        {/* Modal de Confirmación */}
        <AddToCartModal
          isOpen={showModal}
@@ -119,8 +148,18 @@ export default function RestaurantDetailsPage() {
 
        {/* Info Section */}
        <div className="max-w-7xl mx-auto px-4 md:px-6 -mt-16 relative z-10">
-         <div className="card-lg bg-white">
-           <h1 className="text-4xl md:text-5xl font-heading font-bold text-dark mb-3">
+         <div className="card-lg bg-white" style={{ borderRadius: 'var(--border-radius)' }}>
+           {restaurante.custom_config?.logoUrl && (
+             <div className="flex justify-center mb-6">
+               <img
+                 src={getImageUrl(restaurante.custom_config.logoUrl)}
+                 alt="Restaurant Logo"
+                 className="max-h-24 w-auto object-contain"
+                 onError={(e) => { e.target.style.display = 'none'; }}
+               />
+             </div>
+           )}
+           <h1 className="text-4xl md:text-5xl font-heading font-bold text-dark mb-3" style={{ fontFamily: 'var(--font-family)' }}>
              {restaurante.nombre}
            </h1>
 
@@ -130,7 +169,7 @@ export default function RestaurantDetailsPage() {
 
            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
              <div className="flex items-start gap-3">
-               <Star className="text-primary mt-1" size={20} />
+               <Star className="mt-1" size={20} style={{ color: 'var(--color-primary)' }} />
                <div>
                  <p className="text-sm text-gray-500">Calificación</p>
                  <p className="text-xl font-bold text-gray-800">{restaurante.calificacion || '5.0'}</p>
@@ -138,7 +177,7 @@ export default function RestaurantDetailsPage() {
              </div>
 
              <div className="flex items-start gap-3">
-               <Clock className="text-primary mt-1" size={20} />
+               <Clock className="mt-1" size={20} style={{ color: 'var(--color-primary)' }} />
                <div>
                  <p className="text-sm text-gray-500">Horario</p>
                  <p className="text-lg font-semibold text-gray-800">
@@ -148,7 +187,7 @@ export default function RestaurantDetailsPage() {
              </div>
 
              <div className="flex items-start gap-3">
-               <Phone className="text-primary mt-1" size={20} />
+               <Phone className="mt-1" size={20} style={{ color: 'var(--color-primary)' }} />
                <div>
                  <p className="text-sm text-gray-500">Teléfono</p>
                  <p className="text-lg font-semibold text-gray-800">{restaurante.telefono}</p>
@@ -156,7 +195,7 @@ export default function RestaurantDetailsPage() {
              </div>
 
              <div className="flex items-start gap-3">
-               <MapPin className="text-primary mt-1" size={20} />
+               <MapPin className="mt-1" size={20} style={{ color: 'var(--color-primary)' }} />
                <div>
                  <p className="text-sm text-gray-500">Ubicación</p>
                  <p className="text-lg font-semibold text-gray-800">{restaurante.ciudad}</p>
@@ -168,7 +207,7 @@ export default function RestaurantDetailsPage() {
 
        {/* Menu Section */}
        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
-         <h2 className="text-3xl md:text-4xl font-heading font-bold mb-8 text-dark">Menú</h2>
+         <h2 className="text-3xl md:text-4xl font-bold mb-8" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>Menú</h2>
 
          {sortedCategories.length > 0 ? (
            <div className="space-y-12">
@@ -181,7 +220,7 @@ export default function RestaurantDetailsPage() {
 
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {catData.productos.map(producto => (
-                     <div key={producto.id} className="card group hover:shadow-lg">
+                     <div key={producto.id} className="card group hover:shadow-lg" style={{ borderRadius: 'var(--border-radius)' }}>
                        <div className="relative mb-4 overflow-hidden rounded-lg bg-light">
                          {producto.imagen_url ? (
                            <img
@@ -209,7 +248,7 @@ export default function RestaurantDetailsPage() {
                        </p>
 
                        <div className="flex justify-between items-end">
-                         <p className="text-2xl font-heading font-bold text-primary">
+                         <p className="text-2xl font-bold" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>
                            {formatCurrency(producto.precio)}
                          </p>
                        </div>
@@ -217,7 +256,8 @@ export default function RestaurantDetailsPage() {
                        <button
                          onClick={() => handleAddToCart(producto)}
                          disabled={!producto.disponible}
-                         className="btn btn-primary w-full mt-4 disabled:opacity-50"
+                         className="btn w-full mt-4 disabled:opacity-50 text-white"
+                         style={{ backgroundColor: 'var(--color-primary)', borderRadius: 'calc(var(--border-radius) / 2)' }}
                        >
                          <Plus size={18} className="inline mr-2" />
                          Agregar

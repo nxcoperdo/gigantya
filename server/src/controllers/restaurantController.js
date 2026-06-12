@@ -1,4 +1,5 @@
 import * as RestaurantModel from '../models/Restaurant.js';
+import * as StatsModel from '../models/Stats.js';
 import { query } from '../config/database.js';
 
 /**
@@ -181,6 +182,8 @@ export async function updateRestaurant(req, res) {
 /**
  * Obtener estadísticas de ventas para el restaurante
  * Solo disponible para planes Profesional y Premium
+ * - Profesional: estadísticas básicas
+ * - Premium: estadísticas completas avanzadas
  */
 export async function getRestaurantStats(req, res) {
   try {
@@ -198,31 +201,17 @@ export async function getRestaurantStats(req, res) {
     }
 
     const restauranteId = restaurante.id;
+    const esPremium = restaurante.plan === 'premium';
 
-    // Total ingresos
-    const ingresos = await query(
-      'SELECT SUM(total) as total FROM pedidos WHERE restaurante_id = ? AND estado = "Entregado"',
-      [restauranteId]
-    );
-
-    // Total pedidos
-    const pedidos = await query(
-      'SELECT COUNT(*) as total FROM pedidos WHERE restaurante_id = ?',
-      [restauranteId]
-    );
-
-    // Ventas por día (últimos 30 días)
-    const ventasDiarias = await query(
-      'SELECT DATE(creado_en) as fecha, SUM(total) as total FROM pedidos WHERE restaurante_id = ? AND estado = "Entregado" GROUP BY fecha ORDER BY fecha DESC LIMIT 30',
-      [restauranteId]
-    );
+    // Obtener estadísticas según el plan
+    const estadisticas = esPremium
+      ? await StatsModel.getPremiumStats(restauranteId)
+      : await StatsModel.getBasicStats(restauranteId);
 
     res.json({
-      estadisticas: {
-        ingresos_totales: ingresos[0]?.total || 0,
-        pedidos_totales: pedidos[0]?.total || 0,
-        ventas_diarias: ventasDiarias
-      }
+      estadisticas,
+      plan: restaurante.plan,
+      es_premium: esPremium
     });
   } catch (error) {
     console.error('Error obteniendo estadísticas:', error);

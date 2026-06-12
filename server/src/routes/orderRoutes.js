@@ -42,6 +42,13 @@ router.get('/:id', verifyToken, orderController.getOrder);
 router.put('/:id/status', verifyToken, orderController.updateOrderStatus);
 
 /**
+ * @route   PUT /api/orders/:id/cancel
+ * @desc    Cancelar pedido con motivo (cliente, restaurante o admin)
+ * @access  Private
+ */
+router.put('/:id/cancel', verifyToken, orderController.cancelOrder);
+
+/**
  * @route   DELETE /api/orders/:id
  * @desc    Cancelar pedido (solo cliente dueño del pedido)
  * @access  Private - Client

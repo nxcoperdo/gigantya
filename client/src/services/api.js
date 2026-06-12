@@ -90,13 +90,13 @@ export const productService = {
 export const orderService = {
   create: (data) => api.post('/orders', data),
   getById: (id) => api.get(`/orders/${id}`),
-  getClientOrders: (params = {}) => 
+  getClientOrders: (params = {}) =>
     api.get('/orders/client/my-orders', { params }),
-  getRestaurantOrders: (params = {}) => 
+  getRestaurantOrders: (params = {}) =>
     api.get('/orders/restaurant/my-orders', { params }),
-  updateStatus: (id, estado) => 
+  updateStatus: (id, estado) =>
     api.put(`/orders/${id}/status`, { estado }),
-  cancel: (id) => api.delete(`/orders/${id}`),
+  cancelOrder: (id, data) => api.put(`/orders/${id}/cancel`, data),
 };
 
 // ========== USUARIOS ==========
@@ -181,6 +181,8 @@ export const categoryService = {
 // ========== CUPONES ==========
 
 export const couponService = {
+  validate: (codigo, restaurante_id, total_pedido) =>
+    api.get('/coupons/validate', { params: { codigo, restaurante_id, total_pedido } }),
   getMyCoupons: () => api.get('/coupons/my-coupons'),
   create: (data) => api.post('/coupons', data),
   update: (id, data) => api.put(`/coupons/${id}`, data),

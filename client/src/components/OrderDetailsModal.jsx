@@ -1,4 +1,4 @@
-import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader } from 'lucide-react';
+import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { orderService } from '../services/api';
 
@@ -178,6 +178,19 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-semibold text-dark">${Number(displayOrder.subtotal || 0).toLocaleString('es-CO')}</span>
                   </div>
+                  {displayOrder.cupon_codigo && (
+                    <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg">
+                      <span className="text-green-700 font-semibold flex items-center gap-2">
+                        <Tag size={16} />
+                        Cupón: {displayOrder.cupon_codigo}
+                      </span>
+                      <span className="font-semibold text-green-700">
+                        {displayOrder.cupon_tipo_descuento === 'porcentaje'
+                          ? `${displayOrder.cupon_descuento}%`
+                          : `$${Number(displayOrder.cupon_descuento).toLocaleString('es-CO')}`}
+                      </span>
+                    </div>
+                  )}
                   {displayOrder.descuento > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Descuento:</span>

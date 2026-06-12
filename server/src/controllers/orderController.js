@@ -9,7 +9,7 @@ import pool from '../config/database.js';
  */
 export async function createOrder(req, res) {
   try {
-    const { restaurante_id, items, notas, direccion_entrega, telefono_contacto, coupon_code, metodo_pago } = req.body;
+    const { restaurante_id, items, notas, direccion_entrega, telefono_contacto, coupon_code, cupon_codigo, cupon_descuento, metodo_pago } = req.body;
 
     // Validar que sea cliente
     if (req.user.tipo_usuario !== 'cliente') {
@@ -42,9 +42,10 @@ export async function createOrder(req, res) {
       });
     }
 
-    // Validar cupón si se proporciona
+    // Validar cupón si se proporciona (acepta coupon_code o cupon_codigo)
     let couponId = null;
-    if (coupon_code) {
+    const codigoCupon = (cupon_codigo && cupon_codigo.trim()) || (coupon_code && coupon_code.trim());
+    if (codigoCupon) {
       try {
         const normalizedItems = OrderModel.normalizeOrderItems(items);
         const productIds = normalizedItems.map(i => i.producto_id);
@@ -55,8 +56,21 @@ export async function createOrder(req, res) {
           return sum + (p ? p.precio * item.cantidad : 0);
         }, 0);
 
-        const coupon = await CouponModel.validateCoupon(coupon_code, restaurante_id, subtotal);
+        const coupon = await CouponModel.validateCoupon(codigoCupon, restaurante_id, subtotal);
         couponId = coupon.id;
+
+        // Validar que el descuento aplicado sea correcto
+        let descuentoEsperado = 0;
+        if (coupon.tipo_descuento === 'porcentaje') {
+          descuentoEsperado = (subtotal * coupon.descuento) / 100;
+        } else {
+          descuentoEsperado = coupon.descuento;
+        }
+
+        // Si el frontend envía cupon_descuento, validar que coincida
+        if (cupon_descuento !== undefined && Math.abs(cupon_descuento - descuentoEsperado) > 0.01) {
+          return res.status(400).json({ error: 'El descuento del cupón no coincide con el valor esperado' });
+        }
       } catch (couponError) {
         return res.status(400).json({ error: couponError.message });
       }
@@ -312,6 +326,7 @@ export async function updateOrderStatus(req, res) {
 export async function cancelOrder(req, res) {
   try {
     const { id } = req.params;
+    const { motivo } = req.body;
 
     const pedido = await OrderModel.getOrderById(id);
 
@@ -321,21 +336,40 @@ export async function cancelOrder(req, res) {
       });
     }
 
-    // Solo cliente puede cancelar su propio pedido
-    if (pedido.usuario_id !== req.user.id) {
-      return res.status(403).json({ 
-        error: 'No tienes permiso para cancelar este pedido' 
+    // Validar permisos de cancelación
+    let canCancel = false;
+    if (req.user.tipo_usuario === 'admin') {
+      canCancel = true;
+    } else if (req.user.tipo_usuario === 'cliente' && pedido.usuario_id === req.user.id) {
+      canCancel = true;
+    } else if (req.user.tipo_usuario === 'restaurante') {
+      const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
+      if (restaurante && restaurante.id === pedido.restaurante_id) {
+        canCancel = true;
+      }
+    }
+
+    if (!canCancel) {
+      return res.status(403).json({
+        error: 'No tienes permiso para cancelar este pedido'
       });
     }
 
-    // Solo se pueden cancelar pedidos pendientes
-    if (pedido.estado !== OrderModel.ORDER_STATES.PENDIENTE) {
-      return res.status(400).json({ 
-        error: 'Solo se pueden cancelar pedidos pendientes' 
+    // Obligatorio dar motivo para la cancelación
+    if (!motivo || motivo.trim().length < 3) {
+      return res.status(400).json({
+        error: 'Es obligatorio proporcionar un motivo válido para la cancelación (mínimo 3 caracteres)'
       });
     }
 
-    await OrderModel.cancelOrder(id);
+    // Solo se pueden cancelar pedidos que no hayan sido entregados
+    if (pedido.estado === OrderModel.ORDER_STATES.ENTREGADO) {
+      return res.status(400).json({
+        error: 'No se puede cancelar un pedido que ya ha sido entregado'
+      });
+    }
+
+    await OrderModel.cancelOrder(id, motivo);
 
     // Notificar al restaurante que el pedido fue cancelado
     try {

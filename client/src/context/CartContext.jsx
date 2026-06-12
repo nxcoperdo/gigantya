@@ -15,6 +15,16 @@ export function CartProvider({ children }) {
 
   // Agregar producto al carrito
   const addToCart = (producto) => {
+    if (cart.length > 0) {
+      const firstItemRestaurantId = cart[0].restaurante_id;
+      if (producto.restaurante_id && firstItemRestaurantId !== producto.restaurante_id) {
+        return {
+          success: false,
+          error: 'Solo puedes agregar productos de un mismo restaurante por pedido.'
+        };
+      }
+    }
+
     setCart(prevCart => {
       const existe = prevCart.find(item => item.id === producto.id);
       if (existe) {
@@ -26,6 +36,8 @@ export function CartProvider({ children }) {
       }
       return [...prevCart, { ...producto, cantidad: 1 }];
     });
+
+    return { success: true };
   };
 
   // Eliminar producto del carrito

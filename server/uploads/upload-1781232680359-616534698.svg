@@ -1,0 +1,105 @@
+<svg width="500" height="200" viewBox="0 0 500 200" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Logo — El Sabor Giganteño</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Logo rectangular del restaurante El Sabor Giganteño con escudo central, tenedor y cuchara, y tipografía serif en dorado sobre fondo rojo oscuro.</desc>
+
+  <defs>
+    <pattern id="ldots" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="0.7" fill="#8B1A0A" opacity="0.6"/>
+    </pattern>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#C41E1E"/>
+      <stop offset="100%" stop-color="#7A1010"/>
+    </linearGradient>
+    <linearGradient id="goldLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F4C430" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#F4C430" stop-opacity="1"/>
+      <stop offset="70%" stop-color="#F4C430" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#F4C430" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo -->
+  <rect width="500" height="200" fill="#7A1010" style="fill:rgb(122, 16, 16);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <rect width="500" height="200" fill="url(#ldots)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Bordes dorados -->
+  <rect width="500" height="200" fill="none" stroke="#F4C430" stroke-width="2.5" x="0" y="0" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:2.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <rect x="6" y="6" width="488" height="188" fill="none" stroke="#F4C430" stroke-width="0.8" opacity="0.4" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Esquinas decorativas -->
+  <g stroke="#F4C430" stroke-width="1.5" fill="none" opacity="0.9" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.9;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <path d="M14 28 L14 14 L28 14" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <path d="M472 14 L486 14 L486 28" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <path d="M14 172 L14 186 L28 186" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <path d="M486 172 L486 186 L472 186" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  </g>
+
+  <!-- === ESCUDO CENTRAL === -->
+  <!-- Escudo relleno -->
+  <path d="M250 18 L282 28 L282 78 Q282 108 250 122 Q218 108 218 78 L218 28 Z" fill="url(#shieldGrad)" stroke="#F4C430" stroke-width="1.8" style="stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Borde interior escudo -->
+  <path d="M250 25 L276 33 L276 77 Q276 103 250 115 Q224 103 224 77 L224 33 Z" fill="none" stroke="#F4C430" stroke-width="0.7" opacity="0.5" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.7px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tenedor (izquierda del escudo) -->
+  <g stroke="#F4C430" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.9" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.9;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <!-- mango -->
+    <line x1="237" y1="95" x2="237" y2="110" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <!-- cuerpo -->
+    <line x1="237" y1="56" x2="237" y2="85" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <!-- dientes -->
+    <line x1="232" y1="42" x2="232" y2="57" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="237" y1="40" x2="237" y2="57" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="242" y1="42" x2="242" y2="57" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <!-- curva dientes-cuerpo -->
+    <path d="M232 57 Q237 62 242 57" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  </g>
+
+  <!-- Cuchara (derecha del escudo) -->
+  <g stroke="#F4C430" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.9" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.9;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <line x1="263" y1="58" x2="263" y2="110" style="fill:none;stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <ellipse cx="263" cy="46" rx="6" ry="8" fill="#F4C430" opacity="0.2" stroke="#F4C430" stroke-width="1.3" style="fill:rgb(244, 196, 48);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.2;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  </g>
+
+  <!-- Inicial / símbolo central en escudo -->
+  <text x="250" y="82" text-anchor="middle" dominant-baseline="middle" font-family="'Georgia', serif" font-size="28" fill="#F4C430" font-weight="700" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:28px;font-weight:700;text-anchor:middle;dominant-baseline:middle">S</text>
+
+  <!-- Estrella decorativa bajo escudo -->
+  <g transform="translate(250,130)" fill="#F4C430" opacity="0.7" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.7;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <circle r="2.5" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="-10" y1="0" x2="10" y2="0" stroke="#F4C430" stroke-width="0.8" style="fill:rgb(244, 196, 48);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="0" y1="-10" x2="0" y2="10" stroke="#F4C430" stroke-width="0.8" style="fill:rgb(244, 196, 48);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="-7" y1="-7" x2="7" y2="7" stroke="#F4C430" stroke-width="0.8" style="fill:rgb(244, 196, 48);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="7" y1="-7" x2="-7" y2="7" stroke="#F4C430" stroke-width="0.8" style="fill:rgb(244, 196, 48);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  </g>
+
+  <!-- === TEXTO IZQUIERDO === -->
+  <!-- EL -->
+  <text x="42" y="75" text-anchor="start" font-family="'Georgia', serif" font-size="13" fill="#F4C430" letter-spacing="6" font-weight="400" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:13px;font-weight:400;text-anchor:start;dominant-baseline:auto">EL</text>
+
+  <!-- SABOR -->
+  <text x="38" y="115" text-anchor="start" font-family="'Georgia', serif" font-size="44" fill="#FDF6E3" font-weight="700" letter-spacing="1" style="fill:rgb(253, 246, 227);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:44px;font-weight:700;text-anchor:start;dominant-baseline:auto">SABOR</text>
+
+  <!-- Línea decorativa izquierda -->
+  <line x1="38" y1="128" x2="200" y2="128" stroke="#F4C430" stroke-width="0.9" opacity="0.6" style="fill:rgb(0, 0, 0);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.9px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.6;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tagline izquierda -->
+  <text x="38" y="148" text-anchor="start" font-family="'Georgia', serif" font-size="10" fill="#FDF6E3" font-style="italic" opacity="0.7" letter-spacing="1.5" style="fill:rgb(253, 246, 227);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.7;font-family:Georgia, serif;font-size:10px;font-weight:400;font-style:italic;text-anchor:start;dominant-baseline:auto">Auténtica cocina del Huila</text>
+
+  <!-- === TEXTO DERECHO === -->
+  <!-- GIGANTE -->
+  <text x="462" y="100" text-anchor="end" font-family="'Georgia', serif" font-size="36" fill="#F4C430" font-weight="700" letter-spacing="2" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:36px;font-weight:700;text-anchor:end;dominant-baseline:auto">GIGANTE</text>
+
+  <!-- ÑO -->
+  <text x="462" y="136" text-anchor="end" font-family="'Georgia', serif" font-size="36" fill="#F4C430" font-weight="700" letter-spacing="2" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:36px;font-weight:700;text-anchor:end;dominant-baseline:auto">ÑO</text>
+
+  <!-- Línea decorativa derecha -->
+  <line x1="300" y1="148" x2="462" y2="148" stroke="#F4C430" stroke-width="0.9" opacity="0.6" style="fill:rgb(0, 0, 0);stroke:rgb(244, 196, 48);color:rgb(255, 255, 255);stroke-width:0.9px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.6;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Subtexto derecho -->
+  <text x="462" y="166" text-anchor="end" font-family="'Georgia', serif" font-size="10" fill="#FDF6E3" font-style="italic" opacity="0.7" letter-spacing="1.5" style="fill:rgb(253, 246, 227);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.7;font-family:Georgia, serif;font-size:10px;font-weight:400;font-style:italic;text-anchor:end;dominant-baseline:auto">Gigante, Huila · Colombia</text>
+
+  <!-- Puntos decorativos separadores -->
+  <circle cx="205" cy="100" r="2" fill="#F4C430" opacity="0.5" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <circle cx="295" cy="100" r="2" fill="#F4C430" opacity="0.5" style="fill:rgb(244, 196, 48);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+</svg>

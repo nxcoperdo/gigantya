@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import api, { paymentService } from '../services/api';
+import api, { paymentService, couponService } from '../services/api';
 import { addressService } from '../services/api';
-import { CheckCircle, MapPin, Plus } from 'lucide-react';
+import { CheckCircle, MapPin, Plus, Tag, X } from 'lucide-react';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
+import ErrorMessageModal from '../components/ErrorMessageModal';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -20,6 +21,15 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('contra_entrega');
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [restauranteId, setRestauranteId] = useState(null);
+  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+
+  // Estado para cupones
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
   const [formData, setFormData] = useState({
     nombre: user?.nombre || '',
     email: user?.email || '',
@@ -98,6 +108,53 @@ export default function CheckoutPage() {
     }));
   };
 
+  // Manejar aplicación de cupón
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+
+    setCouponLoading(true);
+    setCouponError('');
+
+    try {
+      const restaurante_id = cart[0]?.restaurante_id;
+      if (!restaurante_id) {
+        setCouponError('No se pudo identificar el restaurante');
+        return;
+      }
+
+      const response = await couponService.validate(couponCode.toUpperCase(), restaurante_id, total);
+
+      if (response.data.valido) {
+        const cupon = response.data.cupon;
+        setAppliedCoupon(cupon);
+        setCouponError('');
+
+        // Calcular descuento
+        let descuento = 0;
+        if (cupon.tipo_descuento === 'porcentaje') {
+          descuento = (total * cupon.descuento) / 100;
+        } else {
+          descuento = cupon.descuento;
+        }
+        setDiscountAmount(descuento);
+        setCouponCode('');
+      }
+    } catch (error) {
+      setCouponError(error.response?.data?.error || 'Cupón inválido');
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  // Manejar remoción de cupón
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -125,7 +182,7 @@ export default function CheckoutPage() {
           cantidad: item.cantidad,
           precio_unitario: item.precio,
         })),
-        total: total * 1.08,
+        cupon_codigo: appliedCoupon?.codigo || null,
         notas: formData.notas,
         direccion_entrega: formData.direccion_entrega,
         telefono_contacto: formData.telefono_contacto,
@@ -153,7 +210,10 @@ export default function CheckoutPage() {
       }, 2000);
     } catch (error) {
       console.error('Error creating order:', error);
-      alert('Error al crear el pedido: ' + (error.response?.data?.error || error.message));
+      setErrorModal({
+        isOpen: true,
+        message: error.response?.data?.detalles || error.response?.data?.error || error.message || 'Error al crear el pedido'
+      });
     } finally {
       setLoading(false);
     }
@@ -380,7 +440,7 @@ export default function CheckoutPage() {
                 Resumen
               </h2>
 
-              <div className="space-y-3 mb-6 pb-6 border-b border-gray-200 max-h-64 overflow-y-auto">
+              <div className="space-y-3 mb-4 pb-4 border-b border-gray-200 max-h-64 overflow-y-auto">
                 {cart.map(item => (
                   <div key={item.id} className="flex justify-between text-sm text-gray-600">
                     <span>{item.nombre} x {item.cantidad}</span>
@@ -389,25 +449,94 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Cupón */}
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                {!appliedCoupon ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-dark mb-2">
+                      ¿Tienes un cupón?
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          placeholder="CÓDIGO"
+                          className="input pl-10"
+                          disabled={couponLoading}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="btn btn-primary px-4"
+                      >
+                        {couponLoading ? (
+                          <div className="spinner spinner-sm"></div>
+                        ) : (
+                          'Aplicar'
+                        )}
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="text-red-600 text-xs mt-2">{couponError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-bold text-green-800 flex items-center gap-2">
+                          <Tag size={16} />
+                          {appliedCoupon.codigo}
+                        </p>
+                        <p className="text-sm text-green-700 mt-1">
+                          {appliedCoupon.tipo_descuento === 'porcentaje'
+                            ? `${appliedCoupon.descuento}% de descuento`
+                            : `$${appliedCoupon.descuento.toLocaleString('es-CO')} de descuento`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-red-500 hover:text-red-700"
+                        title="Remover cupón"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2 mb-6 pb-6 border-b border-gray-200">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal:</span>
                   <span>${total.toLocaleString('es-CO')}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Impuestos:</span>
+                  <span>Impuestos (8%):</span>
                   <span>${(total * 0.08).toLocaleString('es-CO')}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Envío:</span>
                   <span className="text-green-600 font-semibold">Gratis</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600 font-semibold">
+                    <span>Descuento:</span>
+                    <span>-${discountAmount.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between items-center mb-6">
                 <span className="text-lg font-bold text-dark">Total:</span>
                 <span className="text-3xl font-heading font-bold text-primary">
-                  ${(total * 1.08).toLocaleString('es-CO')}
+                  ${((total * 1.08) - discountAmount).toLocaleString('es-CO')}
                 </span>
               </div>
 
@@ -418,6 +547,11 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+      <ErrorMessageModal
+        isOpen={errorModal.isOpen}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+      />
     </div>
   );
 }
