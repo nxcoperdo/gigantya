@@ -49,7 +49,13 @@ export async function getUserRatings(usuario_id) {
 }
 
 export async function getRestaurantRatings(restaurante_id) {
-  const sql = `SELECT * FROM calificaciones WHERE restaurante_id = ? ORDER BY creado_en DESC`;
+  const sql = `
+    SELECT c.*, u.nombre as usuario_nombre
+    FROM calificaciones c
+    INNER JOIN usuarios u ON c.usuario_id = u.id
+    WHERE c.restaurante_id = ?
+    ORDER BY c.creado_en DESC
+  `;
   return await query(sql, [restaurante_id]);
 }
 

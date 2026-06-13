@@ -57,5 +57,12 @@ export async function queryOne(sql, params = []) {
   return results[0] || null;
 }
 
+/**
+ * Obtener conexión del pool para transacciones
+ */
+export async function getConnection() {
+  return await pool.getConnection();
+}
+
 export default pool;
 

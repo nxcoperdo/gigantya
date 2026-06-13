@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { authService, orderService, productService, couponService, restaurantService, paymentService } from '../services/api';
+import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService } from '../services/api';
 import Loading from '../components/Loading';
 import ProductModal from '../components/ProductModal';
 import RestaurantModal from '../components/RestaurantModal';
@@ -65,67 +65,72 @@ const PAYMENT_METHOD_LABELS = {
 function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrder, onViewDetails, isMuted = false }) {
   const nextStatus = NEXT_STATUS_BY_STATE[order.estado];
   return (
-    <article className={`border border-gray- la-200 rounded-2xl p-4 md:p-5 bg-white hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h3 className="text-lg font-bold text-dark">Pedido #{order.id}</h3>
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${ORDER_STATE_STYLES[order.estado] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+    <article className={`border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-white hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
+      <div className="flex flex-col gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base sm:text-lg font-bold text-dark">Pedido #{order.id}</h3>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${ORDER_STATE_STYLES[order.estado] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
               {order.estado}
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 flex items-center gap-1">
-              <Banknote size={12} />
-              {PAYMENT_METHOD_LABELS[order.metodo_pago] || order.metodo_pago || 'No definido'}
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 flex items-center gap-1">
+              <Banknote size={14} />
+              <span className="hidden xs:inline">{PAYMENT_METHOD_LABELS[order.metodo_pago] || order.metodo_pago || 'No definido'}</span>
+              <span className="xs:hidden">{(PAYMENT_METHOD_LABELS[order.metodo_pago] || order.metodo_pago || 'No definido').slice(0, 8)}</span>
             </span>
           </div>
-          <p className="text-gray-600 text-sm">Cliente: <span className="font-semibold text-gray-800">{order.cliente_nombre || 'Sin nombre'}</span></p>
-          <p className="text-gray-600 text-sm">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm">
+            <p className="text-gray-600">Cliente: <span className="font-semibold text-gray-800">{order.cliente_nombre || 'Sin nombre'}</span></p>
+            <p className="text-gray-600">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
+          </div>
           <p className="text-gray-600 text-sm">Fecha: {order.creado_en ? new Date(order.creado_en).toLocaleString('es-CO') : 'No disponible'}</p>
         </div>
 
-
-        <div className="text-left lg:text-right space-y-2">
-          <p className="text-2xl font-heading font-bold text-primary">${Number(order.total || 0).toLocaleString('es-CO')}</p>
-          <p className="text-sm text-gray-500">{order.items_count || 0} producto(s)</p>
-          <div className="flex flex-wrap gap-2 lg:justify-end">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100">
+          <div className="space-y-1">
+            <p className="text-xl sm:text-2xl font-heading font-bold text-primary">${Number(order.total || 0).toLocaleString('es-CO')}</p>
+            <p className="text-xs sm:text-sm text-gray-500">{order.items_count || 0} producto(s)</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => onViewDetails(order)}
-              className="btn btn-outline btn-small inline-flex items-center gap-2"
+              className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px]"
               title="Ver detalles del pedido"
             >
-              <Eye size={16} />
-              Detalles
+              <Eye size={14} />
+              <span className="hidden sm:inline">Detalles</span>
             </button>
             {nextStatus && (
               <button
                 type="button"
                 disabled={updatingOrderId === order.id}
                 onClick={() => handleStatusChange(order.id, nextStatus)}
-                className="btn btn-primary btn-small inline-flex items-center gap-2"
+                className="btn btn-primary btn-small inline-flex items-center gap-1.5 min-h-[40px] flex-1 sm:flex-none justify-center"
               >
-                {updatingOrderId === order.id ? 'Actualizando...' : `Pasar a ${nextStatus}`}
+                {updatingOrderId === order.id ? '...' : `Pasar a ${nextStatus}`}
               </button>
             )}
             <button
               type="button"
               disabled={updatingOrderId === order.id}
               onClick={() => handleStatusChange(order.id, 'Entregado')}
-              className="btn btn-outline btn-small inline-flex items-center gap-2"
+              className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px]"
+              title="Marcar entregados"
             >
-              <CheckCircle size={16} />
-              Marcar entregados
+              <CheckCircle size={14} />
+              <span className="hidden sm:inline">Entregar</span>
             </button>
             {order.estado !== 'Entregado' && (
               <button
                 type="button"
                 disabled={updatingOrderId === order.id}
                 onClick={() => handleCancelOrder(order.id)}
-                className="btn btn-outline btn-small inline-flex items-center gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
+                className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px] text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
                 title="Cancelar pedido"
               >
-                <Trash2 size={16} />
-                Cancelar
+                <Trash2 size={14} />
+                <span className="hidden sm:inline">Cancelar</span>
               </button>
             )}
           </div>
@@ -206,8 +211,47 @@ export default function RestaurantDashboardPage() {
   const [cancellationReason, setCancellationReason] = useState('');
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
   const [isOrderDetailsModalOpen, setIsOrderDetailsModalOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const ordersPollingRef = useRef(null);
   const ordersRequestInFlightRef = useRef(false);
+
+  const handleExport = async (type, format) => {
+    try {
+      setExporting(true);
+      setExportError('');
+
+      let response;
+      if (type === 'stats') {
+        response = format === 'pdf'
+          ? await exportService.exportStatsPDF(30)
+          : await exportService.exportStatsExcel(30);
+      } else {
+        response = format === 'pdf'
+          ? await exportService.exportOrdersPDF('todos', 100)
+          : await exportService.exportOrdersExcel('todos', 500);
+      }
+
+      const blob = new Blob([response.data], {
+        type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      const extension = format === 'excel' ? 'xlsx' : format;
+      link.download = `${type}_gigantya_${date}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exportando:', error);
+      setExportError('No se pudo exportar el archivo. Intente nuevamente.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -485,13 +529,14 @@ export default function RestaurantDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-light py-8 md:py-12">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-8">
+    <div className="min-h-screen bg-light py-4 sm:py-6 md:py-8 lg:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 space-y-4 sm:space-y-6 md:space-y-8">
         <section className="card-lg bg-gradient-to-br from-white to-red-50/60">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
             <div className="flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm mb-4">
-                <LayoutDashboard size={16} />
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-xs sm:text-sm mb-3">
+                <LayoutDashboard size={14} className="hidden xs:inline" />
+                <LayoutDashboard size={16} className="inline xs:hidden" />
                 Dashboard restaurante
                 {restaurant.plan && (
                   <span className="ml-2 px-2 py-0.5 rounded-full bg-white text-primary text-[10px] uppercase shadow-sm border border-primary/20">
@@ -499,28 +544,29 @@ export default function RestaurantDashboardPage() {
                   </span>
                 )}
               </div>
-              <h1 className="text-3xl md:text-4xl font-heading font-bold text-dark mb-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-dark mb-2 break-words">
                 {restaurant.nombre}
               </h1>
-              <p className="text-gray-600 max-w-3xl">
+              <p className="text-gray-600 text-sm sm:text-base max-w-2xl">
                 Gestiona tu negocio de manera eficiente desde un solo lugar.
               </p>
             </div>
 
-            <div className="flex flex-col items-start lg:items-end gap-4">
-              <div className="flex p-1 bg-gray-100 rounded-xl">
+            <div className="flex flex-col items-stretch gap-4">
+              {/* Mobile: Scrollable tabs */}
+              <div className="flex overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-hide gap-2">
                 <button
                   onClick={() => setActiveTab('orders')}
-                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'orders'
                       ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark'
+                      : 'text-gray-500 hover:text-dark bg-gray-50'
                   }`}
                 >
                   <ClipboardList size={16} />
                   Pedidos
                   {stats.pendingOrders > 0 && (
-                    <span className="absolute top-2 right-2 flex h-2 w-2">
+                    <span className="flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
@@ -528,10 +574,10 @@ export default function RestaurantDashboardPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab('management')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'management'
                       ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark'
+                      : 'text-gray-500 hover:text-dark bg-gray-50'
                   }`}
                 >
                   <Settings size={16} />
@@ -540,18 +586,18 @@ export default function RestaurantDashboardPage() {
                 <button
                   onClick={() => {
                     setActiveTab('payments');
-                    setPendingProofsCount(0); // Reset count when visiting the tab
+                    setPendingProofsCount(0);
                   }}
-                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'payments'
                       ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark'
+                      : 'text-gray-500 hover:text-dark bg-gray-50'
                   }`}
                 >
                   <FileText size={16} />
                   Pagos
                   {pendingProofsCount > 0 && (
-                    <span className="absolute top-2 right-2 flex h-2 w-2">
+                    <span className="flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
@@ -559,57 +605,59 @@ export default function RestaurantDashboardPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab('coupons')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'coupons'
                       ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark'
+                      : 'text-gray-500 hover:text-dark bg-gray-50'
                   }`}
                 >
                   <Ticket size={16} />
                   Cupones
                 </button>
                 {restaurant?.plan && restaurant.plan !== 'basico' && (
-                  <button
-                    onClick={() => setActiveTab('builder')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                      activeTab === 'builder'
-                        ? 'bg-white text-primary shadow-sm'
-                        : 'text-gray-500 hover:text-dark'
-                    }`}
-                  >
-                    <Palette size={16} />
-                    Page Builder
-                  </button>
-                )}
-                {restaurant?.plan && restaurant.plan !== 'basico' && (
-                  <button
-                    onClick={() => setActiveTab('stats')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                      activeTab === 'stats'
-                        ? 'bg-white text-primary shadow-sm'
-                        : 'text-gray-500 hover:text-dark'
-                    }`}
-                  >
-                    <BarChart3 size={16} />
-                    Estadísticas
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setActiveTab('builder')}
+                      className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                        activeTab === 'builder'
+                          ? 'bg-white text-primary shadow-sm'
+                          : 'text-gray-500 hover:text-dark bg-gray-50'
+                      }`}
+                    >
+                      <Palette size={16} />
+                      Page Builder
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('stats')}
+                      className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                        activeTab === 'stats'
+                          ? 'bg-white text-primary shadow-sm'
+                          : 'text-gray-500 hover:text-dark bg-gray-50'
+                      }`}
+                    >
+                      <BarChart3 size={16} />
+                      Estadísticas
+                    </button>
+                  </>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={refreshData}
-                className="btn btn-primary inline-flex items-center gap-2"
-              >
-                <RefreshCcw size={16} />
-                Refrescar datos
-              </button>
-              {lastRefreshedAt && (
-                <div className="text-xs text-gray-500 text-right space-y-0.5">
-                  <span className="block">Última actualización: {lastRefreshedAt.toLocaleString('es-CO')}</span>
-                  <span className="block font-medium text-primary/80">Actualización automática cada 7 segundos</span>
-                </div>
-              )}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                <button
+                  type="button"
+                  onClick={refreshData}
+                  className="btn btn-primary inline-flex items-center justify-center gap-2 min-h-[44px]"
+                >
+                  <RefreshCcw size={16} />
+                  Refrescar datos
+                </button>
+                {lastRefreshedAt && (
+                  <div className="text-xs text-gray-500 space-y-0.5">
+                    <span className="block">Última actualización: {lastRefreshedAt.toLocaleString('es-CO')}</span>
+                    <span className="block font-medium text-primary/80">Cada 7 segundos</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -660,11 +708,13 @@ export default function RestaurantDashboardPage() {
             handleCancelOrder={handleCancelOrder}
             handleViewOrderDetails={handleViewOrderDetails}
             stats={stats}
+            handleExport={handleExport}
+            exporting={exporting}
           />
         ) : activeTab === 'payments' ? (
           <PaymentTabs refreshData={refreshData} />
         ) : activeTab === 'stats' ? (
-          <StatsView statsData={statsData} restaurant={restaurant} />
+          <StatsView statsData={statsData} restaurant={restaurant} handleExport={handleExport} exporting={exporting} exportError={exportError} />
         ) : activeTab === 'coupons' ? (
           <CouponsView
             restaurant={restaurant}
@@ -729,7 +779,7 @@ export default function RestaurantDashboardPage() {
   );
 }
 
-function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange, handleCancelOrder, handleViewOrderDetails, stats }) {
+function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange, handleCancelOrder, handleViewOrderDetails, stats, handleExport, exporting }) {
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
 
   const { activeOrders, completedOrders } = useMemo(() => {
@@ -741,7 +791,7 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
 
   return (
     <>
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Pedidos totales"
           value={stats.totalOrders}
@@ -769,22 +819,45 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
       </section>
 
       <div className="card-lg">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold text-dark">Recepción de Pedidos</h2>
-            <p className="text-gray-600 text-sm">Gestiona la operatividad de tu restaurante en tiempo real.</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-dark">Recepción de Pedidos</h2>
+            <p className="text-gray-600 text-xs sm:text-sm">Gestiona la operatividad de tu restaurante en tiempo real.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExport('orders', 'pdf')}
+              disabled={exporting}
+              className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px]"
+              title="Exportar pedidos a PDF"
+            >
+              <FileText size={14} />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+            <button
+              onClick={() => handleExport('orders', 'excel')}
+              disabled={exporting}
+              className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px]"
+              title="Exportar pedidos a Excel"
+            >
+              <FileText size={14} />
+              <span className="hidden sm:inline">Excel</span>
+            </button>
           </div>
         </div>
 
         {ordersLoading ? (
-          <div className="py-10 text-center text-gray-500">Cargando pedidos...</div>
+          <div className="py-10 text-center text-gray-500">
+            <div className="spinner spinner-md mx-auto mb-3"></div>
+            <p>Cargando pedidos...</p>
+          </div>
         ) : (
-          <div className="space-y-10">
+          <div className="space-y-6 sm:space-y-8">
             {/* --- ACTIVE ORDERS --- */}
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-6 bg-primary rounded-full"></div>
-                <h3 className="text-lg font-bold text-dark">Pedidos Activos</h3>
+                <div className="w-1.5 h-5 sm:h-6 bg-primary rounded-full"></div>
+                <h3 className="text-base sm:text-lg font-bold text-dark">Pedidos Activos</h3>
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
                   {activeOrders.length}
                 </span>
@@ -792,11 +865,11 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
 
               {activeOrders.length === 0 ? (
                 <div className="py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500">
-                  <Package size={40} className="mx-auto mb-2 opacity-30" />
-                  No hay pedidos activos en este momento.
+                  <Package size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-sm sm:text-base">No hay pedidos activos en este momento.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {activeOrders.map((order) => (
                     <OrderCard
                       key={order.id}
@@ -812,29 +885,30 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
             </section>
 
             {/* --- COMPLETED ORDERS --- */}
-            <section className="pt-6 border-t border-gray-100">
+            <section className="pt-4 sm:pt-6 border-t border-gray-100">
               <button
                 onClick={() => setIsCompletedExpanded(!isCompletedExpanded)}
-                className="flex items-center justify-between w-full p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group active:scale-95 touch-feedback"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-6 bg-gray-400 rounded-full"></div>
-                  <h3 className="text-md font-bold text-gray-600 group-hover:text-dark transition-colors">Pedidos Completados / Recientes</h3>
+                  <div className="w-1.5 h-5 sm:h-6 bg-gray-400 rounded-full"></div>
+                  <h3 className="text-sm sm:text-md font-bold text-gray-600 group-hover:text-dark transition-colors">Pedidos Completados / Recientes</h3>
                   <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">
                     {completedOrders.length}
                   </span>
                 </div>
                 <RefreshCcw
-                  size={18}
-                  className={`text-gray-400 transition-transform duration-300 ${isCompletedExpanded ? 'rotate-180' : ''}`}
+                  size={16}
+                  className={`text-gray-400 transition-transform duration-300 flex-shrink-0 ${isCompletedExpanded ? 'rotate-180' : ''}`}
                 />
               </button>
 
               {isCompletedExpanded && (
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-3 sm:space-y-4">
                   {completedOrders.length === 0 ? (
                     <div className="py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500">
-                      No hay pedidos completados recientemente.
+                      <Package size={32} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-sm sm:text-base">No hay pedidos completados recientemente.</p>
                     </div>
                   ) : (
                     completedOrders.map((order) => (
@@ -861,66 +935,69 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
 
 function ManagementView({ products, productsLoading, stats, togglingProductId, handleToggleProduct, openProductModal, handleDeleteProduct, deletingProductId, restaurant, profile, setIsRestaurantModalOpen }) {
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
       <div className="xl:col-span-2 card-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-dark">Gestión de Productos</h2>
-            <p className="text-sm text-gray-600">{stats.activeProducts} activos de {products.length} totales</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-dark">Gestión de Productos</h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs sm:text-sm text-gray-600">
+              <span className="font-semibold text-green-600">{stats.activeProducts}</span> activos de {' '}
+              <span className="font-semibold">{products.length}</span> totales
+            </p>
             <button
               type="button"
               onClick={() => openProductModal()}
-              className="btn btn-primary btn-small inline-flex items-center gap-2"
+              className="btn btn-primary btn-small inline-flex items-center gap-1.5 min-h-[40px]"
             >
-              <Plus size={16} />
-              Nuevo
+              <Plus size={14} />
+              <span className="hidden xs:inline">Nuevo</span>
             </button>
-            <Package className="text-primary" />
+            <Package className="text-primary" size={20} />
           </div>
         </div>
         {productsLoading ? (
           <div className="py-8 text-center text-gray-500">Cargando productos...</div>
         ) : products.length === 0 ? (
           <div className="py-8 text-center text-gray-500">
-            <UtensilsCrossed size={48} className="mx-auto mb-3 opacity-30" />
-            No tienes productos cargados todavía.
+            <UtensilsCrossed size={40} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm sm:text-base">No tienes productos cargados todavía.</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[500px] sm:max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
             {products.map((product) => {
               const available = product.disponible === 1 || product.disponible === true;
               return (
-                <div key={product.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-sm transition-shadow">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex items-center gap-4">
+                <div key={product.id} className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-white hover:shadow-sm transition-shadow">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
                       {product.imagen_url && (
-                        <img src={getImageUrl(product.imagen_url)} alt={product.nombre} className="w-16 h-16 rounded-lg object-cover bg-gray-100" />
+                        <img src={getImageUrl(product.imagen_url)} alt={product.nombre} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
                       )}
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-dark truncate">{product.nombre}</h3>
-                        <p className="text-sm text-gray-500 line-clamp-1">{product.descripcion || 'Sin descripción'}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 line-clamp-1">{product.descripcion || 'Sin descripción'}</p>
                         <p className="mt-1 text-sm font-bold text-primary">${Number(product.precio || 0).toLocaleString('es-CO')}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => handleToggleProduct(product.id)}
                         disabled={togglingProductId === product.id}
-                        className="text-primary hover:text-primaryDark transition-colors"
+                        className="text-primary hover:text-primaryDark transition-colors p-1"
                         title={available ? 'Desactivar disponibilidad' : 'Activar disponibilidad'}
                       >
-                        {available ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                        {available ? <ToggleRight size={24} className="sm:size-28" /> : <ToggleLeft size={24} className="sm:size-28" />}
                       </button>
                       <div className="flex items-center gap-1">
-                        <button type="button" onClick={() => openProductModal(product)} className="p-2 text-gray-500 hover:text-primary transition-colors"><Pencil size={18} /></button>
-                        <button type="button" onClick={() => handleDeleteProduct(product.id)} disabled={deletingProductId === product.id} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><Trash2 size={18} className={deletingProductId === product.id ? 'animate-spin' : ''} /></button>
+                        <button type="button" onClick={() => openProductModal(product)} className="p-2 text-gray-500 hover:text-primary transition-colors"><Pencil size={16} /></button>
+                        <button type="button" onClick={() => handleDeleteProduct(product.id)} disabled={deletingProductId === product.id} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><Trash2 size={16} className={deletingProductId === product.id ? 'animate-spin' : ''} /></button>
                       </div>
                     </div>
                   </div>
-                  <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${available ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  <div className={`mt-2.5 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold ${available ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                     <span className={`w-2 h-2 rounded-full ${available ? 'bg-green-500' : 'bg-gray-400'}`} />
                     {available ? 'Disponible' : 'No disponible'}
                   </div>
@@ -930,17 +1007,17 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
           </div>
         )}
       </div>
-      <aside className="space-y-6">
+      <aside className="space-y-4 sm:space-y-6">
         <section className="card-lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-dark">Datos del Restaurante</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-dark">Datos del Restaurante</h2>
             <button
               type="button"
               onClick={() => setIsRestaurantModalOpen(true)}
-              className="btn btn-outline btn-small inline-flex items-center gap-2"
+              className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[36px]"
             >
-              <Pencil size={16} />
-              Editar
+              <Pencil size={14} />
+              <span className="hidden sm:inline">Editar</span>
             </button>
           </div>
           <div className="mb-4">
@@ -948,17 +1025,17 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
               <img
                 src={getImageUrl(restaurant.imagen_url)}
                 alt={restaurant.nombre || 'Imagen del restaurante'}
-                className="w-full h-40 rounded-xl object-cover border border-gray-200"
+                className="w-full h-32 sm:h-40 rounded-xl object-cover border border-gray-200"
               />
             ) : (
-              <div className="w-full h-40 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-500">
-                <ImageIcon size={28} className="mb-2" />
-                <p className="text-sm font-medium">Sin imagen del restaurante</p>
+              <div className="w-full h-32 sm:h-40 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-500">
+                <ImageIcon size={24} className="mb-2" />
+                <p className="text-xs sm:text-sm font-medium">Sin imagen del restaurante</p>
                 <p className="text-xs">Usa el boton Editar para agregar una foto</p>
               </div>
             )}
           </div>
-          <div className="space-y-3 text-sm text-gray-600">
+          <div className="space-y-2.5 text-xs sm:text-sm text-gray-600">
             <InfoRow label="Ciudad" value={restaurant.ciudad || 'No definida'} />
             <InfoRow label="Dirección" value={restaurant.direccion || 'No definida'} />
             <InfoRow label="Teléfono" value={restaurant.telefono || 'No disponible'} />
@@ -973,14 +1050,14 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
 
 function StatCard({ title, value, icon, description }) {
   return (
-    <div className="card-lg bg-white">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-gray-500 font-medium">{title}</p>
-          <h3 className="text-3xl font-heading font-bold text-dark mt-2">{value}</h3>
-          <p className="text-xs text-gray-500 mt-2">{description}</p>
+    <div className="card-lg bg-white p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{title}</p>
+          <h3 className="text-2xl sm:text-3xl font-heading font-bold text-dark mt-1.5 break-words">{value}</h3>
+          <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{description}</p>
         </div>
-        <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
       </div>
@@ -990,14 +1067,14 @@ function StatCard({ title, value, icon, description }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-      <span className="font-semibold text-gray-500">{label}</span>
-      <span className="text-right text-gray-800">{value}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 border-b border-gray-100 pb-2.5 last:border-0 last:pb-0">
+      <span className="font-semibold text-gray-500 text-xs sm:text-sm">{label}</span>
+      <span className="text-right text-gray-800 text-xs sm:text-sm break-words">{value}</span>
     </div>
   );
 }
 
-function StatsView({ statsData, restaurant }) {
+function StatsView({ statsData, restaurant, handleExport, exporting, exportError }) {
   const isPremium = restaurant?.plan === 'premium';
   const isProfessional = restaurant?.plan === 'profesional';
 
@@ -1035,15 +1112,30 @@ function StatsView({ statsData, restaurant }) {
               )}
             </p>
           </div>
-          {!isPremium && (
-            <div className="text-right">
-              <p className="text-sm text-gray-600 mb-2">Funciones Premium bloqueadas</p>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-xs font-bold">
-                🔒 Disponible en Plan Premium
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExport('stats', 'pdf')}
+              disabled={exporting}
+              className="btn btn-outline btn-small inline-flex items-center gap-2"
+              title="Exportar estadísticas a PDF"
+            >
+              📄 PDF
+            </button>
+            <button
+              onClick={() => handleExport('stats', 'excel')}
+              disabled={exporting}
+              className="btn btn-outline btn-small inline-flex items-center gap-2"
+              title="Exportar estadísticas a Excel"
+            >
+              📊 Excel
+            </button>
+          </div>
         </div>
+        {exportError && (
+          <div className="mt-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            {exportError}
+          </div>
+        )}
       </section>
 
       {/* ========== PLAN PROFESIONAL Y PREMIUM: VENTAS TOTALES ========== */}

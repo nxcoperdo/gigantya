@@ -148,16 +148,16 @@ export default function Header() {
 
   return (
     <>
-      <header className="bg-white shadow-soft sticky top-0 z-50 backdrop-blur-xs bg-opacity-95">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3.5 md:py-4 flex justify-between items-center">
+      <header className="bg-white shadow-soft sticky top-0 z-50 backdrop-blur-sm bg-opacity-98">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="text-3xl">🍽️</div>
-            <span className="text-xl md:text-2xl font-heading font-bold text-dark">Gigantya</span>
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity active:scale-95 touch-feedback">
+            <div className="text-2xl md:text-3xl">🍽️</div>
+            <span className="text-lg md:text-xl lg:text-2xl font-heading font-bold text-dark">GigantYa</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex gap-8 items-center">
+          <nav className="hidden md:flex gap-6 lg:gap-8 items-center">
             {!isAuthenticated ? (
               <>
                 <Link to="/" className="text-gray-600 hover:text-primary font-medium transition-colors">
@@ -180,9 +180,6 @@ export default function Header() {
 
                  {user?.tipo_usuario === 'cliente' && (
                   <>
-                    <Link to="/cart" className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1">
-                      <ShoppingCart size={18} />
-                    </Link>
                     <Link to="/orders" className="text-gray-600 hover:text-primary font-medium transition-colors">
                       Mis Pedidos
                     </Link>
@@ -201,42 +198,59 @@ export default function Header() {
                   </Link>
                 )}
 
-                <div className="relative ml-2">
+                {/* Carrito icono */}
+                {user?.tipo_usuario === 'cliente' && (
+                  <Link to="/cart" className="relative p-2 hover:bg-light rounded-full transition-colors text-gray-600 hover:text-primary">
+                    <ShoppingCart size={20} />
+                  </Link>
+                )}
+
+                {/* Campana de notificaciones */}
+                <div className="relative">
                   <button
                     onClick={() => setNotifOpen(!notifOpen)}
-                    className={`p-2 rounded-full hover:bg-light transition-colors relative text-gray-600 hover:text-primary ${notifOpen ? 'animate-scaleIn' : ''}`}
+                    className={`p-2 rounded-full hover:bg-light transition-colors relative text-gray-600 hover:text-primary active:scale-95 touch-feedback ${notifOpen ? 'bg-light' : ''}`}
+                    aria-label="Notificaciones"
                   >
                     <Bell size={20} />
                     <NotificationBadge count={unreadCount} />
                   </button>
                 </div>
 
+                {/* Dropdown de usuario */}
                 <div className="relative">
                   <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-light transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-light transition-colors active:scale-95 touch-feedback"
+                    aria-expanded={dropdownOpen}
                   >
-                    <User size={18} className="text-primary" />
-                    <span className="text-sm font-medium text-gray-700 max-w-[150px] truncate">{user?.nombre}</span>
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <User size={16} className="text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 max-w-[120px] lg:max-w-[150px] truncate">{user?.nombre}</span>
                   </button>
 
                   {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-xl py-2 animate-slideDown">
-                      <Link
-                        to="/profile"
-                        className="block px-4 py-2.5 hover:bg-light text-gray-700 transition-colors"
-                        onClick={() => setDropdownOpen(false)}
-                      >
-                        Mi Perfil
-                      </Link>
-                      <div className="divider m-1" />
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-600 font-medium transition-colors"
-                      >
-                        Cerrar Sesión
-                      </button>
-                    </div>
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-white shadow-xl rounded-xl py-1.5 border border-gray-100 z-20 animate-scaleIn">
+                        <Link
+                          to="/profile"
+                          className="flex items-center gap-2 px-4 py-2.5 hover:bg-light text-gray-700 transition-colors"
+                          onClick={() => setDropdownOpen(false)}
+                        >
+                          <User size={16} />
+                          Mi Perfil
+                        </Link>
+                        <div className="border-t border-gray-100 my-1" />
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-600 font-medium transition-colors flex items-center gap-2"
+                        >
+                          Cerrar Sesión
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               </>
@@ -245,98 +259,109 @@ export default function Header() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 hover:bg-light rounded-lg transition-colors"
+            className="md:hidden p-2.5 hover:bg-light rounded-xl transition-colors active:scale-95 touch-feedback"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Menú"
           >
-            {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="md:hidden bg-light border-t border-gray-100 px-4 py-4 flex flex-col gap-3 animate-slideDown">
-            {!isAuthenticated ? (
-              <>
-                <Link
-                  to="/"
-                  className="text-gray-700 font-medium py-2 hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Inicio
-                </Link>
-                <Link to="/login" className="btn btn-outline btn-small w-full">
-                  Ingresar
-                </Link>
-                <Link to="/register" className="btn btn-primary btn-small w-full">
-                  Registrarse
-                </Link>
-              </>
-             ) : (
-               <>
-                 {user?.tipo_usuario === 'cliente' && (
-                   <Link
-                     to="/"
-                     className="text-gray-700 font-medium py-2 hover:text-primary transition-colors"
-                     onClick={() => setMobileMenuOpen(false)}
-                   >
-                     Restaurantes
-                   </Link>
-                 )}
-                 {user?.tipo_usuario === 'cliente' && (
-                  <>
-                    <Link
-                      to="/cart"
-                      className="text-gray-700 font-medium py-2 hover:text-primary transition-colors flex items-center gap-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <ShoppingCart size={18} />
-                      Mi Carrito
-                    </Link>
-                    <Link
-                      to="/orders"
-                      className="text-gray-700 font-medium py-2 hover:text-primary transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Mis Pedidos
-                    </Link>
-                  </>
-                )}
-                {user?.tipo_usuario === 'restaurante' && (
+          <>
+            <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)} />
+            <nav className="md:hidden fixed top-[60px] left-0 right-0 bg-white shadow-xl border-t border-gray-100 px-4 py-4 flex flex-col gap-2 z-40 animate-slideDown max-h-[calc(100vh-60px)] overflow-y-auto">
+              {!isAuthenticated ? (
+                <>
                   <Link
-                    to="/dashboard"
-                    className="text-gray-700 font-medium py-2 hover:text-primary transition-colors"
+                    to="/"
+                    className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg active:scale-95 touch-feedback"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Dashboard
+                    Inicio
                   </Link>
-                )}
-                {user?.tipo_usuario === 'admin' && (
+                  <div className="flex gap-2 mt-2">
+                    <Link to="/login" className="btn btn-outline btn-small flex-1" onClick={() => setMobileMenuOpen(false)}>
+                      Ingresar
+                    </Link>
+                    <Link to="/register" className="btn btn-primary btn-small flex-1" onClick={() => setMobileMenuOpen(false)}>
+                      Registrarse
+                    </Link>
+                  </div>
+                </>
+               ) : (
+                 <>
+                   {user?.tipo_usuario === 'cliente' && (
+                     <Link
+                       to="/"
+                       className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg active:scale-95 touch-feedback"
+                       onClick={() => setMobileMenuOpen(false)}
+                     >
+                       🏪 Restaurantes
+                     </Link>
+                   )}
+                   {user?.tipo_usuario === 'cliente' && (
+                    <>
+                      <Link
+                        to="/cart"
+                        className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg flex items-center gap-3 active:scale-95 touch-feedback"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <ShoppingCart size={18} />
+                        Mi Carrito
+                      </Link>
+                      <Link
+                        to="/orders"
+                        className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg active:scale-95 touch-feedback"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        📦 Mis Pedidos
+                      </Link>
+                    </>
+                  )}
+                  {user?.tipo_usuario === 'restaurante' && (
+                    <Link
+                      to="/dashboard"
+                      className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg active:scale-95 touch-feedback"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      📊 Dashboard
+                    </Link>
+                  )}
+                  {user?.tipo_usuario === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg active:scale-95 touch-feedback"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      ⚙️ Admin
+                    </Link>
+                  )}
+                  <div className="border-t border-gray-100 my-2" />
                   <Link
-                    to="/admin"
-                    className="text-gray-700 font-medium py-2 hover:text-primary transition-colors"
+                    to="/profile"
+                    className="text-gray-700 font-medium py-3 px-4 hover:bg-light hover:text-primary transition-colors rounded-lg flex items-center gap-3 active:scale-95 touch-feedback"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Admin
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <User size={16} className="text-primary" />
+                    </div>
+                    Mi Perfil
                   </Link>
-                )}
-                <div className="divider m-2" />
-                <Link
-                  to="/profile"
-                  className="text-gray-700 font-medium py-2 hover:text-primary transition-colors flex items-center gap-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <User size={18} />
-                  Mi Perfil
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-red-600 font-medium text-left py-2 hover:text-red-700 transition-colors"
-                >
-                  Cerrar Sesión
-                </button>
-              </>
-            )}
-          </nav>
+                  <button
+                    onClick={handleLogout}
+                    className="text-red-600 font-medium text-left py-3 px-4 hover:bg-red-50 transition-colors rounded-lg active:scale-95 touch-feedback flex items-center gap-3"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Cerrar Sesión
+                  </button>
+                </>
+              )}
+            </nav>
+          </>
         )}
       </header>
       <NotificationCenter

@@ -1,5 +1,64 @@
 import * as RatingModel from '../models/Rating.js';
 import * as OrderModel from '../models/Order.js';
+import * as RestaurantModel from '../models/Restaurant.js';
+
+/**
+ * Obtener calificaciones de un restaurante
+ */
+export async function getRestaurantRatings(req, res) {
+  try {
+    const { restaurante_id } = req.params;
+
+    const ratings = await RatingModel.getRestaurantRatings(restaurante_id);
+    const averageRating = await RatingModel.getAverageRating(restaurante_id);
+
+    // Calcular distribución de calificaciones
+    const distribution = {
+      5: ratings.filter(r => (r.calificacion || r.puntuacion) === 5).length,
+      4: ratings.filter(r => (r.calificacion || r.puntuacion) === 4).length,
+      3: ratings.filter(r => (r.calificacion || r.puntuacion) === 3).length,
+      2: ratings.filter(r => (r.calificacion || r.puntuacion) === 2).length,
+      1: ratings.filter(r => (r.calificacion || r.puntuacion) === 1).length
+    };
+
+    res.json({
+      promedio: averageRating || 0,
+      total_calificaciones: ratings.length,
+      distribucion: distribution,
+      calificaciones: ratings.slice(0, 50) // Últimas 50 calificaciones
+    });
+  } catch (error) {
+    console.error('Error obteniendo calificaciones del restaurante:', error);
+    res.status(500).json({
+      message: 'Error obteniendo calificaciones',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Obtener calificación de un usuario para un restaurante específico
+ */
+export async function getUserRating(req, res) {
+  try {
+    const { restaurante_id } = req.params;
+
+    const ratings = await RatingModel.getUserRatings(req.user.id);
+    const userRating = ratings.find(r => r.restaurante_id === parseInt(restaurante_id));
+
+    if (!userRating) {
+      return res.status(404).json({ message: 'No has calificado este restaurante' });
+    }
+
+    res.json(userRating);
+  } catch (error) {
+    console.error('Error obteniendo tu calificación:', error);
+    res.status(500).json({
+      message: 'Error obteniendo tu calificación',
+      error: error.message
+    });
+  }
+}
 
 export async function rateRestaurant(req, res) {
     try {
@@ -97,5 +156,7 @@ export async function editRating(req, res) {
 export default {
   rateRestaurant,
   getMyRatings,
-  editRating
+  editRating,
+  getRestaurantRatings,
+  getUserRating
 };

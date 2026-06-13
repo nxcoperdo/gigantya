@@ -30,6 +30,7 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import exportRoutes from './routes/exportRoutes.js';
 
 
 // Middleware de seguridad
@@ -73,6 +74,7 @@ app.use('/api/categorias', categoryRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/exports', exportRoutes);
 
 // Ruta de bienvenida
 app.get('/api', (req, res) => {

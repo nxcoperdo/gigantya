@@ -39,5 +39,19 @@ router.put('/profile', verifyToken, authController.updateProfile);
  */
 router.put('/change-password', verifyToken, authController.changePassword);
 
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Solicitar reseteo de contraseña
+ * @access  Public
+ */
+router.post('/forgot-password', authController.forgotPassword);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Resetear contraseña con token
+ * @access  Public
+ */
+router.post('/reset-password', authController.resetPassword);
+
 export default router;
 

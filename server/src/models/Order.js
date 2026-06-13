@@ -24,7 +24,8 @@ export const PAYMENT_METHODS = {
   BRE_B: 'bre_b'
 };
 
-const ORDER_TAX_RATE = Number(process.env.ORDER_TAX_RATE ?? 0.08);
+// Tasa de impuestos por defecto (se puede sobrescribir por restaurante)
+const DEFAULT_ORDER_TAX_RATE = Number(process.env.ORDER_TAX_RATE ?? 0.08);
 
 function createValidationError(message) {
   const error = new Error(message);
@@ -57,12 +58,20 @@ export function normalizeOrderItems(items) {
   return Array.from(grouped, ([producto_id, cantidad]) => ({ producto_id, cantidad }));
 }
 
-export function calculateOrderTotal(items, coupon = null, taxRate = ORDER_TAX_RATE) {
+/**
+ * Calcular total del pedido con impuestos y envío configurables
+ * @param {Array} items - Items del pedido
+ * @param {Object} coupon - Cupón aplicado (opcional)
+ * @param {Object} taxConfig - Configuración de impuestos { activo, porcentaje }
+ * @param {Object} shippingConfig - Configuración de envíos { activo, costo_fijo, envio_gratis_desde }
+ */
+export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: true, porcentaje: 8 }, shippingConfig = { activo: false, costo_fijo: 0, envio_gratis_desde: 0 }) {
   const subtotal = items.reduce(
     (sum, item) => sum + Number(item.precio_unitario) * Number(item.cantidad),
     0
   );
 
+  // Calcular descuento del cupón
   let discountAmount = 0;
   if (coupon) {
     if (coupon.tipo_descuento === 'porcentaje') {
@@ -74,7 +83,25 @@ export function calculateOrderTotal(items, coupon = null, taxRate = ORDER_TAX_RA
     discountAmount = Math.min(discountAmount, subtotal);
   }
 
-  const total = (subtotal - discountAmount) * (1 + taxRate);
+  // Calcular subtotal después del descuento
+  const subtotalConDescuento = subtotal - discountAmount;
+
+  // Calcular impuestos (solo si está activo)
+  let taxAmount = 0;
+  if (taxConfig.activo && taxConfig.porcentaje > 0) {
+    taxAmount = subtotalConDescuento * (taxConfig.porcentaje / 100);
+  }
+
+  // Calcular envío (solo si está activo y el subtotal no alcanza para envío gratis)
+  let shippingAmount = 0;
+  if (shippingConfig.activo) {
+    if (subtotalConDescuento < shippingConfig.envio_gratis_desde) {
+      shippingAmount = shippingConfig.costo_fijo;
+    }
+  }
+
+  // Total final
+  const total = subtotalConDescuento + taxAmount + shippingAmount;
 
   return Number(total.toFixed(2));
 }
@@ -190,7 +217,21 @@ export async function createOrderWithItems(orderData) {
       coupon = couponResult[0];
     }
 
-    const total = calculateOrderTotal(pricedItems, coupon);
+    // Obtener configuración de impuestos y envíos del restaurante
+    const [restaurantData] = await connection.query(
+      'SELECT configuracion_impuestos, configuracion_envios FROM restaurantes WHERE id = ?',
+      [restaurante_id]
+    );
+
+    const taxConfig = restaurantData?.configuracion_impuestos
+      ? JSON.parse(restaurantData.configuracion_impuestos)
+      : { activo: true, porcentaje: 8 };
+
+    const shippingConfig = restaurantData?.configuracion_envios
+      ? JSON.parse(restaurantData.configuracion_envios)
+      : { activo: false, costo_fijo: 0, envio_gratis_desde: 0 };
+
+    const total = calculateOrderTotal(pricedItems, coupon, taxConfig, shippingConfig);
 
     // Determinar estado inicial según método de pago
     const estadoInicial = metodo_pago === 'contra_entrega'

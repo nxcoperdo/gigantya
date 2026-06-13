@@ -2,6 +2,7 @@ import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
 import * as NotificationModel from '../models/Notification.js';
 import * as CouponModel from '../models/Coupon.js';
+import notificationService from '../services/notificationService.js';
 import pool from '../config/database.js';
 
 /**
@@ -95,10 +96,11 @@ export async function createOrder(req, res) {
 
     const pedido = await OrderModel.getOrderById(pedidoId);
 
-    // Notificar al restaurante
+    // Notificar al restaurante (interna y externa)
     try {
       const restauranteData = await RestaurantModel.getRestaurantById(restaurante_id);
       if (restauranteData && restauranteData.usuario_id) {
+        // Notificación interna
         await NotificationModel.createNotification({
           usuario_id: restauranteData.usuario_id,
           tipo: 'pedido',
@@ -106,6 +108,16 @@ export async function createOrder(req, res) {
           mensaje: `Has recibido un nuevo pedido #${pedidoId}`,
           data: { pedido_id: pedidoId }
         });
+
+        // Notificación externa (email) - obtenemos el email del usuario del restaurante
+        const restauranteUsuario = await RestaurantModel.getRestaurantUser(restaurante_id);
+        if (restauranteUsuario?.email) {
+          notificationService.notifyNewOrder({
+            pedido,
+            restauranteEmail: restauranteUsuario.email,
+            clienteEmail: req.user.email
+          }).catch(err => console.error('Error enviando email de nuevo pedido:', err));
+        }
       }
     } catch (notifError) {
       console.error('Error enviando notificación de nuevo pedido:', notifError);
@@ -292,9 +304,11 @@ export async function updateOrderStatus(req, res) {
     // Usar el estado normalizado (matchedState) para asegurar compatibilidad con la DB
     await OrderModel.updateOrderStatus(id, matchedState);
 
-    // Notificar al cliente
+    // Notificar al cliente (interna y externa)
     try {
       const pedidoActualizado = await OrderModel.getOrderById(id);
+
+      // Notificación interna (base de datos)
       await NotificationModel.createNotification({
         usuario_id: pedidoActualizado.usuario_id,
         tipo: 'pedido',
@@ -302,6 +316,29 @@ export async function updateOrderStatus(req, res) {
         mensaje: `Tu pedido #${id} ahora está en estado: ${matchedState}`,
         data: { pedido_id: id, estado: matchedState }
       });
+
+      // Notificación externa (email/SMS) - solo para ciertos estados
+      const estadosConNotificacion = ['Preparando', 'Listo', 'Entregado'];
+      if (estadosConNotificacion.includes(matchedState)) {
+        // Obtener datos completos para la notificación
+        const cliente = await RestaurantModel.getUserById(pedidoActualizado.usuario_id);
+        const restauranteData = await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id);
+
+        const pedidoParaNotificar = {
+          ...pedidoActualizado,
+          cliente_email: cliente?.email,
+          cliente_telefono: cliente?.telefono,
+          cliente_nombre: cliente?.nombre,
+          restaurante_email: restauranteData?.usuario_email,
+          restaurante_nombre: restauranteData?.nombre
+        };
+
+        notificationService.notifyOrderStatusChange({
+          pedido: pedidoParaNotificar,
+          nuevoEstado: matchedState,
+          notifyCustomer: true
+        }).catch(err => console.error('Error enviando notificación externa:', err));
+      }
     } catch (notifError) {
       console.error('Error en notificación:', notifError);
     }

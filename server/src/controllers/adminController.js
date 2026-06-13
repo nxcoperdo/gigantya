@@ -2,7 +2,7 @@ import * as RestaurantModel from '../models/Restaurant.js';
 import * as UserModel from '../models/User.js';
 import * as NotificationModel from '../models/Notification.js';
 import * as SubscriptionModel from '../models/Subscription.js';
-import { query } from '../config/database.js';
+import { query, getConnection } from '../config/database.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -162,6 +162,7 @@ export async function getStats(req, res) {
  * Crear usuario desde panel admin
  */
 export async function adminCreateUser(req, res) {
+  let connection;
   try {
     if (req.user.tipo_usuario !== 'admin') {
       return res.status(403).json({ error: 'Acceso denegado' });
@@ -179,23 +180,55 @@ export async function adminCreateUser(req, res) {
       return res.status(400).json({ error: 'El email ya está registrado' });
     }
 
-    const userId = await UserModel.createUser({
-      nombre,
-      email,
-      contrasena: password,
-      tipo_usuario,
-      telefono,
-      documento_identidad
-    });
+    // Usar transacción para crear usuario y restaurante atómicamente
+    connection = await getConnection();
+    await connection.beginTransaction();
 
-    logger.info(`Admin creó usuario ${email} con rol ${tipo_usuario}`);
+    try {
+      const userId = await UserModel.createUserWithConnection({
+        nombre,
+        email,
+        contrasena: password,
+        tipo_usuario,
+        telefono,
+        documento_identidad
+      }, connection);
 
-    res.status(201).json({
-      mensaje: 'Usuario creado exitosamente',
-      userId
-    });
+      // Si es restaurante, crear también la entrada en la tabla restaurantes
+      if (tipo_usuario === 'restaurante') {
+        await RestaurantModel.createRestaurantWithConnection({
+          usuario_id: userId,
+          nombre: nombre,
+          descripcion: 'Restaurante en configuración',
+          direccion: 'Pendiente de configuración',
+          telefono: telefono || '',
+          horario_apertura: '09:00',
+          horario_cierre: '21:00',
+          imagen_url: null,
+          ciudad: 'Giganta, Huila'
+        }, connection);
+        logger.info(`Admin creó restaurante pendiente para usuario ${email}`);
+      }
+
+      await connection.commit();
+      logger.info(`Admin creó usuario ${email} con rol ${tipo_usuario}`);
+
+      res.status(201).json({
+        mensaje: tipo_usuario === 'restaurante'
+          ? 'Usuario y restaurante pendientes creados exitosamente'
+          : 'Usuario creado exitosamente',
+        userId
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    }
   } catch (error) {
     res.status(500).json({ error: 'Error creando usuario', detalles: error.message });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
@@ -515,6 +548,73 @@ export async function updateRestaurantPlan(req, res) {
     });
   } catch (error) {
     res.status(500).json({ error: 'Error actualizando plan', detalles: error.message });
+  }
+}
+
+/**
+ * Actualizar configuración de impuestos y envíos de un restaurante
+ */
+export async function updateRestaurantConfig(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden configurar impuestos y envíos' });
+    }
+
+    const { id } = req.params;
+    const { configuracion_impuestos, configuracion_envios } = req.body;
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Restaurante no encontrado' });
+    }
+
+    const updateData = {};
+
+    if (configuracion_impuestos !== undefined) {
+      // Validar configuración de impuestos
+      const { activo, porcentaje } = configuracion_impuestos;
+      if (typeof activo !== 'boolean') {
+        return res.status(400).json({ error: 'El campo "activo" debe ser booleano' });
+      }
+      if (typeof porcentaje !== 'number' || porcentaje < 0 || porcentaje > 100) {
+        return res.status(400).json({ error: 'El porcentaje debe estar entre 0 y 100' });
+      }
+      updateData.configuracion_impuestos = JSON.stringify({ activo, porcentaje });
+    }
+
+    if (configuracion_envios !== undefined) {
+      // Validar configuración de envíos
+      const { activo, costo_fijo, envio_gratis_desde } = configuracion_envios;
+      if (typeof activo !== 'boolean') {
+        return res.status(400).json({ error: 'El campo "activo" debe ser booleano' });
+      }
+      if (typeof costo_fijo !== 'number' || costo_fijo < 0) {
+        return res.status(400).json({ error: 'El costo fijo debe ser un número positivo' });
+      }
+      if (typeof envio_gratis_desde !== 'number' || envio_gratis_desde < 0) {
+        return res.status(400).json({ error: 'El monto para envío gratis debe ser un número positivo' });
+      }
+      updateData.configuracion_envios = JSON.stringify({ activo, costo_fijo, envio_gratis_desde });
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron datos para actualizar' });
+    }
+
+    await RestaurantModel.updateRestaurant(id, updateData);
+
+    logger.info(`Admin ${req.user.id} actualizó configuración de impuestos/envíos del restaurante ${id}`);
+
+    // Obtener configuración actualizada
+    const restauranteActualizado = await RestaurantModel.getRestaurantById(id);
+
+    res.json({
+      mensaje: 'Configuración de impuestos y envíos actualizada exitosamente',
+      configuracion_impuestos: restauranteActualizado.configuracion_impuestos,
+      configuracion_envios: restauranteActualizado.configuracion_envios
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error actualizando configuración', detalles: error.message });
   }
 }
 

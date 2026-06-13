@@ -23,6 +23,7 @@ router.put('/restaurants/:id/approve', verifyToken, requireAdmin, adminControlle
 router.put('/restaurants/:id/reject', verifyToken, requireAdmin, adminController.rejectRestaurant);
 router.put('/restaurants/:id/plan', verifyToken, requireAdmin, adminController.updateRestaurantPlan);
 router.get('/restaurants/:id/subscriptions', verifyToken, requireAdmin, adminController.getRestaurantSubscriptionHistory);
+router.put('/restaurants/:id/config', verifyToken, requireAdmin, adminController.updateRestaurantConfig);
 
 /**
  * Rutas de Pedidos Globales

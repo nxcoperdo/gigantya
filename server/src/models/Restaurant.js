@@ -54,6 +54,57 @@ export async function createRestaurant(restaurantData) {
 }
 
 /**
+ * Crear nuevo restaurante con una conexión específica (para transacciones)
+ */
+export async function createRestaurantWithConnection(restaurantData, connection) {
+  const {
+    usuario_id,
+    nombre,
+    descripcion,
+    direccion,
+    telefono,
+    horario_apertura,
+    horario_cierre,
+    imagen_url,
+    ciudad = 'Giganta, Huila'
+  } = restaurantData;
+
+  const sql = `
+    INSERT INTO restaurantes (
+      usuario_id,
+      nombre,
+      descripcion,
+      direccion,
+      telefono,
+      horario_apertura,
+      horario_cierre,
+      imagen_url,
+      ciudad,
+      estado,
+      aprobado,
+      creado_en
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, NOW())
+  `;
+
+  try {
+    const [result] = await connection.query(sql, [
+      usuario_id,
+      nombre,
+      descripcion,
+      direccion,
+      telefono,
+      horario_apertura,
+      horario_cierre,
+      imagen_url,
+      ciudad
+    ]);
+    return result.insertId;
+  } catch (error) {
+    throw new Error(`Error creando restaurante: ${error.message}`);
+  }
+}
+
+/**
  * Obtener todos los restaurantes aprobados
  */
 export async function getRestaurants(filtros = {}) {
@@ -143,6 +194,28 @@ export async function getRestaurantByUserId(usuario_id) {
 }
 
 /**
+ * Obtener datos del usuario propietario del restaurante
+ */
+export async function getRestaurantUser(restaurante_id) {
+  const sql = `
+    SELECT u.id, u.email, u.nombre, u.telefono
+    FROM usuarios u
+    INNER JOIN restaurantes r ON u.id = r.usuario_id
+    WHERE r.id = ?
+    LIMIT 1
+  `;
+  return queryOne(sql, [restaurante_id]);
+}
+
+/**
+ * Obtener usuario por ID
+ */
+export async function getUserById(id) {
+  const sql = 'SELECT id, email, nombre, telefono FROM usuarios WHERE id = ? LIMIT 1';
+  return queryOne(sql, [id]);
+}
+
+/**
  * Actualizar restaurante
  */
 export async function updateRestaurant(id, updateData) {
@@ -224,9 +297,12 @@ export async function rejectRestaurant(id) {
 
 export default {
   createRestaurant,
+  createRestaurantWithConnection,
   getRestaurants,
   getRestaurantById,
   getRestaurantByUserId,
+  getRestaurantUser,
+  getUserById,
   updateRestaurant,
   approveRestaurant,
   rejectRestaurant

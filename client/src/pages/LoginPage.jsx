@@ -79,6 +79,11 @@ export default function LoginPage() {
               Regístrate aquí
             </Link>
           </p>
+          <p className="mt-2">
+            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </p>
         </div>
       </div>
     </div>

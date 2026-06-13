@@ -43,6 +43,8 @@ export const authService = {
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (data) => api.put('/auth/change-password', data),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, nueva_contrasena) => api.post('/auth/reset-password', { token, nueva_contrasena }),
 };
 
 // ========== RESTAURANTES ==========
@@ -144,6 +146,7 @@ export const adminService = {
   // Restaurant management
   updateRestaurantPlan: (id, payload) => api.put(`/admin/restaurants/${id}/plan`, payload),
   getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
+  updateRestaurantConfig: (id, payload) => api.put(`/admin/restaurants/${id}/config`, payload),
 };
 
 // ========== NOTIFICACIONES ==========
@@ -169,6 +172,8 @@ export const preferenceService = {
 export const ratingService = {
   rateRestaurant: (data) => api.post('/ratings', data),
   getMyRatings: () => api.get('/ratings/me'),
+  getRestaurantRatings: (restaurante_id) => api.get(`/ratings/restaurant/${restaurante_id}`),
+  getUserRating: (restaurante_id) => api.get(`/ratings/my-rating/${restaurante_id}`),
   editRating: (restaurante_id, data) => api.put(`/ratings/${restaurante_id}`, data),
 };
 
@@ -210,6 +215,19 @@ export const paymentService = {
   getProofsHistory: (estado) => api.get('/payments/history', { params: { estado } }),
   approveProof: (id) => api.post(`/payments/proof/${id}/approve`),
   rejectProof: (id, motivo_rechazo) => api.post(`/payments/proof/${id}/reject`, { motivo_rechazo }),
+};
+
+// ========== EXPORTAR REPORTES ==========
+
+export const exportService = {
+  exportStatsPDF: (days = 30) =>
+    api.get('/exports/stats/pdf', { params: { days }, responseType: 'blob' }),
+  exportStatsExcel: (days = 30) =>
+    api.get('/exports/stats/excel', { params: { days }, responseType: 'blob' }),
+  exportOrdersPDF: (estado = 'todos', limit = 100) =>
+    api.get('/exports/orders/pdf', { params: { estado, limit }, responseType: 'blob' }),
+  exportOrdersExcel: (estado = 'todos', limit = 500) =>
+    api.get('/exports/orders/excel', { params: { estado, limit }, responseType: 'blob' }),
 };
 
 export default api;

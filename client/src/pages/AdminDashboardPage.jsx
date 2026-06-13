@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck } from 'lucide-react';
 import UserManagementModal from '../components/UserManagementModal';
+import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -30,6 +31,9 @@ export default function AdminDashboardPage() {
   // Modal para crear/editar categorías
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
+  // Modal para configurar impuestos y envíos
+  const [isTaxShippingModalOpen, setIsTaxShippingModalOpen] = useState(false);
+  const [restaurantToConfig, setRestaurantToConfig] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -447,7 +451,19 @@ export default function AdminDashboardPage() {
                               : <span className="text-gray-400">—</span>}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button onClick={() => handleDeleteUser(res.usuario_id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setRestaurantToConfig(res);
+                                  setIsTaxShippingModalOpen(true);
+                                }}
+                                className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+                                title="Configurar impuestos y envíos"
+                              >
+                                <Percent size={18} />
+                              </button>
+                              <button onClick={() => handleDeleteUser(res.usuario_id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -694,6 +710,17 @@ export default function AdminDashboardPage() {
           }}
           onSucceeded={loadData}
           userToEdit={userToEdit}
+        />
+
+        {/* TAX & SHIPPING CONFIG MODAL */}
+        <TaxShippingConfigModal
+          isOpen={isTaxShippingModalOpen}
+          onClose={() => {
+            setIsTaxShippingModalOpen(false);
+            setRestaurantToConfig(null);
+          }}
+          onSucceeded={loadData}
+          restaurant={restaurantToConfig}
         />
 
         {/* PLAN ASSIGNMENT MODAL */}

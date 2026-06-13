@@ -22,6 +22,9 @@ export default function CheckoutPage() {
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [restauranteId, setRestauranteId] = useState(null);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+  const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
+  const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_desde: 0 });
+  const [shippingAmount, setShippingAmount] = useState(0);
 
   // Estado para cupones
   const [couponCode, setCouponCode] = useState('');
@@ -79,6 +82,57 @@ export default function CheckoutPage() {
     };
     loadAddresses();
   }, []);
+
+  // Cargar configuración de impuestos y envíos del restaurante
+  useEffect(() => {
+    const loadRestaurantConfig = async () => {
+      const restaurante_id = cart[0]?.restaurante_id;
+      if (!restaurante_id) return;
+
+      try {
+        // Obtener datos del restaurante para obtener su configuración
+        const response = await api.get(`/restaurants/${restaurante_id}`);
+        const restaurant = response.data.restaurante;
+
+        const defaultTax = { activo: true, porcentaje: 8 };
+        const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_desde: 0 };
+
+        const tax = restaurant.configuracion_impuestos || defaultTax;
+        const shipping = restaurant.configuracion_envios || defaultShipping;
+
+        setTaxConfig(tax);
+        setShippingConfig(shipping);
+      } catch (error) {
+        console.error('Error cargando configuración del restaurante:', error);
+        // Usar valores por defecto en caso de error
+        setTaxConfig({ activo: true, porcentaje: 8 });
+        setShippingConfig({ activo: false, costo_fijo: 0, envio_gratis_desde: 0 });
+      }
+    };
+
+    loadRestaurantConfig();
+  }, [cart]);
+
+  // Calcular impuestos y envío cuando cambian los valores
+  useEffect(() => {
+    const subtotal = total;
+    const descuento = discountAmount;
+    const subtotalConDescuento = subtotal - descuento;
+
+    // Calcular impuestos
+    let taxAmount = 0;
+    if (taxConfig.activo && taxConfig.porcentaje > 0) {
+      taxAmount = subtotalConDescuento * (taxConfig.porcentaje / 100);
+    }
+
+    // Calcular envío
+    let shipAmount = 0;
+    if (shippingConfig.activo && subtotalConDescuento < shippingConfig.envio_gratis_desde) {
+      shipAmount = shippingConfig.costo_fijo;
+    }
+
+    setShippingAmount(shipAmount);
+  }, [total, discountAmount, taxConfig, shippingConfig]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -252,41 +306,41 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-light py-8 md:py-12">
-      <div className="max-w-4xl mx-auto px-4 md:px-6">
-        <h1 className="text-4xl md:text-5xl font-heading font-bold text-dark mb-8">
+    <div className="min-h-screen bg-light py-6 sm:py-8 md:py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-4 md:px-6">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-dark mb-6 sm:mb-8">
           Confirmar Pedido
         </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Formulario */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6 animate-slideUp">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 animate-slideUp">
               <div className="card-lg">
-                <h2 className="text-2xl font-bold text-dark mb-6">Información de Entrega</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-dark mb-5 sm:mb-6">Información de Entrega</h2>
 
                <div className="space-y-4">
                    <div>
-                     <label className="block">Nombre Completo</label>
+                     <label className="block text-sm font-semibold mb-1.5">Nombre Completo</label>
                      <input
                        type="text"
                        name="nombre"
                        value={formData.nombre}
                        onChange={handleChange}
                        readOnly
-                       className="input opacity-75 bg-gray-50"
+                       className="input opacity-75 bg-gray-50 min-h-[44px]"
                      />
                    </div>
 
                    <div>
-                     <label className="block">Email</label>
+                     <label className="block text-sm font-semibold mb-1.5">Email</label>
                      <input
                        type="email"
                        name="email"
                        value={formData.email}
                        onChange={handleChange}
                        readOnly
-                       className="input opacity-75 bg-gray-50"
+                       className="input opacity-75 bg-gray-50 min-h-[44px]"
                      />
                    </div>
 
@@ -296,35 +350,35 @@ export default function CheckoutPage() {
                        <label className="block mb-3 font-semibold text-dark">
                          Mis Direcciones Guardadas
                        </label>
-                       <div className="space-y-2 mb-4">
+                       <div className="space-y-2.5 mb-4">
                          {addresses.map(addr => (
                            <button
                              key={addr.id}
                              type="button"
                              onClick={() => handleSelectAddress(addr.id)}
-                             className={`w-full text-left p-3 border-2 rounded-lg transition-all ${
+                             className={`w-full text-left p-3 sm:p-4 border-2 rounded-xl transition-all active:scale-98 touch-feedback ${
                                selectedAddressId === addr.id && !useNewAddress
                                  ? 'border-primary bg-red-50'
                                  : 'border-gray-200 hover:border-gray-300'
                              }`}
                            >
-                             <div className="flex items-start justify-between">
-                               <div className="flex-1">
-                                 <p className="font-semibold text-dark flex items-center gap-2">
-                                   <MapPin size={16} className="text-primary" />
+                             <div className="flex items-start justify-between gap-3">
+                               <div className="flex-1 min-w-0">
+                                 <p className="font-semibold text-dark flex items-center gap-2 flex-wrap">
+                                   <MapPin size={16} className="text-primary flex-shrink-0" />
                                    {addr.tipo.charAt(0).toUpperCase() + addr.tipo.slice(1)}
                                    {addr.es_default && (
-                                     <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full">
+                                     <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full flex-shrink-0">
                                        Por Defecto
                                      </span>
                                    )}
                                  </p>
-                                 <p className="text-sm text-gray-600 mt-1">{addr.direccion}</p>
+                                 <p className="text-sm text-gray-600 mt-1 break-words">{addr.direccion}</p>
                                  {addr.telefono && (
                                    <p className="text-xs text-gray-500 mt-1">Tel: {addr.telefono}</p>
                                  )}
                                </div>
-                               <div className={`w-5 h-5 rounded-full border-2 mt-1 flex items-center justify-center ${
+                               <div className={`w-5 h-5 rounded-full border-2 mt-0.5 flex-shrink-0 flex items-center justify-center ${
                                  selectedAddressId === addr.id && !useNewAddress
                                    ? 'border-primary bg-primary'
                                    : 'border-gray-300'
@@ -340,7 +394,7 @@ export default function CheckoutPage() {
                        <button
                          type="button"
                          onClick={handleNewAddress}
-                         className={`w-full p-3 border-2 border-dashed rounded-lg transition-all flex items-center justify-center gap-2 ${
+                         className={`w-full p-3 sm:p-4 border-2 border-dashed rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 touch-feedback ${
                            useNewAddress
                              ? 'border-primary bg-red-50'
                              : 'border-gray-300 hover:border-primary text-gray-600'
@@ -353,7 +407,7 @@ export default function CheckoutPage() {
                    )}
 
                    <div>
-                     <label className="block">Teléfono de Contacto *</label>
+                     <label className="block text-sm font-semibold mb-1.5">Teléfono de Contacto *</label>
                      <input
                        type="tel"
                        name="telefono_contacto"
@@ -361,13 +415,13 @@ export default function CheckoutPage() {
                        onChange={handleChange}
                        required
                        placeholder="+57..."
-                       className="input"
+                       className="input min-h-[44px]"
                      />
                    </div>
 
                    {(useNewAddress || addresses.length === 0) && (
                      <div>
-                       <label className="block">Dirección de Entrega *</label>
+                       <label className="block text-sm font-semibold mb-1.5">Dirección de Entrega *</label>
                        <input
                          type="text"
                          name="direccion_entrega"
@@ -375,31 +429,32 @@ export default function CheckoutPage() {
                          onChange={handleChange}
                          required
                          placeholder="Calle, número, apto/casa"
-                         className="input"
+                         className="input min-h-[44px]"
                        />
                      </div>
                    )}
 
                    {!useNewAddress && addresses.length > 0 && selectedAddressId && (
                      <div>
-                       <label className="block">Dirección de Entrega</label>
+                       <label className="block text-sm font-semibold mb-1.5">Dirección de Entrega</label>
                        <input
                          type="text"
                          value={formData.direccion_entrega}
                          readOnly
-                         className="input opacity-75 bg-gray-50"
+                         className="input opacity-75 bg-gray-50 min-h-[44px]"
                        />
                      </div>
                    )}
 
                    <div>
-                     <label className="block">Notas Adicionales (Opcional)</label>
+                     <label className="block text-sm font-semibold mb-1.5">Notas Adicionales (Opcional)</label>
                      <textarea
                        name="notas"
                        value={formData.notas}
                        onChange={handleChange}
                        placeholder="Ej: Sin cebolla, cambios especiales, instrucciones..."
                        className="textarea"
+                       rows={3}
                      />
                    </div>
                  </div>
@@ -407,7 +462,7 @@ export default function CheckoutPage() {
 
               {/* Método de Pago */}
               <div className="card-lg">
-                <h2 className="text-2xl font-bold text-dark mb-6">Método de Pago</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-dark mb-5 sm:mb-6">Método de Pago</h2>
                 <PaymentMethodSelector
                   selectedMethod={paymentMethod}
                   onMethodChange={setPaymentMethod}
@@ -419,7 +474,7 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary btn-lg btn-block"
+                className="btn btn-primary btn-lg btn-block min-h-[48px] w-full"
               >
                 {loading ? (
                   <>
@@ -435,16 +490,16 @@ export default function CheckoutPage() {
 
           {/* Resumen */}
           <div className="lg:col-span-1">
-            <div className="card-lg bg-white sticky top-24 animate-slideUp">
-              <h2 className="text-2xl font-heading font-bold text-dark mb-6">
+            <div className="card-lg bg-white sticky top-20 animate-slideUp">
+              <h2 className="text-xl sm:text-2xl font-heading font-bold text-dark mb-4 sm:mb-6">
                 Resumen
               </h2>
 
-              <div className="space-y-3 mb-4 pb-4 border-b border-gray-200 max-h-64 overflow-y-auto">
+              <div className="space-y-2 sm:space-y-3 mb-4 pb-4 border-b border-gray-200 max-h-48 sm:max-h-64 overflow-y-auto custom-scrollbar">
                 {cart.map(item => (
                   <div key={item.id} className="flex justify-between text-sm text-gray-600">
-                    <span>{item.nombre} x {item.cantidad}</span>
-                    <span>${(item.precio * item.cantidad).toLocaleString('es-CO')}</span>
+                    <span className="truncate pr-2">{item.nombre} x {item.cantidad}</span>
+                    <span className="flex-shrink-0">${(item.precio * item.cantidad).toLocaleString('es-CO')}</span>
                   </div>
                 ))}
               </div>
@@ -464,7 +519,7 @@ export default function CheckoutPage() {
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                           placeholder="CÓDIGO"
-                          className="input pl-10"
+                          className="input pl-10 min-h-[44px]"
                           disabled={couponLoading}
                         />
                       </div>
@@ -472,7 +527,7 @@ export default function CheckoutPage() {
                         type="button"
                         onClick={handleApplyCoupon}
                         disabled={couponLoading || !couponCode.trim()}
-                        className="btn btn-primary px-4"
+                        className="btn btn-primary px-3 sm:px-4 min-h-[44px] flex-shrink-0"
                       >
                         {couponLoading ? (
                           <div className="spinner spinner-sm"></div>
@@ -486,12 +541,12 @@ export default function CheckoutPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-start justify-between">
-                      <div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <p className="font-bold text-green-800 flex items-center gap-2">
                           <Tag size={16} />
-                          {appliedCoupon.codigo}
+                          <span className="truncate">{appliedCoupon.codigo}</span>
                         </p>
                         <p className="text-sm text-green-700 mt-1">
                           {appliedCoupon.tipo_descuento === 'porcentaje'
@@ -502,7 +557,7 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={handleRemoveCoupon}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-500 hover:text-red-700 flex-shrink-0 active:scale-95 touch-feedback"
                         title="Remover cupón"
                       >
                         <X size={18} />
@@ -512,31 +567,39 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              <div className="space-y-2 mb-6 pb-6 border-b border-gray-200">
-                <div className="flex justify-between text-gray-600">
+              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-gray-200">
+                <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                   <span>Subtotal:</span>
                   <span>${total.toLocaleString('es-CO')}</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Impuestos (8%):</span>
-                  <span>${(total * 0.08).toLocaleString('es-CO')}</span>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Envío:</span>
-                  <span className="text-green-600 font-semibold">Gratis</span>
-                </div>
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-green-600 font-semibold">
+                  <div className="flex justify-between text-green-600 font-semibold text-sm sm:text-base">
                     <span>Descuento:</span>
                     <span>-${discountAmount.toLocaleString('es-CO')}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-gray-600 text-sm sm:text-base">
+                  <span>Impuestos{taxConfig.activo ? ` (${taxConfig.porcentaje}%)` : ''}:</span>
+                  <span>
+                    {taxConfig.activo && taxConfig.porcentaje > 0
+                      ? `$${((total - discountAmount) * (taxConfig.porcentaje / 100)).toLocaleString('es-CO')}`
+                      : '$0'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-600 text-sm sm:text-base">
+                  <span>Envío:</span>
+                  <span className={shippingAmount === 0 ? 'text-green-600 font-semibold' : ''}>
+                    {shippingAmount === 0
+                      ? 'Gratis'
+                      : `$${shippingAmount.toLocaleString('es-CO')}`}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-lg font-bold text-dark">Total:</span>
-                <span className="text-3xl font-heading font-bold text-primary">
-                  ${((total * 1.08) - discountAmount).toLocaleString('es-CO')}
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <span className="text-base sm:text-lg font-bold text-dark">Total:</span>
+                <span className="text-2xl sm:text-3xl font-heading font-bold text-primary">
+                  ${(total - discountAmount + ((total - discountAmount) * (taxConfig.activo ? taxConfig.porcentaje / 100 : 0)) + shippingAmount).toLocaleString('es-CO')}
                 </span>
               </div>
 

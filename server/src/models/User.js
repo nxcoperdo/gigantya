@@ -20,10 +20,10 @@ export async function createUser(userData) {
 
   const sql = `
     INSERT INTO usuarios (
-      nombre, 
-      email, 
-      telefono, 
-      contrasena_hash, 
+      nombre,
+      email,
+      telefono,
+      contrasena_hash,
       tipo_usuario,
       documento_identidad,
       otros_datos,
@@ -34,6 +34,53 @@ export async function createUser(userData) {
 
   try {
     const result = await query(sql, [
+      nombre,
+      email,
+      telefono,
+      contrasena_hash,
+      tipo_usuario,
+      documento_identidad,
+      JSON.stringify(otros_datos)
+    ]);
+    return result.insertId;
+  } catch (error) {
+    throw new Error(`Error creando usuario: ${error.message}`);
+  }
+}
+
+/**
+ * Crear nuevo usuario con una conexión específica (para transacciones)
+ */
+export async function createUserWithConnection(userData, connection) {
+  const {
+    nombre,
+    email,
+    telefono,
+    contrasena,
+    tipo_usuario, // 'cliente', 'restaurante', 'admin'
+    documento_identidad,
+    otros_datos = {}
+  } = userData;
+
+  // Hash de contrasena
+  const contrasena_hash = await bcrypt.hash(contrasena, 10);
+
+  const sql = `
+    INSERT INTO usuarios (
+      nombre,
+      email,
+      telefono,
+      contrasena_hash,
+      tipo_usuario,
+      documento_identidad,
+      otros_datos,
+      estado,
+      creado_en
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo', NOW())
+  `;
+
+  try {
+    const [result] = await connection.query(sql, [
       nombre,
       email,
       telefono,
@@ -141,6 +188,7 @@ export async function getUserProfile(id) {
 
 export default {
   createUser,
+  createUserWithConnection,
   getUserByEmail,
   getUserById,
   verifyPassword,

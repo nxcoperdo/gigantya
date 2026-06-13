@@ -1,46 +1,109 @@
+# ====================================================
+# Docker Compose para Gigantya
+# ====================================================
+# Uso:
+#   Desarrollo: docker-compose up -d
+#   Producción: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# ====================================================
+
 version: '3.8'
 
 services:
-  db:
+  # Base de Datos MySQL
+  mysql:
     image: mysql:8.0
-    container_name: gigantya-db
+    container_name: gigantya-mysql
     restart: always
     environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
       MYSQL_DATABASE: restaurante_pedidos_gigantya
-      MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_USER: gigantya_user
-      MYSQL_PASSWORD: gigantya123456
-    ports:
-      - '3306:3306'
+      MYSQL_PASSWORD: ${DB_PASSWORD:-gigantya123456}
     volumes:
-      - db_data:/var/lib/mysql
-
-  server:
-    build: ./server
-    container_name: gigantya-server
-    restart: always
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     ports:
-      - '5000:5000'
+      - "3306:3306"
+    networks:
+      - gigantya-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gigantya-api
+    restart: always
+    env_file:
+      - ./server/.env
     environment:
-      - NODE_ENV=production
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_USER=gigantya_user
-      - DB_PASSWORD=gigantya123456
-      - DB_NAME=restaurante_pedidos_gigantya
-      - CORS_ORIGIN=http://localhost:80
-      - JWT_SECRET=cambiar_esta_clave_en_produccion
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: gigantya_user
+      DB_PASSWORD: ${DB_PASSWORD:-gigantya123456}
+      DB_NAME: restaurante_pedidos_gigantya
+      NODE_ENV: production
+    ports:
+      - "5000:5000"
+      - "5001:5001"
     depends_on:
-      - db
+      mysql:
+        condition: service_healthy
+    networks:
+      - gigantya-network
+    volumes:
+      - ./server:/app
+      - /app/node_modules
 
-  client:
-    build: ./client
-    container_name: gigantya-client
+  # Frontend (desarrollo con Vite)
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: gigantya-frontend
+    restart: always
+    env_file:
+      - ./client/.env
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - gigantya-network
+
+  # Nginx (producción - reverse proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: gigantya-nginx
     restart: always
     ports:
-      - '80:80'
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./client/dist:/var/www/html
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - server
+      - api
+    networks:
+      - gigantya-network
+    profiles:
+      - production
 
 volumes:
-  db_data:
+  mysql_data:
+    driver: local
+
+networks:
+  gigantya-network:
+    driver: bridge

@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS restaurantes (
   calificacion DECIMAL(3, 2) DEFAULT 5.00,
   configuracion_pagos JSON,
   custom_config JSON,
+  -- Configuración de impuestos y envíos
+  configuracion_impuestos JSON DEFAULT NULL,
+  configuracion_envios JSON DEFAULT NULL,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -226,6 +229,20 @@ CREATE TABLE IF NOT EXISTS historial_pedidos (
   FOREIGN KEY (cambiado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
   INDEX idx_pedido_id (pedido_id),
   INDEX idx_cambio_en (cambio_en)
+);
+
+-- ====================================================
+-- Tabla: PASSWORD_RESET_TOKENS
+-- ====================================================
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT NOT NULL UNIQUE,
+  token VARCHAR(255) NOT NULL,
+  expira_en TIMESTAMP NOT NULL,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_token (token),
+  INDEX idx_expira_en (expira_en)
 );
 
 -- ====================================================

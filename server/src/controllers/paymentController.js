@@ -2,6 +2,7 @@ import * as PaymentProofModel from '../models/PaymentProof.js';
 import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
 import * as NotificationModel from '../models/Notification.js';
+import notificationService from '../services/notificationService.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -316,8 +317,9 @@ export async function approvePaymentProof(req, res) {
     await OrderModel.updateOrderStatus(proof.pedido_id, OrderModel.ORDER_STATES.PREPARANDO);
     await OrderModel.updatePaymentValidation(proof.pedido_id, 'aprobado');
 
-    // Notificar al cliente
+    // Notificar al cliente (interna y externa)
     try {
+      // Notificación interna
       await NotificationModel.createNotification({
         usuario_id: pedido.usuario_id,
         tipo: 'pago',
@@ -325,6 +327,25 @@ export async function approvePaymentProof(req, res) {
         mensaje: `Tu pago del pedido #${proof.pedido_id} ha sido aprobado. ¡Gracias!`,
         data: { pedido_id: proof.pedido_id }
       });
+
+      // Notificación externa (email/SMS)
+      const cliente = await RestaurantModel.getUserById(pedido.usuario_id);
+      const restauranteData = await RestaurantModel.getRestaurantById(pedido.restaurante_id);
+
+      const pedidoParaNotificar = {
+        id: proof.pedido_id,
+        total: pedido.total,
+        cliente_email: cliente?.email,
+        cliente_telefono: cliente?.telefono,
+        cliente_nombre: cliente?.nombre,
+        restaurante_nombre: restauranteData?.nombre
+      };
+
+      notificationService.notifyOrderStatusChange({
+        pedido: pedidoParaNotificar,
+        nuevoEstado: 'Pago Confirmado',
+        notifyCustomer: true
+      }).catch(err => console.error('Error enviando notificación de pago aprobado:', err));
     } catch (notifError) {
       console.error('Error enviando notificación de aprobación:', notifError);
     }
@@ -380,8 +401,9 @@ export async function rejectPaymentProof(req, res) {
     await OrderModel.updateOrderStatus(proof.pedido_id, OrderModel.ORDER_STATES.PAGO_RECHAZADO);
     await OrderModel.updatePaymentValidation(proof.pedido_id, 'rechazado');
 
-    // Notificar al cliente
+    // Notificar al cliente (interna y externa)
     try {
+      // Notificación interna
       await NotificationModel.createNotification({
         usuario_id: pedido.usuario_id,
         tipo: 'pago',
@@ -389,6 +411,27 @@ export async function rejectPaymentProof(req, res) {
         mensaje: `Tu pago del pedido #${proof.pedido_id} ha sido rechazado. ${motivo_rechazo ? 'Motivo: ' + motivo_rechazo : 'Contacta al restaurante.'}`,
         data: { pedido_id: proof.pedido_id }
       });
+
+      // Notificación externa (email/SMS) - más urgente
+      const cliente = await RestaurantModel.getUserById(pedido.usuario_id);
+      const restauranteData = await RestaurantModel.getRestaurantById(pedido.restaurante_id);
+
+      const pedidoParaNotificar = {
+        id: proof.pedido_id,
+        total: pedido.total,
+        cliente_email: cliente?.email,
+        cliente_telefono: cliente?.telefono,
+        cliente_nombre: cliente?.nombre,
+        restaurante_nombre: restauranteData?.nombre
+      };
+
+      // Email y SMS para pago rechazado (es más urgente)
+      notificationService.notifyOrderStatusChange({
+        pedido: pedidoParaNotificar,
+        nuevoEstado: 'Pago Rechazado',
+        notifyCustomer: true,
+        motivo: motivo_rechazo
+      }).catch(err => console.error('Error enviando notificación de pago rechazado:', err));
     } catch (notifError) {
       console.error('Error enviando notificación de rechazo:', notifError);
     }
