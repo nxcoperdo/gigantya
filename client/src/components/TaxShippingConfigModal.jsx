@@ -17,6 +17,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
   const [shippingConfig, setShippingConfig] = useState({
     activo: false,
     costo_fijo: 0,
+    envio_gratis_activo: false,
     envio_gratis_desde: 50000
   });
 
@@ -24,7 +25,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
     if (restaurant) {
       // Cargar configuración existente
       const defaultTax = { activo: true, porcentaje: 8 };
-      const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_desde: 50000 };
+      const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 50000 };
 
       setTaxConfig(restaurant.configuracion_impuestos || defaultTax);
       setShippingConfig(restaurant.configuracion_envios || defaultShipping);
@@ -54,6 +55,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
         configuracion_envios: {
           activo: shippingConfig.activo,
           costo_fijo: parseFloat(shippingConfig.costo_fijo) || 0,
+          envio_gratis_activo: shippingConfig.envio_gratis_activo,
           envio_gratis_desde: parseFloat(shippingConfig.envio_gratis_desde) || 0
         }
       });
@@ -184,6 +186,20 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                 </p>
               </div>
 
+              <div className="flex items-center gap-3 pl-1">
+                <input
+                  type="checkbox"
+                  id="envio_gratis_activo"
+                  checked={shippingConfig.envio_gratis_activo}
+                  onChange={(e) => setShippingConfig({ ...shippingConfig, envio_gratis_activo: e.target.checked })}
+                  className="w-5 h-5 text-primary rounded focus:ring-primary"
+                  disabled={!shippingConfig.activo}
+                />
+                <label htmlFor="envio_gratis_activo" className="font-semibold text-gray-700">
+                  Habilitar envío gratis por superar monto
+                </label>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold mb-2">
                   Envío gratis desde ($)
@@ -195,7 +211,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     step="5000"
                     value={shippingConfig.envio_gratis_desde}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, envio_gratis_desde: e.target.value })}
-                    disabled={!shippingConfig.activo}
+                    disabled={!shippingConfig.activo || !shippingConfig.envio_gratis_activo}
                     className="input pl-12 disabled:bg-gray-200"
                   />
                   <Truck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -205,7 +221,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                 </p>
               </div>
 
-              {shippingConfig.activo && shippingConfig.envio_gratis_desde > 0 && (
+              {shippingConfig.activo && shippingConfig.envio_gratis_activo && shippingConfig.envio_gratis_desde > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
                   <p className="font-semibold">Información:</p>
                   <p>

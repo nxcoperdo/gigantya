@@ -23,7 +23,7 @@ export default function CheckoutPage() {
   const [restauranteId, setRestauranteId] = useState(null);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
-  const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_desde: 0 });
+  const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
   const [shippingAmount, setShippingAmount] = useState(0);
 
   // Estado para cupones
@@ -95,7 +95,7 @@ export default function CheckoutPage() {
         const restaurant = response.data.restaurante;
 
         const defaultTax = { activo: true, porcentaje: 8 };
-        const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_desde: 0 };
+        const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
 
         const tax = restaurant.configuracion_impuestos || defaultTax;
         const shipping = restaurant.configuracion_envios || defaultShipping;
@@ -106,7 +106,7 @@ export default function CheckoutPage() {
         console.error('Error cargando configuración del restaurante:', error);
         // Usar valores por defecto en caso de error
         setTaxConfig({ activo: true, porcentaje: 8 });
-        setShippingConfig({ activo: false, costo_fijo: 0, envio_gratis_desde: 0 });
+        setShippingConfig({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
       }
     };
 
@@ -127,8 +127,13 @@ export default function CheckoutPage() {
 
     // Calcular envío
     let shipAmount = 0;
-    if (shippingConfig.activo && subtotalConDescuento < shippingConfig.envio_gratis_desde) {
-      shipAmount = shippingConfig.costo_fijo;
+    if (shippingConfig.activo) {
+      // Solo aplicar envío gratis si está activado y el subtotal supera el monto
+      if (shippingConfig.envio_gratis_activo && subtotalConDescuento >= shippingConfig.envio_gratis_desde) {
+        shipAmount = 0;
+      } else {
+        shipAmount = shippingConfig.costo_fijo;
+      }
     }
 
     setShippingAmount(shipAmount);

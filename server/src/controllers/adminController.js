@@ -584,17 +584,20 @@ export async function updateRestaurantConfig(req, res) {
 
     if (configuracion_envios !== undefined) {
       // Validar configuración de envíos
-      const { activo, costo_fijo, envio_gratis_desde } = configuracion_envios;
+      const { activo, costo_fijo, envio_gratis_activo, envio_gratis_desde } = configuracion_envios;
       if (typeof activo !== 'boolean') {
         return res.status(400).json({ error: 'El campo "activo" debe ser booleano' });
       }
       if (typeof costo_fijo !== 'number' || costo_fijo < 0) {
         return res.status(400).json({ error: 'El costo fijo debe ser un número positivo' });
       }
+      if (typeof envio_gratis_activo !== 'boolean') {
+        return res.status(400).json({ error: 'El campo "envio_gratis_activo" debe ser booleano' });
+      }
       if (typeof envio_gratis_desde !== 'number' || envio_gratis_desde < 0) {
         return res.status(400).json({ error: 'El monto para envío gratis debe ser un número positivo' });
       }
-      updateData.configuracion_envios = JSON.stringify({ activo, costo_fijo, envio_gratis_desde });
+      updateData.configuracion_envios = JSON.stringify({ activo, costo_fijo, envio_gratis_activo, envio_gratis_desde });
     }
 
     if (Object.keys(updateData).length === 0) {

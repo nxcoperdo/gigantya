@@ -63,9 +63,9 @@ export function normalizeOrderItems(items) {
  * @param {Array} items - Items del pedido
  * @param {Object} coupon - Cupón aplicado (opcional)
  * @param {Object} taxConfig - Configuración de impuestos { activo, porcentaje }
- * @param {Object} shippingConfig - Configuración de envíos { activo, costo_fijo, envio_gratis_desde }
+ * @param {Object} shippingConfig - Configuración de envíos { activo, costo_fijo, envio_gratis_activo, envio_gratis_desde }
  */
-export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: true, porcentaje: 8 }, shippingConfig = { activo: false, costo_fijo: 0, envio_gratis_desde: 0 }) {
+export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: true, porcentaje: 8 }, shippingConfig = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 }) {
   const subtotal = items.reduce(
     (sum, item) => sum + Number(item.precio_unitario) * Number(item.cantidad),
     0
@@ -92,10 +92,13 @@ export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: 
     taxAmount = subtotalConDescuento * (taxConfig.porcentaje / 100);
   }
 
-  // Calcular envío (solo si está activo y el subtotal no alcanza para envío gratis)
+  // Calcular envío (solo si está activo)
   let shippingAmount = 0;
   if (shippingConfig.activo) {
-    if (subtotalConDescuento < shippingConfig.envio_gratis_desde) {
+    // Verificar si el envío gratis está activado y el subtotal supera el monto
+    if (shippingConfig.envio_gratis_activo && subtotalConDescuento >= shippingConfig.envio_gratis_desde) {
+      shippingAmount = 0;
+    } else {
       shippingAmount = shippingConfig.costo_fijo;
     }
   }
