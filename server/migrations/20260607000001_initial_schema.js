@@ -24,7 +24,7 @@ export async function up(knex) {
     table.text('descripcion');
     table.string('direccion', 255);
     table.string('telefono', 20);
-    table.string('ciudad', 100).defaultTo('Giganta, Huila');
+    table.string('ciudad', 100).defaultTo('GigantYA, Huila');
     table.time('horario_apertura');
     table.time('horario_cierre');
     table.string('imagen_url', 255);

@@ -162,7 +162,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=tu_email@gmail.com
 SMTP_PASS=contraseña_de_aplicacion_gmail
-EMAIL_FROM=Gigantá <noreply@tudominio.com>
+EMAIL_FROM=GigantYA <noreply@tudominio.com>
 ```
 
 **Generar JWT_SECRET seguro:**

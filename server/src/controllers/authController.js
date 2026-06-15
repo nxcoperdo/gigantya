@@ -312,7 +312,7 @@ export async function forgotPassword(req, res) {
           </div>
 
           <div style="text-align: center; margin-top: 30px;">
-            <p style="font-size: 14px; color: #999;">Gigantá - Tu plataforma de pedidos</p>
+            <p style="font-size: 14px; color: #999;">GigantYA - Tu plataforma de pedidos</p>
           </div>
         </div>
       </div>
@@ -321,7 +321,7 @@ export async function forgotPassword(req, res) {
     // Enviar email
     const emailResult = await sendEmail({
       to: email,
-      subject: '🔐 Recuperar Contraseña - Gigantá',
+      subject: '🔐 Recuperar Contraseña - GigantYA',
       html: emailHtml
     });
 

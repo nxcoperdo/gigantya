@@ -158,7 +158,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
-EMAIL_FROM=Gigantá <noreply@gigantya.com>
+EMAIL_FROM=GigantYA <noreply@gigantya.com>
 
 # Frontend URL - CAMBIAR POR TU DOMINIO
 FRONTEND_URL=http://localhost:5173

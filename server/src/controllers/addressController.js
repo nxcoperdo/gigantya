@@ -56,7 +56,7 @@ export async function createAddress(req, res) {
       usuario_id: req.user.id,
       tipo: tipo || 'residencia',
       direccion,
-      ciudad: ciudad || 'Giganta, Huila',
+      ciudad: ciudad || 'GigantYA, Huila',
       telefono,
       notas,
       es_default: es_default ? 1 : 0

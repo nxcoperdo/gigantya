@@ -13,9 +13,9 @@ export async function createRestaurant(restaurantData) {
     horario_apertura,
     horario_cierre,
     imagen_url,
-    // FIX: la migración inicial define la ciudad sin tilde ('Giganta, Huila').
+    // FIX: la migración inicial define la ciudad con tilde ('GigantYA, Huila').
     // Unificamos para evitar inconsistencias al filtrar por ciudad.
-    ciudad = 'Giganta, Huila'
+    ciudad = 'GigantYA, Huila'
   } = restaurantData;
 
   const sql = `
@@ -66,7 +66,7 @@ export async function createRestaurantWithConnection(restaurantData, connection)
     horario_apertura,
     horario_cierre,
     imagen_url,
-    ciudad = 'Giganta, Huila'
+    ciudad = 'GigantYA, Huila'
   } = restaurantData;
 
   const sql = `

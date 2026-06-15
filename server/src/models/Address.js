@@ -36,7 +36,7 @@ export async function createAddress(addressData) {
     usuario_id,
     tipo = 'residencia',
     direccion,
-    ciudad = 'Giganta, Huila',
+    ciudad = 'GigantYA, Huila',
     telefono,
     notas,
     es_default = 0

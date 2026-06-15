@@ -107,7 +107,7 @@ const EmailTemplates = {
         <p style="font-size: 14px; color: #777;">Te notificaremos cuando tu pedido cambie de estado.</p>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gracias por usar Gigantá 🍽️</p>
+          <p style="font-size: 14px; color: #999;">Gracias por usar GigantYA 🍽️</p>
         </div>
       </div>
     </div>
@@ -130,7 +130,7 @@ const EmailTemplates = {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gigantá - Tu pedido favorito</p>
+          <p style="font-size: 14px; color: #999;">GigantYA - Tu pedido favorito</p>
         </div>
       </div>
     </div>
@@ -152,7 +152,7 @@ const EmailTemplates = {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gigantá</p>
+          <p style="font-size: 14px; color: #999;">GigantYA</p>
         </div>
       </div>
     </div>
@@ -179,7 +179,7 @@ const EmailTemplates = {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gigantá - Gracias por tu compra</p>
+          <p style="font-size: 14px; color: #999;">GigantYA - Gracias por tu compra</p>
         </div>
       </div>
     </div>
@@ -204,7 +204,7 @@ const EmailTemplates = {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gigantá</p>
+          <p style="font-size: 14px; color: #999;">GigantYA</p>
         </div>
       </div>
     </div>
@@ -226,7 +226,7 @@ const EmailTemplates = {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gigantá</p>
+          <p style="font-size: 14px; color: #999;">GigantYA</p>
         </div>
       </div>
     </div>
@@ -252,7 +252,7 @@ const EmailTemplates = {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <p style="font-size: 14px; color: #999;">Gigantá</p>
+          <p style="font-size: 14px; color: #999;">GigantYA</p>
         </div>
       </div>
     </div>
@@ -272,7 +272,7 @@ export async function sendEmail({ to, subject, html, text }) {
     return { sent: false, reason: 'email_not_configured' };
   }
 
-  const from = process.env.EMAIL_FROM || 'Gigantá <noreply@gigantya.com>';
+  const from = process.env.EMAIL_FROM || 'GigantYA <noreply@gigantya.com>';
 
   try {
     const info = await getEmailTransporter().sendMail({
@@ -309,15 +309,15 @@ export async function sendOrderNotification({ to, template, pedido, motivo }) {
 
 function getSubjectForTemplate(template, pedido) {
   const subjects = {
-    newOrderCustomer: `✅ Pedido #${pedido.id} confirmado - Gigantá`,
-    orderPreparing: `🍳 Pedido #${pedido.id} en preparación - Gigantá`,
-    orderReady: `✅ Pedido #${pedido.id} listo - Gigantá`,
-    orderDelivered: `🎉 Pedido #${pedido.id} entregado - Gigantá`,
-    newOrderRestaurant: `🔔 Nuevo Pedido #${pedido.id} - Gigantá`,
+    newOrderCustomer: `✅ Pedido #${pedido.id} confirmado - GigantYA`,
+    orderPreparing: `🍳 Pedido #${pedido.id} en preparación - GigantYA`,
+    orderReady: `✅ Pedido #${pedido.id} listo - GigantYA`,
+    orderDelivered: `🎉 Pedido #${pedido.id} entregado - GigantYA`,
+    newOrderRestaurant: `🔔 Nuevo Pedido #${pedido.id} - GigantYA`,
     paymentApproved: `✅ Pago aprobado - Pedido #${pedido.id}`,
     paymentRejected: `⚠️ Pago rechazado - Pedido #${pedido.id}`
   };
-  return subjects[template] || 'Notificación de Gigantá';
+  return subjects[template] || 'Notificación de GigantYA';
 }
 
 // ====================================================
@@ -359,12 +359,12 @@ export async function sendSms({ to, body }) {
  */
 export async function sendOrderSms({ to, type, pedido }) {
   const messages = {
-    newOrder: `🍽️ Gigantá: Tu pedido #${pedido.id} ha sido confirmado. Total: $${Number(pedido.total).toLocaleString('es-CO')}`,
-    preparing: `🍳 Gigantá: Tu pedido #${pedido.id} está siendo preparado. ¡Pronto estará listo!`,
-    ready: `✅ Gigantá: Tu pedido #${pedido.id} está listo para entrega.`,
-    delivered: `🎉 Gigantá: Tu pedido #${pedido.id} ha sido entregado. ¡Gracias!`,
-    paymentApproved: `✅ Gigantá: Tu pago del pedido #${pedido.id} ha sido aprobado.`,
-    paymentRejected: `⚠️ Gigantá: Tu pago del pedido #${pedido.id} ha sido rechazado. Contacta al restaurante.`
+    newOrder: `🍽️ GigantYA: Tu pedido #${pedido.id} ha sido confirmado. Total: $${Number(pedido.total).toLocaleString('es-CO')}`,
+    preparing: `🍳 GigantYA: Tu pedido #${pedido.id} está siendo preparado. ¡Pronto estará listo!`,
+    ready: `✅ GigantYA: Tu pedido #${pedido.id} está listo para entrega.`,
+    delivered: `🎉 GigantYA: Tu pedido #${pedido.id} ha sido entregado. ¡Gracias!`,
+    paymentApproved: `✅ GigantYA: Tu pago del pedido #${pedido.id} ha sido aprobado.`,
+    paymentRejected: `⚠️ GigantYA: Tu pago del pedido #${pedido.id} ha sido rechazado. Contacta al restaurante.`
   };
 
   const body = messages[type];

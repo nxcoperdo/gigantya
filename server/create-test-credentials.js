@@ -41,10 +41,10 @@ async function createTestCredentials() {
       [
         restauranteUserId,
         'El Sabor Giganteno',
-        'Deliciosa comida tradicional de Gigantá con los mejores ingredientes locales',
-        'Calle Principal 123, Gigantá',
+        'Deliciosa comida tradicional de GigantYA con los mejores ingredientes locales',
+        'Calle Principal 123, GigantYA',
         '3009876543',
-        'Giganta, Huila',
+        'GigantYA, Huila',
         '10:00:00',
         '22:00:00',
         'activo',

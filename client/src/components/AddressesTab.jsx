@@ -13,7 +13,7 @@ export default function AddressesTab() {
   const [formData, setFormData] = useState({
     tipo: 'residencia',
     direccion: '',
-    ciudad: 'Giganta, Huila',
+    ciudad: 'GigantYA, Huila',
     telefono: '',
     notas: '',
     es_default: false,
@@ -68,7 +68,7 @@ export default function AddressesTab() {
       setFormData({
         tipo: 'residencia',
         direccion: '',
-        ciudad: 'Giganta, Huila',
+        ciudad: 'GigantYA, Huila',
         telefono: '',
         notas: '',
         es_default: false,
@@ -269,7 +269,7 @@ export default function AddressesTab() {
                   setFormData({
                     tipo: 'residencia',
                     direccion: '',
-                    ciudad: 'Giganta, Huila',
+                    ciudad: 'GigantYA, Huila',
                     telefono: '',
                     notas: '',
                     es_default: false,

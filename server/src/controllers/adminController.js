@@ -205,7 +205,7 @@ export async function adminCreateUser(req, res) {
           horario_apertura: '09:00',
           horario_cierre: '21:00',
           imagen_url: null,
-          ciudad: 'Giganta, Huila'
+          ciudad: 'GigantYA, Huila'
         }, connection);
         logger.info(`Admin creó restaurante pendiente para usuario ${email}`);
       }
