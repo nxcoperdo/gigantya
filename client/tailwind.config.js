@@ -2,8 +2,10 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx}",
+    "./src/**/*.{js,jsx,ts,tsx}",
   ],
+  // Habilitar JIT (ya es default en Tailwind 3.x)
+  // Esto genera solo las clases que se usan realmente
   theme: {
     extend: {
       colors: {
@@ -77,6 +79,19 @@ export default {
       },
     },
   },
+  // Clases que se generan dinámicamente (no aparecen en el AST estático)
+  // pero se usan en el código via template strings / condicionales
+  safelist: [
+    // Estados de pedidos
+    'bg-yellow-50', 'text-yellow-800', 'border-yellow-200',
+    'bg-blue-50', 'text-blue-800', 'border-blue-200',
+    'bg-purple-50', 'text-purple-800', 'border-purple-200',
+    'bg-green-50', 'text-green-800', 'border-green-200',
+    'bg-red-50', 'text-red-800', 'border-red-200',
+    'bg-orange-50', 'text-orange-800', 'border-orange-200',
+    'bg-emerald-50', 'text-emerald-800', 'border-emerald-200',
+    // Estados de validación
+    'text-green-600', 'text-red-600',
+  ],
   plugins: [],
 }
-

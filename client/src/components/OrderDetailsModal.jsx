@@ -197,12 +197,12 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                       <span className="font-semibold text-red-600">-${Number(displayOrder.descuento).toLocaleString('es-CO')}</span>
                     </div>
                   )}
-                  {displayOrder.costo_envio > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Costo de envío:</span>
-                      <span className="font-semibold text-dark">${Number(displayOrder.costo_envio).toLocaleString('es-CO')}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Envío:</span>
+                    <span className={displayOrder.costo_envio === 0 ? 'text-green-600 font-semibold' : ''}>
+                      {displayOrder.costo_envio === 0 ? 'Gratis' : `$${Number(displayOrder.costo_envio).toLocaleString('es-CO')}`}
+                    </span>
+                  </div>
                   <div className="border-t border-gray-300 pt-2 mt-2 flex items-center justify-between">
                     <span className="font-bold text-dark flex items-center gap-2">
                       <DollarSign size={18} className="text-primary" />

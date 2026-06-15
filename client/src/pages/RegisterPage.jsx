@@ -64,7 +64,7 @@ export default function RegisterPage() {
           <p className="font-semibold mb-1">Importante para restaurantes</p>
           <p>
             Los restaurantes no se registran desde esta pantalla. Para ingresar a la plataforma,
-            deben pagar una mensualidad de <strong>$200.000 COP</strong> y ser habilitados por el equipo administrativo.
+            deben contactarse <strong>coderepairtech@gmail.com</strong> y ser habilitados por el equipo administrativo.
           </p>
         </div>
 

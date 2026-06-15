@@ -1,13 +1,15 @@
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, X, ShoppingCart, User, Bell } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { notificationService } from '../services/api';
 import NotificationBadge from './NotificationBadge';
 import NotificationCenter from './NotificationCenter';
 import NotificationAlertModal from './NotificationAlertModal';
 import { playNotificationSound, resumeAudioContext } from '../utils/notificationSound';
 
-export default function Header() {
+// Componente memoizado: solo se re-renderiza si cambian sus props
+const Header = memo(function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -27,33 +29,36 @@ export default function Header() {
   const previousUnreadCountRef = useRef(0);
   const lastAlertedNotificationIdRef = useRef(null);
 
-  const closeNotificationAlert = () => {
-    // Detener cualquier alarma y cerrar la alerta manualmente
+  // Handlers memoizados para evitar re-renders innecesarios en hijos
+  const closeNotificationAlert = useCallback(() => {
     if (notificationAlertTimerRef.current) {
       clearTimeout(notificationAlertTimerRef.current);
       notificationAlertTimerRef.current = null;
     }
-    stopNotificationAlarm();
-    setNotificationAlertOpen(false);
-  };
-
-  const stopNotificationAlarm = () => {
     if (alertIntervalRef.current) {
       clearInterval(alertIntervalRef.current);
       alertIntervalRef.current = null;
     }
-  };
+    setNotificationAlertOpen(false);
+  }, []);
 
-  const startNotificationAlarm = () => {
+  const stopNotificationAlarm = useCallback(() => {
+    if (alertIntervalRef.current) {
+      clearInterval(alertIntervalRef.current);
+      alertIntervalRef.current = null;
+    }
+  }, []);
+
+  const startNotificationAlarm = useCallback(() => {
     if (!alertIntervalRef.current) {
       playNotificationSound();
       alertIntervalRef.current = setInterval(() => {
         playNotificationSound();
       }, 3500);
     }
-  };
+  }, []);
 
-  const showNotificationAlert = (notification, count) => {
+  const showNotificationAlert = useCallback((notification, count) => {
     const latestId = notification?.id ?? null;
     if (latestId && lastAlertedNotificationIdRef.current === latestId) return;
 
@@ -65,67 +70,63 @@ export default function Header() {
     });
     setNotificationAlertOpen(true);
     startNotificationAlarm();
-  };
+  }, [startNotificationAlarm]);
 
-  const handleUnreadCountChange = (count) => {
+  const handleUnreadCountChange = useCallback((count) => {
     setUnreadCount(count);
-
     if (count < previousUnreadCountRef.current) {
       previousUnreadCountRef.current = count;
     }
-
     if (count === 0) {
-      if (alertIntervalRef.current) {
-        clearInterval(alertIntervalRef.current);
-        alertIntervalRef.current = null;
-      }
       closeNotificationAlert();
     }
-  };
+  }, [closeNotificationAlert]);
 
-  const updateUnreadCount = async () => {
-    try {
-      const { notificationService } = await import('../services/api');
-      const res = await notificationService.getNotifications();
-      const latestNotification = res.data?.[0];
-      const newCount = res.data.filter(n => n.leido === 0).length;
-
-      if (!initialLoadRef.current && newCount > previousUnreadCountRef.current) {
-        showNotificationAlert(latestNotification, newCount);
-      }
-
-      previousUnreadCountRef.current = newCount;
-      initialLoadRef.current = false;
-      setUnreadCount(newCount);
-    } catch (e) {
-      console.error('Error updating unread count:', e);
-    }
-  };
-
+  // Polling de notificaciones - separado para que no afecte al resto del Header
   useEffect(() => {
-    if (isAuthenticated) {
-      updateUnreadCount();
-      const interval = setInterval(updateUnreadCount, 10000);
-      return () => clearInterval(interval);
+    if (!isAuthenticated) {
+      initialLoadRef.current = true;
+      previousUnreadCountRef.current = 0;
+      lastAlertedNotificationIdRef.current = null;
+      closeNotificationAlert();
+      return;
     }
 
-    initialLoadRef.current = true;
-    previousUnreadCountRef.current = 0;
-    lastAlertedNotificationIdRef.current = null;
-    closeNotificationAlert();
-    if (alertIntervalRef.current) {
-      clearInterval(alertIntervalRef.current);
-      alertIntervalRef.current = null;
-    }
-  }, [isAuthenticated]);
+    let cancelled = false;
 
+    const updateUnreadCount = async () => {
+      if (cancelled) return;
+      try {
+        const res = await notificationService.getNotifications();
+        if (cancelled) return;
+        const latestNotification = res.data?.[0];
+        const newCount = res.data.filter(n => n.leido === 0).length;
+
+        if (!initialLoadRef.current && newCount > previousUnreadCountRef.current) {
+          showNotificationAlert(latestNotification, newCount);
+        }
+
+        previousUnreadCountRef.current = newCount;
+        initialLoadRef.current = false;
+        setUnreadCount(newCount);
+      } catch (e) {
+        console.error('Error updating unread count:', e);
+      }
+    };
+
+    updateUnreadCount();
+    // Polling cada 15s (reducido de 10s para menos carga)
+    const interval = setInterval(updateUnreadCount, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, showNotificationAlert, closeNotificationAlert]);
 
   // Resume audio context on first user interaction (autoplay policy)
   useEffect(() => {
-    const resume = () => {
-      resumeAudioContext();
-    };
-    // Listen to multiple interaction types for better reliability
+    const resume = () => resumeAudioContext();
     document.addEventListener('click', resume, { once: true });
     document.addEventListener('touchstart', resume, { once: true });
     document.addEventListener('keydown', resume, { once: true });
@@ -136,7 +137,7 @@ export default function Header() {
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     if (alertIntervalRef.current) {
       clearInterval(alertIntervalRef.current);
       alertIntervalRef.current = null;
@@ -144,11 +145,23 @@ export default function Header() {
     logout();
     navigate('/');
     setMobileMenuOpen(false);
-  };
+  }, [logout, navigate]);
+
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen(prev => !prev);
+  }, []);
+
+  const toggleNotif = useCallback(() => {
+    setNotifOpen(prev => !prev);
+  }, []);
+
+  const toggleDropdown = useCallback(() => {
+    setDropdownOpen(prev => !prev);
+  }, []);
 
   return (
     <>
-      <header className="bg-white shadow-soft sticky top-0 z-50 backdrop-blur-sm bg-opacity-98">
+      <header className="bg-white shadow-soft sticky top-0 z-50 backdrop-blur-sm bg-opacity-98 safe-top">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity active:scale-95 touch-feedback">
@@ -179,11 +192,9 @@ export default function Header() {
                  )}
 
                  {user?.tipo_usuario === 'cliente' && (
-                  <>
-                    <Link to="/orders" className="text-gray-600 hover:text-primary font-medium transition-colors">
-                      Mis Pedidos
-                    </Link>
-                  </>
+                  <Link to="/orders" className="text-gray-600 hover:text-primary font-medium transition-colors">
+                    Mis Pedidos
+                  </Link>
                 )}
 
                 {user?.tipo_usuario === 'restaurante' && (
@@ -208,7 +219,7 @@ export default function Header() {
                 {/* Campana de notificaciones */}
                 <div className="relative">
                   <button
-                    onClick={() => setNotifOpen(!notifOpen)}
+                    onClick={toggleNotif}
                     className={`p-2 rounded-full hover:bg-light transition-colors relative text-gray-600 hover:text-primary active:scale-95 touch-feedback ${notifOpen ? 'bg-light' : ''}`}
                     aria-label="Notificaciones"
                   >
@@ -220,7 +231,7 @@ export default function Header() {
                 {/* Dropdown de usuario */}
                 <div className="relative">
                   <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    onClick={toggleDropdown}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-light transition-colors active:scale-95 touch-feedback"
                     aria-expanded={dropdownOpen}
                   >
@@ -260,7 +271,7 @@ export default function Header() {
           {/* Mobile Menu Button */}
           <button
             className="md:hidden p-2.5 hover:bg-light rounded-xl transition-colors active:scale-95 touch-feedback"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onClick={toggleMobileMenu}
             aria-label="Menú"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -367,7 +378,7 @@ export default function Header() {
       <NotificationCenter
         isOpen={notifOpen}
         onClose={() => setNotifOpen(false)}
-        onNotificationArrived={(notification, count) => showNotificationAlert(notification, count)}
+        onNotificationArrived={showNotificationAlert}
       />
       <NotificationAlertModal
         isOpen={notificationAlertOpen}
@@ -378,4 +389,6 @@ export default function Header() {
       />
     </>
   );
-}
+});
+
+export default Header;

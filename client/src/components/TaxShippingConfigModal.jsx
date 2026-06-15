@@ -27,8 +27,19 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
       const defaultTax = { activo: true, porcentaje: 8 };
       const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 50000 };
 
-      setTaxConfig(restaurant.configuracion_impuestos || defaultTax);
-      setShippingConfig(restaurant.configuracion_envios || defaultShipping);
+      const taxConfig = restaurant.configuracion_impuestos || defaultTax;
+      const shippingConfig = restaurant.configuracion_envios || defaultShipping;
+
+      setTaxConfig({
+        activo: taxConfig.activo ?? defaultTax.activo,
+        porcentaje: taxConfig.porcentaje ?? defaultTax.porcentaje
+      });
+      setShippingConfig({
+        activo: shippingConfig.activo ?? defaultShipping.activo,
+        costo_fijo: shippingConfig.costo_fijo ?? defaultShipping.costo_fijo,
+        envio_gratis_activo: shippingConfig.envio_gratis_activo ?? defaultShipping.envio_gratis_activo,
+        envio_gratis_desde: shippingConfig.envio_gratis_desde ?? defaultShipping.envio_gratis_desde
+      });
     }
   }, [restaurant]);
 

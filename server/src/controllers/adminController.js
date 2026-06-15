@@ -654,4 +654,5 @@ export default {
   getAdvancedAnalytics,
   updateRestaurantPlan,
   getRestaurantSubscriptionHistory,
+  updateRestaurantConfig,
 };

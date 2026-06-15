@@ -4,18 +4,40 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /**
- * Crear pool de conexiones a MySQL
- * Esto permite reutilizar conexiones de forma eficiente
+ * Crear pool de conexiones a MySQL optimizado para producción
+ *
+ * Optimizaciones:
+ * - connectionLimit aumentado para mejor throughput
+ * - namedPlaceholders para queries más legibles
+ * - dateStrings para evitar conversiones de zona horaria
+ * - supportBigNumbers según necesidad
  */
+const isProduction = process.env.NODE_ENV === 'production';
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.NODE_ENV === 'test' ? 'restaurante_pedidos_test' : (process.env.DB_NAME || 'restaurante_pedidos_gigantya'),
+  database: process.env.NODE_ENV === 'test'
+    ? 'restaurante_pedidos_test'
+    : (process.env.DB_NAME || 'restaurante_pedidos_gigantya'),
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  // En producción usar más conexiones (basado en CPU cores)
+  connectionLimit: isProduction ? 20 : 10,
+  queueLimit: 0,
+  // Reutilizar conexiones idle
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  // Charset correcto
+  charset: 'utf8mb4',
+  // Para evitar problemas de zona horaria
+  dateStrings: false,
+  // Permitir placeholders nombrados (más legibles)
+  namedPlaceholders: false,
+  // Decimal como string para evitar pérdida de precisión
+  // (en este caso lo desactivamos para que nos devuelva number directamente)
+  decimalNumbers: true,
 });
 
 /**
@@ -40,8 +62,16 @@ export async function testConnection() {
  * @returns {Promise<array>} Resultados
  */
 export async function query(sql, params = []) {
+  const start = Date.now();
   try {
     const [results] = await pool.query(sql, params);
+    // Log de queries lentas (>500ms) en desarrollo
+    if (!isProduction) {
+      const duration = Date.now() - start;
+      if (duration > 500) {
+        console.warn(`⚠️ Slow query (${duration}ms):`, sql.substring(0, 100));
+      }
+    }
     return results;
   } catch (error) {
     console.error('Error en query:', error);
@@ -50,7 +80,7 @@ export async function query(sql, params = []) {
 }
 
 /**
- * Obtener una columna
+ * Obtener una columna (primera fila)
  */
 export async function queryOne(sql, params = []) {
   const results = await query(sql, params);
@@ -64,5 +94,11 @@ export async function getConnection() {
   return await pool.getConnection();
 }
 
-export default pool;
+/**
+ * Cerrar el pool (útil para tests y graceful shutdown)
+ */
+export async function closePool() {
+  await pool.end();
+}
 
+export default pool;

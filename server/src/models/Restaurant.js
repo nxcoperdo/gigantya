@@ -148,6 +148,35 @@ export async function getRestaurantById(id) {
   
   if (!restaurante) return null;
 
+  // Parsear campos JSON
+  console.log('RestaurantModel - Raw configuracion_impuestos:', restaurante.configuracion_impuestos);
+  console.log('RestaurantModel - Raw configuracion_envios:', restaurante.configuracion_envios);
+
+  if (restaurante.configuracion_impuestos) {
+    try {
+      restaurante.configuracion_impuestos = JSON.parse(restaurante.configuracion_impuestos);
+    } catch (e) {
+      console.error('Error parsing configuracion_impuestos:', e);
+      restaurante.configuracion_impuestos = { activo: true, porcentaje: 8 };
+    }
+  } else {
+    restaurante.configuracion_impuestos = { activo: true, porcentaje: 8 };
+  }
+
+  if (restaurante.configuracion_envios) {
+    try {
+      restaurante.configuracion_envios = JSON.parse(restaurante.configuracion_envios);
+    } catch (e) {
+      console.error('Error parsing configuracion_envios:', e);
+      restaurante.configuracion_envios = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
+    }
+  } else {
+    restaurante.configuracion_envios = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
+  }
+
+  console.log('RestaurantModel - Parsed configuracion_impuestos:', restaurante.configuracion_impuestos);
+  console.log('RestaurantModel - Parsed configuracion_envios:', restaurante.configuracion_envios);
+
   // Obtener categorías y productos
   const productos = await query(`
     SELECT 
@@ -230,6 +259,8 @@ export async function updateRestaurant(id, updateData) {
     'plan',
     'banner_url',
     'custom_config',
+    'configuracion_impuestos',
+    'configuracion_envios',
     'fecha_vencimiento_plan',
   ];
 
@@ -252,7 +283,7 @@ export async function updateRestaurant(id, updateData) {
 
     let value = updateData[field];
     // Stringify objects for JSON columns
-    if ((field === 'custom_config' || field === 'configuracion_pagos') && typeof value === 'object' && value !== null) {
+    if ((field === 'custom_config' || field === 'configuracion_pagos' || field === 'configuracion_impuestos' || field === 'configuracion_envios') && typeof value === 'object' && value !== null) {
       value = JSON.stringify(value);
     }
     values.push(value);

@@ -15,13 +15,24 @@
   --color-dark: #1f1b1a;
 }
 
-* {
-  @apply transition-colors duration-200;
+/* Transición global: solo en elementos no-form (evita parpadeo en inputs iOS) */
+*:not(input):not(select):not(textarea):not(button) {
+  transition-property: color, background-color, border-color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+button, a {
+  transition-property: color, background-color, border-color, fill, stroke, opacity, transform, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
 }
 
 html {
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -29,6 +40,10 @@ body {
   font-weight: 400;
   letter-spacing: 0.5px;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
 }
 
 /* Prevenir zoom en iOS */
@@ -652,7 +667,7 @@ label {
   }
 }
 
-/* Reduced motion support */
+/* Reduced motion: respetar preferencia del usuario (accesibilidad) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -660,5 +675,35 @@ label {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-marquee,
+  .animate-float,
+  .animate-float-delayed,
+  .animate-bounce-subtle,
+  .animate-pulse-slow {
+    animation: none !important;
+  }
+}
+
+/* iOS: suavizar el scroll en modales y listas */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* Mejorar el feedback táctil en iOS (eliminar delay 300ms en clicks) */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Inputs en iOS: prevenir zoom no deseado (font-size mínimo 16px) */
+@supports (-webkit-touch-callout: none) {
+  .input, .select, .textarea,
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="tel"], input[type="number"], input[type="search"],
+  select, textarea {
+    font-size: max(16px, 1rem) !important;
   }
 }

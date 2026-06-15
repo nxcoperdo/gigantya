@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -5,20 +6,22 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
+import Loading from './components/Loading';
 
-// Páginas
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import RestaurantDetailsPage from './pages/RestaurantDetailsPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrdersHistoryPage from './pages/OrdersHistoryPage';
-import ProfilePage from './pages/ProfilePage';
-import RestaurantDashboardPage from './pages/RestaurantDashboardPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
+// Code splitting: cada página se carga solo cuando se necesita
+// Reduce el bundle inicial y mejora el time-to-interactive
+const HomePage = lazy(() => import('./pages/HomePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const RestaurantDetailsPage = lazy(() => import('./pages/RestaurantDetailsPage'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const OrdersHistoryPage = lazy(() => import('./pages/OrdersHistoryPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const RestaurantDashboardPage = lazy(() => import('./pages/RestaurantDashboardPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 
 export default function App() {
   return (
@@ -30,75 +33,77 @@ export default function App() {
             <Header />
 
             <main className="flex-1">
-              <Routes>
-                {/* Rutas Públicas */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Suspense fallback={<Loading />}>
+                <Routes>
+                  {/* Rutas Públicas */}
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-                {/* Rutas Cliente */}
-                <Route
-                  path="/restaurant/:id"
-                  element={
-                    <ProtectedRoute requiredRole="cliente">
-                      <RestaurantDetailsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/cart"
-                  element={
-                    <ProtectedRoute requiredRole="cliente">
-                      <CartPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/checkout"
-                  element={
-                    <ProtectedRoute requiredRole="cliente">
-                      <CheckoutPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders"
-                  element={
-                    <ProtectedRoute requiredRole="cliente">
-                      <OrdersHistoryPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <ProfilePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute requiredRole="restaurante">
-                      <RestaurantDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <AdminDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Rutas Cliente */}
+                  <Route
+                    path="/restaurant/:id"
+                    element={
+                      <ProtectedRoute requiredRole="cliente">
+                        <RestaurantDetailsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/cart"
+                    element={
+                      <ProtectedRoute requiredRole="cliente">
+                        <CartPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/checkout"
+                    element={
+                      <ProtectedRoute requiredRole="cliente">
+                        <CheckoutPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/orders"
+                    element={
+                      <ProtectedRoute requiredRole="cliente">
+                        <OrdersHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <ProfilePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute requiredRole="restaurante">
+                        <RestaurantDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Ruta 404 */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
+                  {/* Ruta 404 */}
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </Suspense>
             </main>
 
             <Footer />
@@ -122,4 +127,3 @@ function NotFoundPage() {
     </div>
   );
 }
-

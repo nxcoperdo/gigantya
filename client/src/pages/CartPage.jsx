@@ -1,11 +1,90 @@
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { useCart } from '../context/CartContext';
+import api from '../services/api';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, total, clearCart } = useCart();
+  const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
+  const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  // Cargar configuración de impuestos y envíos del restaurante
+  useEffect(() => {
+    const loadRestaurantConfig = async () => {
+      const restaurante_id = cart[0]?.restaurante_id;
+      console.log('CartPage - restaurante_id:', restaurante_id);
+      console.log('CartPage - cart:', cart);
+      if (!restaurante_id) return;
+
+      try {
+        const response = await api.get(`/restaurants/${restaurante_id}`);
+        console.log('CartPage - API response:', response.data);
+        const restaurant = response.data.restaurante;
+
+        console.log('CartPage - Restaurante config:', restaurant.configuracion_envios);
+
+        const defaultTax = { activo: true, porcentaje: 8 };
+        const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
+
+        // Parsear configuración si viene como string JSON
+        const taxConfigLoaded = restaurant.configuracion_impuestos
+          ? (typeof restaurant.configuracion_impuestos === 'string'
+              ? JSON.parse(restaurant.configuracion_impuestos)
+              : restaurant.configuracion_impuestos)
+          : defaultTax;
+
+        const shippingConfigLoaded = restaurant.configuracion_envios
+          ? (typeof restaurant.configuracion_envios === 'string'
+              ? JSON.parse(restaurant.configuracion_envios)
+              : restaurant.configuracion_envios)
+          : defaultShipping;
+
+        console.log('CartPage - Tax config:', taxConfigLoaded);
+        console.log('CartPage - Shipping config:', shippingConfigLoaded);
+
+        setTaxConfig(taxConfigLoaded);
+        setShippingConfig(shippingConfigLoaded);
+        setConfigLoaded(true);
+      } catch (error) {
+        console.error('Error cargando configuración del restaurante:', error);
+      }
+    };
+
+    if (cart.length > 0) {
+      loadRestaurantConfig();
+    }
+  }, [cart]);
+
+  // Calcular impuestos y envío
+  const shippingAmount = useMemo(() => {
+    if (!shippingConfig.activo) {
+      return 0;
+    }
+    // Solo aplica envío gratis si está ACTIVAMENTE habilitado Y el subtotal
+    // es estrictamente MAYOR al umbral (no igual). Y debe haber un umbral > 0
+    // para que tenga sentido.
+    if (
+      shippingConfig.envio_gratis_activo === true &&
+      Number(shippingConfig.envio_gratis_desde) > 0 &&
+      total > Number(shippingConfig.envio_gratis_desde)
+    ) {
+      return 0;
+    }
+    return Number(shippingConfig.costo_fijo) || 0;
+  }, [shippingConfig, total]);
+
+  const taxAmount = useMemo(() => {
+    const amount = taxConfig.activo && taxConfig.porcentaje > 0
+      ? total * (taxConfig.porcentaje / 100)
+      : 0;
+    return amount;
+  }, [taxConfig, total]);
+
+  const totalWithTaxesAndShipping = total + taxAmount + shippingAmount;
 
   if (cart.length === 0) {
     return (
@@ -132,18 +211,20 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                   <span>Envío:</span>
-                  <span className="text-green-600 font-semibold">Gratis</span>
+                  <span className={shippingAmount === 0 ? 'text-green-600 font-semibold' : ''}>
+                    {shippingAmount === 0 ? 'Gratis' : formatCurrency(shippingAmount)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-gray-600 text-sm sm:text-base">
-                  <span>Impuestos:</span>
-                  <span>{formatCurrency(total * 0.08)}</span>
+                  <span>Impuestos{taxConfig.activo ? ` (${taxConfig.porcentaje}%)` : ''}:</span>
+                  <span>{formatCurrency(taxAmount)}</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <span className="text-base sm:text-lg font-bold text-dark">Total:</span>
                 <span className="text-2xl sm:text-3xl font-heading font-bold text-primary">
-                  ${(total * 1.08).toLocaleString('es-CO')}
+                  {formatCurrency(totalWithTaxesAndShipping)}
                 </span>
               </div>
 
@@ -152,7 +233,11 @@ export default function CartPage() {
               </Link>
 
               <p className="text-xs text-gray-500 text-center mt-4">
-                Se incluyen impuestos y envío gratis
+                {shippingAmount === 0 && shippingConfig.envio_gratis_activo
+                  ? '¡Envío gratis aplicado!'
+                  : taxConfig.activo
+                    ? 'Se incluyen impuestos'
+                    : 'Precios finales'}
               </p>
             </div>
           </div>

@@ -25,6 +25,7 @@ export default function CheckoutPage() {
   const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
   const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
   const [shippingAmount, setShippingAmount] = useState(0);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   // Estado para cupones
   const [couponCode, setCouponCode] = useState('');
@@ -87,6 +88,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     const loadRestaurantConfig = async () => {
       const restaurante_id = cart[0]?.restaurante_id;
+      console.log('Checkout - Cart:', cart);
+      console.log('Checkout - Restaurante ID:', restaurante_id);
       if (!restaurante_id) return;
 
       try {
@@ -97,11 +100,26 @@ export default function CheckoutPage() {
         const defaultTax = { activo: true, porcentaje: 8 };
         const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
 
-        const tax = restaurant.configuracion_impuestos || defaultTax;
-        const shipping = restaurant.configuracion_envios || defaultShipping;
+        // Parsear configuración si viene como string JSON
+        let tax = defaultTax;
+        let shipping = defaultShipping;
 
+        if (restaurant.configuracion_impuestos) {
+          tax = typeof restaurant.configuracion_impuestos === 'string'
+            ? JSON.parse(restaurant.configuracion_impuestos)
+            : restaurant.configuracion_impuestos;
+        }
+
+        if (restaurant.configuracion_envios) {
+          shipping = typeof restaurant.configuracion_envios === 'string'
+            ? JSON.parse(restaurant.configuracion_envios)
+            : restaurant.configuracion_envios;
+        }
+
+        console.log('Checkout - Config cargada - shipping:', shipping);
         setTaxConfig(tax);
         setShippingConfig(shipping);
+        setConfigLoaded(true);
       } catch (error) {
         console.error('Error cargando configuración del restaurante:', error);
         // Usar valores por defecto en caso de error
@@ -113,31 +131,39 @@ export default function CheckoutPage() {
     loadRestaurantConfig();
   }, [cart]);
 
-  // Calcular impuestos y envío cuando cambian los valores
-  useEffect(() => {
-    const subtotal = total;
-    const descuento = discountAmount;
-    const subtotalConDescuento = subtotal - descuento;
+  // Calcular impuestos y envío directamente (no como estado para evitar race conditions)
+  const subtotal = total;
+  const descuento = discountAmount;
+  const subtotalConDescuento = subtotal - descuento;
 
-    // Calcular impuestos
-    let taxAmount = 0;
-    if (taxConfig.activo && taxConfig.porcentaje > 0) {
-      taxAmount = subtotalConDescuento * (taxConfig.porcentaje / 100);
-    }
+  // Calcular impuestos
+  const taxAmount = taxConfig.activo && taxConfig.porcentaje > 0
+    ? subtotalConDescuento * (taxConfig.porcentaje / 100)
+    : 0;
 
-    // Calcular envío
-    let shipAmount = 0;
-    if (shippingConfig.activo) {
-      // Solo aplicar envío gratis si está activado y el subtotal supera el monto
-      if (shippingConfig.envio_gratis_activo && subtotalConDescuento >= shippingConfig.envio_gratis_desde) {
-        shipAmount = 0;
-      } else {
-        shipAmount = shippingConfig.costo_fijo;
-      }
-    }
+  // Calcular envío
+  const calculatedShippingAmount = shippingConfig.activo
+    ? (
+        shippingConfig.envio_gratis_activo === true &&
+        Number(shippingConfig.envio_gratis_desde) > 0 &&
+        subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
+          ? 0
+          : (Number(shippingConfig.costo_fijo) || 0)
+      )
+    : 0;
 
-    setShippingAmount(shipAmount);
-  }, [total, discountAmount, taxConfig, shippingConfig]);
+  // Total final
+  const finalTotal = subtotalConDescuento + taxAmount + calculatedShippingAmount;
+
+  console.log('=== Checkout Render ===');
+  console.log('total (del CartContext):', total);
+  console.log('subtotal:', subtotal);
+  console.log('taxConfig:', taxConfig);
+  console.log('taxAmount:', taxAmount);
+  console.log('shippingConfig:', shippingConfig);
+  console.log('calculatedShippingAmount:', calculatedShippingAmount);
+  console.log('Cálculo: ', subtotalConDescuento, '+', taxAmount, '+', calculatedShippingAmount, '=', finalTotal);
+  console.log('finalTotal:', finalTotal);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -224,6 +250,12 @@ export default function CheckoutPage() {
         return;
       }
 
+      // Esperar a que la configuración esté cargada
+      if (!configLoaded) {
+        alert('Cargando configuración del restaurante, por favor espera un momento...');
+        return;
+      }
+
       const restaurante_id = cart[0].restaurante_id || 1;
       setRestauranteId(restaurante_id);
 
@@ -233,6 +265,33 @@ export default function CheckoutPage() {
         setLoading(false);
         return;
       }
+
+      // Calcular valores ANTES de enviar (para evitar que cambien cuando se vacíe el carrito)
+      const subtotalOrder = total;
+      const descuentoOrder = discountAmount;
+      const subtotalConDescuentoOrder = subtotalOrder - descuentoOrder;
+
+      const taxAmountOrder = taxConfig.activo && taxConfig.porcentaje > 0
+        ? subtotalConDescuentoOrder * (taxConfig.porcentaje / 100)
+        : 0;
+
+      const costoEnvio = shippingConfig.activo
+        ? (
+            shippingConfig.envio_gratis_activo === true &&
+            Number(shippingConfig.envio_gratis_desde) > 0 &&
+            subtotalConDescuentoOrder > Number(shippingConfig.envio_gratis_desde)
+              ? 0
+              : (Number(shippingConfig.costo_fijo) || 0)
+          )
+        : 0;
+
+      const totalOrder = subtotalConDescuentoOrder + taxAmountOrder + costoEnvio;
+
+      console.log('Checkout - Valores antes de enviar:');
+      console.log('  subtotalOrder:', subtotalOrder);
+      console.log('  taxAmountOrder:', taxAmountOrder);
+      console.log('  costoEnvio:', costoEnvio);
+      console.log('  totalOrder:', totalOrder);
 
       const orderData = {
         restaurante_id,
@@ -246,6 +305,8 @@ export default function CheckoutPage() {
         direccion_entrega: formData.direccion_entrega,
         telefono_contacto: formData.telefono_contacto,
         metodo_pago: paymentMethod,
+        costo_envio: costoEnvio,
+        total: totalOrder, // Enviar total calculado desde el frontend
       };
 
       const response = await api.post('/orders', orderData);
@@ -503,6 +564,8 @@ export default function CheckoutPage() {
               <div className="space-y-2 sm:space-y-3 mb-4 pb-4 border-b border-gray-200 max-h-48 sm:max-h-64 overflow-y-auto custom-scrollbar">
                 {cart.map(item => (
                   <div key={item.id} className="flex justify-between text-sm text-gray-600">
+
+
                     <span className="truncate pr-2">{item.nombre} x {item.cantidad}</span>
                     <span className="flex-shrink-0">${(item.precio * item.cantidad).toLocaleString('es-CO')}</span>
                   </div>
@@ -587,16 +650,16 @@ export default function CheckoutPage() {
                   <span>Impuestos{taxConfig.activo ? ` (${taxConfig.porcentaje}%)` : ''}:</span>
                   <span>
                     {taxConfig.activo && taxConfig.porcentaje > 0
-                      ? `$${((total - discountAmount) * (taxConfig.porcentaje / 100)).toLocaleString('es-CO')}`
+                      ? `$${taxAmount.toLocaleString('es-CO')}`
                       : '$0'}
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                   <span>Envío:</span>
-                  <span className={shippingAmount === 0 ? 'text-green-600 font-semibold' : ''}>
-                    {shippingAmount === 0
+                  <span className={calculatedShippingAmount === 0 ? 'text-green-600 font-semibold' : ''}>
+                    {calculatedShippingAmount === 0
                       ? 'Gratis'
-                      : `$${shippingAmount.toLocaleString('es-CO')}`}
+                      : `$${calculatedShippingAmount.toLocaleString('es-CO')}`}
                   </span>
                 </div>
               </div>
@@ -604,12 +667,12 @@ export default function CheckoutPage() {
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <span className="text-base sm:text-lg font-bold text-dark">Total:</span>
                 <span className="text-2xl sm:text-3xl font-heading font-bold text-primary">
-                  ${(total - discountAmount + ((total - discountAmount) * (taxConfig.activo ? taxConfig.porcentaje / 100 : 0)) + shippingAmount).toLocaleString('es-CO')}
+                  ${finalTotal.toLocaleString('es-CO')}
                 </span>
               </div>
 
               <p className="text-xs text-gray-500 text-center">
-                Se incluyen todos los impuestos
+                Subtotal: ${subtotal.toLocaleString('es-CO')} + Impuestos: ${taxAmount.toLocaleString('es-CO')} + Envío: ${calculatedShippingAmount.toLocaleString('es-CO')} = ${finalTotal.toLocaleString('es-CO')}
               </p>
             </div>
           </div>

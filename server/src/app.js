@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { UPLOADS_DIR } from './middleware/uploadMiddleware.js';
 import logger from './utils/logger.js';
 import Sentry from './utils/sentry.js';
@@ -11,6 +14,12 @@ import Sentry from './utils/sentry.js';
 dotenv.config();
 
 const app = express();
+
+// Desactivar el header X-Powered-By por seguridad
+app.disable('x-powered-by');
+
+// Confiar en el primer proxy (necesario si vamos detrás de un reverse proxy / load balancer)
+app.set('trust proxy', 1);
 
 // Sentry request handler debe ir antes de cualquier otro middleware
 Sentry.setupExpressErrorHandler(app);
@@ -33,33 +42,94 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 
 
-// Middleware de seguridad
+// ========== MIDDLEWARES DE SEGURIDAD ==========
+
+// Helmet con configuración optimizada para API
 app.use(helmet({
-  crossOriginResourcePolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // CSP deshabilitado para API (no se renderiza HTML aquí)
+  contentSecurityPolicy: false,
+  // HSTS habilitado en producción
+  strictTransportSecurity: process.env.NODE_ENV === 'production' ? {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  } : false,
 }));
 
 // CORS
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
+  credentials: true,
+  // Reducir overhead de CORS preflight
+  maxAge: 86400 // Cache preflight 24h
+}));
+
+// Compresión Gzip/Deflate para todas las respuestas
+// Reduce hasta 70% el tamaño de las respuestas JSON
+app.use(compression({
+  level: 6, // Balance entre velocidad y ratio de compresión
+  threshold: 1024, // Solo comprimir respuestas > 1KB
+  filter: (req, res) => {
+    // No comprimir respuestas de streaming (exports PDF/Excel)
+    if (req.path.includes('/exports/')) return false;
+    return compression.filter(req, res);
+  }
 }));
 
 // Middleware para parsear JSON y datos de formularios
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Limitar tamaño del body para prevenir ataques de memoria
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
-const limiter = rateLimit({
+// ========== RATE LIMITING DIFERENCIADO ==========
+
+// Rate limit estricto para autenticación (previene fuerza bruta)
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 500, // Aumentado de 100 a 500 para evitar bloqueos frecuentes
-  message: 'Demasiadas solicitudes, intenta más tarde'
+  max: 20, // 20 intentos por IP
+  message: { error: 'Demasiados intentos de autenticación, intenta más tarde' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use('/api/', limiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
 
-// Servir archivos estáticos de subidas
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Rate limit general para API
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 500,
+  message: { error: 'Demasiadas solicitudes, intenta más tarde' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
 
-// Rutas API v1
+// ========== ARCHIVOS ESTÁTICOS CON CACHE ==========
+
+// Servir archivos estáticos de uploads con cache agresivo
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Cache de 7 días para imágenes, 1 día para otros archivos
+app.use('/uploads', express.static(UPLOADS_DIR, {
+  maxAge: '7d', // Cache en navegador por 7 días
+  etag: true,
+  lastModified: true,
+  immutable: false,
+  setHeaders: (res, filePath) => {
+    // Headers específicos por tipo de archivo
+    if (/\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, must-revalidate');
+    } else if (/\.(pdf)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  }
+}));
+
+// ========== RUTAS API v1 ==========
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/restaurants', restaurantRoutes);
@@ -78,6 +148,7 @@ app.use('/api/exports', exportRoutes);
 
 // Ruta de bienvenida
 app.get('/api', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min
   res.json({
     message: 'API Sistema de Pedidos para Restaurantes',
     version: '1.0.0',
@@ -92,9 +163,21 @@ app.get('/api', (req, res) => {
   });
 });
 
-// Middleware de errores personalizado
+// Health check endpoint (para load balancers / monitoring)
+app.get('/api/health', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+// ========== MIDDLEWARE DE ERRORES ==========
+
 app.use((err, req, res, next) => {
-  logger.error(`${err.stack || err}`);
+  // Loggear solo en desarrollo para no llenar logs en producción
+  if (process.env.NODE_ENV !== 'production') {
+    logger.error(`${err.stack || err}`);
+  } else {
+    logger.error(`${err.name}: ${err.message}`);
+  }
 
   // Reportar a Sentry
   Sentry.captureException(err);

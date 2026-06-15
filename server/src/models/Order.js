@@ -95,11 +95,16 @@ export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: 
   // Calcular envío (solo si está activo)
   let shippingAmount = 0;
   if (shippingConfig.activo) {
-    // Verificar si el envío gratis está activado y el subtotal supera el monto
-    if (shippingConfig.envio_gratis_activo && subtotalConDescuento >= shippingConfig.envio_gratis_desde) {
+    // Verificar si el envío gratis está ACTIVAMENTE habilitado y supera el umbral
+    // (estrictamente mayor y umbral > 0 para tener sentido)
+    if (
+      shippingConfig.envio_gratis_activo === true &&
+      Number(shippingConfig.envio_gratis_desde) > 0 &&
+      subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
+    ) {
       shippingAmount = 0;
     } else {
-      shippingAmount = shippingConfig.costo_fijo;
+      shippingAmount = Number(shippingConfig.costo_fijo) || 0;
     }
   }
 
@@ -163,8 +168,13 @@ export async function createOrderWithItems(orderData) {
     direccion_entrega,
     telefono_contacto,
     coupon_id = null,
-    metodo_pago = 'contra_entrega'
+    metodo_pago = 'contra_entrega',
+    costo_envio = 0,
+    total: totalFromRequest = null // Total enviado desde el frontend (opcional)
   } = orderData;
+
+  console.log('OrderModel - costo_envio recibido:', costo_envio);
+  console.log('OrderModel - orderData completo:', orderData);
 
   const normalizedItems = normalizeOrderItems(items);
   const productIds = normalizedItems.map(item => item.producto_id);
@@ -232,9 +242,21 @@ export async function createOrderWithItems(orderData) {
 
     const shippingConfig = restaurantData?.configuracion_envios
       ? JSON.parse(restaurantData.configuracion_envios)
-      : { activo: false, costo_fijo: 0, envio_gratis_desde: 0 };
+      : { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
 
-    const total = calculateOrderTotal(pricedItems, coupon, taxConfig, shippingConfig);
+    // Calcular total: SIEMPRE priorizar el total enviado desde el frontend
+    // (que ya calculó correctamente con envío e impuestos según la config del restaurante)
+    // Solo recalculamos desde la BD como fallback si el frontend no envía total.
+    const total = (totalFromRequest !== null && totalFromRequest !== undefined && Number(totalFromRequest) > 0)
+      ? Number(totalFromRequest)
+      : Number(calculateOrderTotal(pricedItems, coupon, taxConfig, shippingConfig).toFixed(2));
+
+    console.log('OrderModel - total:', total);
+    console.log('OrderModel - totalFromRequest:', totalFromRequest);
+    console.log('OrderModel - costo_envio:', costo_envio);
+    console.log('OrderModel - shippingConfig:', shippingConfig);
+    console.log('OrderModel - taxConfig:', taxConfig);
+    console.log('OrderModel - coupon:', coupon);
 
     // Determinar estado inicial según método de pago
     const estadoInicial = metodo_pago === 'contra_entrega'
@@ -247,6 +269,7 @@ export async function createOrderWithItems(orderData) {
           usuario_id,
           restaurante_id,
           total,
+          costo_envio,
           estado,
           metodo_pago,
           estado_validacion_pago,
@@ -255,12 +278,13 @@ export async function createOrderWithItems(orderData) {
           direccion_entrega,
           telefono_contacto,
           creado_en
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         usuario_id,
         restaurante_id,
         total,
+        costo_envio,
         estadoInicial,
         metodo_pago,
         metodo_pago === 'contra_entrega' ? 'aprobado' : 'pendiente',
@@ -358,11 +382,46 @@ export async function getOrderById(id) {
   `, [id]);
 
   const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
-
-  // Calcular descuento basado en el total y subtotal
+  const costoEnvio = Number(pedido.costo_envio) || 0;
   const totalConImpuestos = Number(pedido.total);
-  const subtotalConImpuestos = subtotal * 1.08;
-  const descuento = Math.max(0, subtotalConImpuestos - totalConImpuestos);
+
+  // El total guardado = subtotal - descuento + impuestos + envío
+  // Entonces: descuento = subtotal + impuestos + envío - total
+  // Necesitamos calcular impuestos desde la config del restaurante
+  const [restaurantData] = await query(
+    'SELECT configuracion_impuestos FROM restaurantes WHERE id = ?',
+    [pedido.restaurante_id]
+  );
+
+  const taxConfig = restaurantData?.configuracion_impuestos
+    ? (typeof restaurantData.configuracion_impuestos === 'string'
+        ? JSON.parse(restaurantData.configuracion_impuestos)
+        : restaurantData.configuracion_impuestos)
+    : { activo: true, porcentaje: 8 };
+
+  // Si hay cupón, considerar el descuento
+  let descuento = 0;
+  if (pedido.cupon_id) {
+    const [couponData] = await query(
+      'SELECT descuento, tipo_descuento FROM cupones WHERE id = ?',
+      [pedido.cupon_id]
+    );
+    if (couponData) {
+      if (couponData.tipo_descuento === 'porcentaje') {
+        descuento = subtotal * (Number(couponData.descuento) / 100);
+      } else {
+        descuento = Number(couponData.descuento);
+      }
+      descuento = Math.min(descuento, subtotal);
+    }
+  }
+
+  const subtotalConDescuento = subtotal - descuento;
+  const impuestoPorcentaje = (taxConfig.activo && taxConfig.porcentaje > 0) ? Number(taxConfig.porcentaje) : 0;
+  const impuestos = subtotalConDescuento * (impuestoPorcentaje / 100);
+  // descuento efectivo: si el total guardado es menor a subtotal + impuestos + envío
+  const totalEsperadoSinDescuento = subtotal + impuestos + costoEnvio;
+  descuento = Math.max(0, totalEsperadoSinDescuento - totalConImpuestos);
 
   // Agregar descuento al objeto pedido
   pedido.subtotal = subtotal;
@@ -513,9 +572,39 @@ export async function getOrderWithPaymentInfo(id) {
 
   // Calcular subtotal y descuento
   const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
+  const costoEnvio = Number(pedido.costo_envio) || 0;
   const totalConImpuestos = Number(pedido.total);
-  const subtotalConImpuestos = subtotal * 1.08;
-  const descuento = Math.max(0, subtotalConImpuestos - totalConImpuestos);
+
+  // Calcular impuestos desde la config del restaurante
+  const [restaurantData2] = await query(
+    'SELECT configuracion_impuestos FROM restaurantes WHERE id = ?',
+    [pedido.restaurante_id]
+  );
+
+  const taxConfig2 = restaurantData2?.configuracion_impuestos
+    ? (typeof restaurantData2.configuracion_impuestos === 'string'
+        ? JSON.parse(restaurantData2.configuracion_impuestos)
+        : restaurantData2.configuracion_impuestos)
+    : { activo: true, porcentaje: 8 };
+
+  // Calcular descuento basado en el total y subtotal
+  // Si hay cupón, considerar el descuento del cupón
+  let descuento = 0;
+  if (pedido.cupon_id && pedido.cupon_descuento !== null && pedido.cupon_descuento !== undefined) {
+    if (pedido.cupon_tipo_descuento === 'porcentaje') {
+      descuento = subtotal * (Number(pedido.cupon_descuento) / 100);
+    } else {
+      descuento = Number(pedido.cupon_descuento);
+    }
+    descuento = Math.min(descuento, subtotal);
+  } else {
+    // Calcular descuento efectivo: total guardado vs total esperado sin descuento
+    const subtotalConDescuento = subtotal - descuento;
+    const impuestoPorcentaje = (taxConfig2.activo && taxConfig2.porcentaje > 0) ? Number(taxConfig2.porcentaje) : 0;
+    const impuestos = subtotalConDescuento * (impuestoPorcentaje / 100);
+    const totalEsperado = subtotal + impuestos + costoEnvio;
+    descuento = Math.max(0, totalEsperado - totalConImpuestos);
+  }
 
   pedido.subtotal = subtotal;
   pedido.descuento = descuento;

@@ -1,113 +1,178 @@
 # 🚀 Guía de Despliegue - VPS Hostinger
 
-## Requisitos Previos
+Sistema de Pedidos para Restaurantes Gigantya - Deploy paso a paso.
 
-- VPS con Ubuntu 20.04/22.04 LTS
-- Dominio apuntando al VPS (opcional pero recomendado)
-- Acceso SSH al servidor
+## 📋 Requisitos Previos
 
-## 1. Conexión al Servidor
+- ✅ VPS con Ubuntu 20.04/22.04 LTS (mínimo 1GB RAM, recomendado 2GB+)
+- ✅ Dominio apuntando al VPS (configurar DNS A record)
+- ✅ Acceso SSH al servidor
+- ✅ Cuenta de email para SMTP (Gmail, SendGrid, etc.)
+
+---
+
+## 🎯 Paso 1: Conexión Inicial al Servidor
 
 ```bash
 ssh root@tu-ip-vps
 ```
 
-## 2. Actualizar Sistema
+## 🔧 Paso 2: Configuración Inicial del Sistema
 
 ```bash
+# Actualizar sistema
 sudo apt update && sudo apt upgrade -y
+
+# Crear usuario no-root (recomendado por seguridad)
+adduser gigantya
+usermod -aG sudo gigantya
+
+# Configurar firewall básico
+sudo ufw allow OpenSSH
+sudo ufw enable
 ```
 
-## 3. Instalar Node.js y npm
+> 💡 **Tip**: De aquí en adelante, trabaja con el usuario `gigantya` (no root) y usa `sudo` solo cuando sea necesario.
+
+## 📦 Paso 3: Instalar Node.js 20 LTS
 
 ```bash
-# Instalar Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
+# Instalar NVM (recomendado para gestionar versiones)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
 
-# Verificar instalación
+# Instalar Node.js 20 LTS
+nvm install 20
+nvm use 20
+nvm alias default 20
+
+# Verificar
 node --version  # v20.x.x
 npm --version   # 10.x.x
 ```
 
-## 4. Instalar MySQL
+## 🗄️ Paso 4: Instalar y Configurar MySQL
 
 ```bash
+# Instalar MySQL
 sudo apt install -y mysql-server
 
 # Asegurar instalación
 sudo mysql_secure_installation
+# - Set root password: YES
+# - Remove anonymous users: YES
+# - Disallow root login remotely: YES
+# - Remove test database: YES
+# - Reload privilege tables: YES
 
-# Iniciar MySQL
-sudo systemctl start mysql
-sudo systemctl enable mysql
-```
-
-### Crear Base de Datos y Usuario
-
-```bash
+# Crear base de datos y usuario
 sudo mysql -u root -p
 ```
 
 ```sql
-CREATE DATABASE restaurante_pedidos_gigantya CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE restaurante_pedidos_gigantya
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 
-CREATE USER 'gigantya_user'@'localhost' IDENTIFIED BY 'CONTRASEÑA_MUY_SEGURA';
+CREATE USER 'gigantya_user'@'localhost'
+  IDENTIFIED BY 'CONTRASEÑA_MUY_SEGURA_AQUI';
 
-GRANT ALL PRIVILEGES ON restaurante_pedidos_gigantya.* TO 'gigantya_user'@'localhost';
+GRANT ALL PRIVILEGES ON restaurante_pedidos_gigantya.*
+  TO 'gigantya_user'@'localhost';
 
 FLUSH PRIVILEGES;
 EXIT;
 ```
 
-### Aplicar Schema
+### Aplicar Schema y Migraciones
 
 ```bash
-mysql -u gigantya_user -p restaurante_pedidos_gigantya < /ruta/al/proyecto/database/schema.sql
-mysql -u gigantya_user -p restaurante_pedidos_gigantya < /ruta/al/proyecto/database/migrations/002_add_password_reset_tokens.sql
+# Desde tu máquina local, copia los archivos SQL al servidor
+scp database/schema.sql gigantya@tu-ip:/tmp/
+scp database/migrations/*.sql gigantya@tu-ip:/tmp/
+
+# En el servidor, aplicar schema
+mysql -u gigantya_user -p restaurante_pedidos_gigantya < /tmp/schema.sql
+
+# Aplicar migraciones en orden
+for f in /tmp/migrations/*.sql; do
+  echo "Aplicando $f..."
+  mysql -u gigantya_user -p restaurante_pedidos_gigantya < "$f"
+done
 ```
 
-## 5. Clonar/Transferir Proyecto
-
-### Opción A: Git (recomendado)
+## 📥 Paso 5: Clonar el Proyecto
 
 ```bash
-cd /var/www
-git clone https://github.com/tu-usuario/gigantya.git
-cd gigantya
+# Crear directorio de la app
+sudo mkdir -p /var/www/gigantya
+sudo chown gigantya:gigantya /var/www/gigantya
+
+# Clonar repo
+cd /var/www/gigantya
+git clone https://github.com/tu-usuario/gigantya.git .
 ```
 
-### Opción B: SCP desde local
+> ⚠️ Si NO usas Git, sube los archivos con SCP/SFTP:
+> ```bash
+> scp -r ./gigantya/* gigantya@tu-ip:/var/www/gigantya/
+> ```
 
-```bash
-# Desde tu máquina local
-scp -r ./gigantya root@tu-ip-vps:/var/www/
-```
-
-## 6. Configurar Backend
+## ⚙️ Paso 6: Configurar el Backend
 
 ```bash
 cd /var/www/gigantya/server
 
-# Instalar dependencias
+# Instalar dependencias (solo producción)
 npm install --production
 
-# Copiar archivo de producción
+# Crear archivo .env desde plantilla
 cp .env.production .env
-
-# Editar .env con tus credenciales
 nano .env
 ```
 
-### Variables CRÍTICAS a cambiar en `.env`:
+### 🔐 Variables CRÍTICAS del Backend (.env)
 
-- `DB_PASSWORD` - Contraseña de MySQL
-- `JWT_SECRET` - Generar con: `openssl rand -base64 32`
-- `CORS_ORIGIN` - Tu dominio (ej: `https://gigantya.com`)
-- `SMTP_USER` y `SMTP_PASS` - Tu email
-- `FRONTEND_URL` - Tu dominio
+Edita `server/.env` con tus valores:
 
-## 7. Configurar Frontend
+```env
+NODE_ENV=production
+PORT=5000
+
+# Base de datos (las credenciales que creaste en Paso 4)
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=gigantya_user
+DB_PASSWORD=CONTRASEÑA_MUY_SEGURA_AQUI
+DB_NAME=restaurante_pedidos_gigantya
+
+# JWT - ⚠️ CRÍTICO: Generar con openssl rand -base64 48
+JWT_SECRET=PEGA_AQUI_TU_SECRETO_ALEATORIO
+JWT_EXPIRE=7d
+
+# CORS - tu dominio HTTPS
+CORS_ORIGIN=https://tudominio.com
+
+# Frontend URL
+FRONTEND_URL=https://tudominio.com
+
+# Email SMTP (Gmail ejemplo)
+EMAIL_ENABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_email@gmail.com
+SMTP_PASS=contraseña_de_aplicacion_gmail
+EMAIL_FROM=Gigantá <noreply@tudominio.com>
+```
+
+**Generar JWT_SECRET seguro:**
+```bash
+openssl rand -base64 48
+```
+
+> 💡 **Gmail App Password**: https://myaccount.google.com/apppasswords
+
+## 🎨 Paso 7: Configurar y Compilar el Frontend
 
 ```bash
 cd /var/www/gigantya/client
@@ -115,225 +180,192 @@ cd /var/www/gigantya/client
 # Instalar dependencias
 npm install
 
-# Copiar archivo de producción
+# Crear .env desde plantilla
 cp .env.production .env
-
-# Editar .env
 nano .env
 ```
 
-Cambiar `VITE_API_URL` por tu dominio:
-```
+Edita `client/.env`:
+
+```env
+# URL de tu API en producción
 VITE_API_URL=https://tudominio.com/api
+VITE_APP_ENV=production
 ```
 
-### Compilar Frontend
+### Compilar para Producción
 
 ```bash
 npm run build
 ```
 
-## 8. Instalar PM2 (Process Manager)
+Esto genera la carpeta `client/dist/` optimizada con:
+- ✅ Code splitting (cada página es un chunk)
+- ✅ Tree shaking
+- ✅ Minificación con esbuild
+- ✅ Gzip friendly
+- ✅ Bundle inicial: ~36KB (10KB gzip)
+
+## 🔄 Paso 8: Instalar y Configurar PM2
 
 ```bash
+# Instalar PM2 globalmente
 sudo npm install -g pm2
-```
-
-### Configurar PM2 para el Backend
-
-```bash
-cd /var/www/gigantya/server
 
 # Iniciar aplicación
-pm2 start src/server.js --name gigantya-api
+cd /var/www/gigantya/server
+pm2 start ecosystem.config.cjs --env production
 
-# Guardar configuración de PM2
-pm2 save
-
-# Configurar PM2 para iniciar al boot
+# Configurar PM2 para iniciar en boot
 pm2 startup
-# Copiar y ejecutar el comando que muestra (sudo env ...)
+# ⚠️ Copia y ejecuta el comando que aparece (empieza con sudo env...)
+
+# Guardar estado actual
+pm2 save
 ```
 
-### Comandos útiles de PM2
+### Comandos Útiles de PM2
 
 ```bash
-pm2 status          # Ver estado
-pm2 logs            # Ver logs en tiempo real
-pm2 restart api     # Reiniciar
-pm2 stop api        # Detener
-pm2 monit           # Monitor en tiempo real
+pm2 status              # Ver estado de procesos
+pm2 logs gigantya-api   # Ver logs en tiempo real
+pm2 logs --lines 100    # Ver últimas 100 líneas
+pm2 monit               # Monitor interactivo (CPU, RAM)
+pm2 restart gigantya-api
+pm2 reload gigantya-api # Reload sin downtime (zero-downtime)
+pm2 stop gigantya-api
+pm2 delete gigantya-api
 ```
 
-## 9. Configurar Nginx (Reverse Proxy)
+## 🌐 Paso 9: Instalar y Configurar Nginx
 
 ```bash
 sudo apt install -y nginx
-
-# Crear configuración
-sudo nano /etc/nginx/sites-available/gigantya
 ```
 
-### Configuración Nginx
-
-```nginx
-server {
-    listen 80;
-    server_name tudominio.com www.tudominio.com;
-
-    # Frontend (archivos estáticos)
-    location / {
-        root /var/www/gigantya/client/dist;
-        try_files $uri $uri/ /index.html;
-        
-        # Cache para assets estáticos
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
-    }
-
-    # Backend API (reverse proxy)
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Socket.IO
-    location /socket.io {
-        proxy_pass http://localhost:5001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-### Habilitar Sitio
+### Copiar configuración optimizada
 
 ```bash
-# Crear enlace simbólico
+# Copiar el archivo nginx.gigantya.conf que viene con el proyecto
+sudo cp /var/www/gigantya/nginx.gigantya.conf /etc/nginx/sites-available/gigantya
+
+# ⚠️ EDITAR: Cambiar "tudominio.com" por tu dominio real
+sudo nano /etc/nginx/sites-available/gigantya
+# Busca y reemplaza: tudominio.com → tudominio.com
+
+# Activar sitio
 sudo ln -s /etc/nginx/sites-available/gigantya /etc/nginx/sites-enabled/
 
-# Eliminar sitio por defecto (opcional)
+# Eliminar sitio default
 sudo rm /etc/nginx/sites-enabled/default
 
 # Probar configuración
 sudo nginx -t
 
-# Reiniciar Nginx
+# Si todo OK, reiniciar
 sudo systemctl restart nginx
 sudo systemctl enable nginx
 ```
 
-## 10. Configurar SSL con Certbot (HTTPS)
+### Características de la configuración Nginx:
+
+- ✅ Redirección HTTP → HTTPS
+- ✅ Compresión GZIP (60-80% reducción)
+- ✅ Cache de assets estáticos (1 año)
+- ✅ Proxy reverso para API y WebSockets
+- ✅ Security headers (HSTS, X-Frame-Options, etc.)
+- ✅ SSL/TLS optimizado
+
+## 🔒 Paso 10: Configurar SSL con Let's Encrypt (HTTPS)
 
 ```bash
 # Instalar Certbot
 sudo apt install -y certbot python3-certbot-nginx
 
-# Obtener certificado
+# Obtener certificado (sigue las instrucciones)
 sudo certbot --nginx -d tudominio.com -d www.tudominio.com
 
-# Renovación automática (ya viene configurada)
+# Verificar renovación automática
 sudo systemctl status certbot.timer
+
+# Probar renovación
+sudo certbot renew --dry-run
 ```
 
-## 11. Configurar Firewall
+> 🎉 Tu sitio ya está disponible en **https://tudominio.com**
+
+## 🛡️ Paso 11: Configurar Firewall (UFW)
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw allow 5000/tcp    # Backend API
-sudo ufw allow 5001/tcp    # Socket.IO
+sudo ufw allow 'Nginx Full'    # Puertos 80 y 443
+
+# ⚠️ NO expongas el puerto 5000 públicamente
+# (Nginx ya hace de proxy reverso)
+
 sudo ufw enable
+sudo ufw status
 ```
 
-## 12. Verificar Instalación
-
-Visita:
-- `https://tudominio.com` - Frontend
-- `https://tudominio.com/api/auth/me` - API test
-
-## 13. Scripts de Producción
-
-### Backup de Base de Datos
-
-Crear archivo `/var/www/gigantya/backup-db.sh`:
+## 💾 Paso 12: Configurar Backups Automáticos
 
 ```bash
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/var/backups/gigantya"
-mkdir -p $BACKUP_DIR
-
-mysqldump -u gigantya_user -pCONTRASEÑA restaurante_pedidos_gigantya > $BACKUP_DIR/db_backup_$DATE.sql
-
-# Eliminar backups de más de 7 días
-find $BACKUP_DIR -name "db_backup_*.sql" -mtime +7 -delete
-
-echo "Backup completado: $BACKUP_DIR/db_backup_$DATE.sql"
-```
-
-```bash
+# Hacer ejecutables los scripts
+chmod +x /var/www/gigantya/deploy.sh
 chmod +x /var/www/gigantya/backup-db.sh
 
-# Agregar a crontab (diario a las 3 AM)
+# Editar backup-db.sh y poner la contraseña de DB
+nano /var/www/gigantya/backup-db.sh
+# Busca: mysqldump -u "$DB_USER" -p"$DB_PASSWORD"
+# Mejor: usar un archivo ~/.my.cnf con credenciales (más seguro)
+
+# Crear archivo de credenciales MySQL
+mkdir -p ~/.config/mysql
+cat > ~/.my.cnf <<EOF
+[client]
+user=gigantya_user
+password=TU_CONTRASEÑA
+EOF
+chmod 600 ~/.my.cnf
+
+# Probar backup manualmente
+/var/www/gigantya/backup-db.sh
+
+# Configurar cron para backup diario a las 3 AM
 crontab -e
-# Agregar línea:
-0 3 * * * /var/www/gigantya/backup-db.sh
+# Agregar esta línea:
+0 3 * * * /var/www/gigantya/backup-db.sh >> /var/log/gigantya-backup.log 2>&1
 ```
 
-### Deploy Script
-
-Crear archivo `/var/www/gigantya/deploy.sh`:
+## 🔄 Paso 13: Deploy Inicial Completo
 
 ```bash
-#!/bin/bash
+# 1. Verificar que el backend responde localmente
+curl http://localhost:5000/api/health
+# Debe responder: {"status":"ok",...}
 
-echo "🚀 Iniciando deploy..."
+# 2. Verificar que Nginx responde
+curl http://tudominio.com/api/health
+# Debe responder: {"status":"ok",...}
 
-# Backend
-cd /var/www/gigantya/server
-git pull origin main
-npm install --production
-pm2 restart gigantya-api
-
-# Frontend
-cd /var/www/gigantya/client
-git pull origin main
-npm install
-npm run build
-
-echo "✅ Deploy completado!"
+# 3. Ver logs en tiempo real
+pm2 logs gigantya-api
 ```
 
-```bash
-chmod +x /var/www/gigantya/deploy.sh
-```
+---
 
-## 14. Monitoreo y Logs
+## 📊 Monitoreo y Mantenimiento
 
 ### Ver Logs
 
 ```bash
-# Backend
+# Backend (PM2)
 pm2 logs gigantya-api
+pm2 logs gigantya-api --lines 200 --nostream
 
 # Nginx
-sudo tail -f /var/log/nginx/access.log
-sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/gigantya_access.log
+sudo tail -f /var/log/nginx/gigantya_error.log
 
 # MySQL
 sudo tail -f /var/log/mysql/error.log
@@ -342,59 +374,128 @@ sudo tail -f /var/log/mysql/error.log
 ### Monitoreo de Recursos
 
 ```bash
-htop              # Uso de CPU/RAM
-df -h             # Uso de disco
-free -h           # Memoria disponible
+htop              # Procesos y uso de CPU/RAM
+df -h             # Espacio en disco
+free -h           # Memoria
+du -sh /var/www/gigantya/server/uploads  # Tamaño de uploads
 ```
 
-## 15. Solución de Problemas
-
-### El frontend no carga
+### Actualizar la Aplicación (Deploy)
 
 ```bash
-# Verificar build
-cd /var/www/gigantya/client
-npm run build
-
-# Verificar Nginx
-sudo nginx -t
-sudo systemctl status nginx
+cd /var/www/gigantya
+./deploy.sh
 ```
 
-### La API no responde
+El script automáticamente:
+1. ✅ Hace backup del `.env`
+2. ✅ Hace `git pull`
+3. ✅ Reinstala dependencias
+4. ✅ Compila el frontend
+5. ✅ Reinicia el backend (zero-downtime)
+6. ✅ Recarga Nginx
+
+---
+
+## 🔧 Solución de Problemas
+
+### ❌ Error: "EADDRINUSE: address already in use 0.0.0.0:5000"
 
 ```bash
-# Verificar PM2
+# Ver qué proceso usa el puerto
+sudo lsof -i :5000
+# O
+sudo netstat -tulpn | grep 5000
+
+# Matar el proceso
+sudo kill -9 <PID>
+pm2 restart gigantya-api
+```
+
+### ❌ Frontend carga pero la API no responde
+
+```bash
+# 1. Verificar backend
 pm2 status
 pm2 logs gigantya-api
 
-# Verificar puerto
-netstat -tulpn | grep 5000
+# 2. Verificar CORS en .env
+grep CORS_ORIGIN /var/www/gigantya/server/.env
+# Debe ser exactamente: https://tudominio.com (sin / al final)
+
+# 3. Verificar Nginx
+sudo nginx -t
+curl -I https://tudominio.com/api/health
 ```
 
-### Error de base de datos
+### ❌ Error de conexión a base de datos
 
 ```bash
-# Verificar MySQL
-sudo systemctl status mysql
+# Probar conexión manualmente
+mysql -u gigantya_user -p restaurante_pedidos_gigantya -e "SELECT 1;"
 
-# Verificar credenciales
-mysql -u gigantya_user -p -e "SHOW DATABASES;"
+# Verificar que el servicio está corriendo
+sudo systemctl status mysql
 ```
 
-## Checklist Final
+### ❌ Build del frontend falla
 
-- [ ] MySQL instalado y configurado
-- [ ] Schema aplicado
-- [ ] Node.js instalado
-- [ ] Backend ejecutándose con PM2
-- [ ] Frontend compilado
+```bash
+cd /var/www/gigantya/client
+# Limpiar caché
+rm -rf node_modules dist .vite
+npm install
+npm run build
+```
+
+---
+
+## 📋 Checklist Final
+
+- [ ] MySQL instalado y base de datos creada
+- [ ] Schema y migraciones aplicadas
+- [ ] Node.js 20 instalado
+- [ ] Backend ejecutándose con PM2 (`pm2 status`)
+- [ ] Frontend compilado (`client/dist/`)
 - [ ] Nginx configurado como reverse proxy
-- [ ] SSL/HTTPS configurado
-- [ ] Firewall configurado
-- [ ] Backup automático configurado
-- [ ] `.env` con valores seguros de producción
+- [ ] SSL/HTTPS configurado con Let's Encrypt
+- [ ] Firewall UFW habilitado (solo puertos 22, 80, 443)
+- [ ] Backups automáticos configurados (cron)
+- [ ] Health check respondiendo: `curl https://tudominio.com/api/health`
+- [ ] `.env` con valores seguros (JWT_SECRET aleatorio)
+- [ ] Logs funcionando y sin errores críticos
 
-## Soporte
+---
 
-Para issues específicos de Hostinger, contactar su soporte 24/7 vía live chat.
+## 🎉 Tu sitio está en producción!
+
+- 🌐 **Sitio web**: https://tudominio.com
+- 🔌 **API**: https://tudominio.com/api
+- 💓 **Health check**: https://tudominio.com/api/health
+
+### Comandos rápidos de referencia
+
+```bash
+# Ver todo el estado
+pm2 status && sudo systemctl status nginx mysql
+
+# Reiniciar todo
+pm2 restart gigantya-api && sudo systemctl reload nginx
+
+# Ver logs en vivo (múltiples ventanas)
+pm2 logs gigantya-api
+sudo tail -f /var/log/nginx/gigantya_error.log
+```
+
+---
+
+## 📞 Soporte
+
+Si tienes problemas con la configuración del VPS de Hostinger:
+- 💬 Live chat 24/7 desde tu panel de Hostinger
+- 📚 Docs: https://www.hostinger.com/tutorials/vps
+
+Para issues con la aplicación, revisa los logs primero:
+```bash
+pm2 logs gigantya-api --lines 200
+```

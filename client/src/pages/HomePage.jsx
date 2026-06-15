@@ -1,11 +1,110 @@
-import { useState, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Utensils } from 'lucide-react';
 import { restaurantService, preferenceService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { getImageUrl } from '../utils/imageHelper';
+import { getImageUrl, IMAGE_DEFAULT_ATTRS } from '../utils/imageHelper';
 import Loading from '../components/Loading';
 import RecentSearches from '../components/RecentSearches';
+
+// Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
+const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
+  return (
+    <Link
+      to={`/restaurant/${restaurant.id}`}
+      className="group card-lg hover:shadow-lg-soft cursor-pointer transform transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 animate-slideUp active:scale-95 touch-feedback"
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
+      {/* Image Section */}
+      <div className="relative mb-4 sm:mb-5 rounded-xl overflow-hidden bg-gradient-warm h-40 sm:h-48">
+        {restaurant.imagen_url ? (
+          <img
+            src={getImageUrl(restaurant.imagen_url)}
+            alt={restaurant.nombre}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            {...IMAGE_DEFAULT_ATTRS}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent text-4xl sm:text-6xl">
+            🍽️
+          </div>
+        )}
+        {/* Badge */}
+        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1 shadow-medium">
+          <Star size={14} className="text-yellow-500 fill-yellow-500" />
+          <span className="font-bold text-gray-800 text-xs sm:text-sm">
+            {Number(restaurant.calificacion)?.toFixed(1) || '5.0'}
+          </span>
+        </div>
+        {restaurant.plan && restaurant.plan !== 'basico' && (
+          <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-primary/90 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-bold uppercase shadow-sm">
+            {restaurant.plan}
+          </div>
+        )}
+      </div>
+
+      {/* Content Section */}
+      <div className="space-y-2 sm:space-y-3">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-dark group-hover:text-primary transition-colors line-clamp-2 min-h-[44px]">
+          {restaurant.nombre}
+        </h3>
+
+        <p className="text-gray-600 text-xs sm:text-sm text-ellipsis-2 leading-relaxed min-h-[40px]">
+          {restaurant.descripcion || 'Disfruta de deliciosos platillos'}
+        </p>
+
+        {/* Info Row */}
+        <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 pt-2 sm:pt-3 border-t border-gray-100 flex-wrap">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <MapPin size={14} className="text-primary flex-shrink-0" />
+            <span className="truncate">{restaurant.ciudad}</span>
+          </div>
+          {restaurant.horario_apertura && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-xs">🕐</span>
+              <span>{restaurant.horario_apertura?.slice(0, 5)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* CTA Button */}
+      <button className="w-full mt-4 sm:mt-5 bg-gradient-primary text-white font-semibold py-2.5 sm:py-3 rounded-lg hover:shadow-lg transition-all duration-300 group-hover:scale-105 origin-center min-h-[44px] active:scale-95 touch-feedback">
+        Ver Menú
+      </button>
+    </Link>
+  );
+});
+
+// Banner destacado memoizado
+const FeaturedBanner = memo(function FeaturedBanner({ restaurant, keyPrefix }) {
+  return (
+    <Link
+      key={`${keyPrefix}-${restaurant.id}`}
+      to={`/restaurant/${restaurant.id}`}
+      className="w-64 sm:w-80 md:w-[450px] h-40 sm:h-48 rounded-xl sm:rounded-2xl overflow-hidden relative group shadow-lg-soft hover:shadow-xl transition-all flex-shrink-0 active:scale-95 touch-feedback"
+    >
+      <img
+        src={getImageUrl(restaurant.banner_url)}
+        alt={restaurant.nombre}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        {...IMAGE_DEFAULT_ATTRS}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+      <div className="absolute bottom-0 left-0 p-4 sm:p-6 text-white">
+        <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+          <span className={`text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full uppercase ${
+            restaurant.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
+          }`}>
+            {restaurant.plan}
+          </span>
+        </div>
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{restaurant.nombre}</h3>
+        <p className="text-xs sm:text-sm opacity-80 line-clamp-1">{restaurant.descripcion}</p>
+      </div>
+    </Link>
+  );
+});
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth();
@@ -34,7 +133,7 @@ export default function HomePage() {
     loadSearchHistory();
   }, [isAuthenticated, user, navigate]);
 
-  const loadRestaurants = async () => {
+  const loadRestaurants = useCallback(async () => {
     try {
       setLoading(true);
       const response = await restaurantService.getAll();
@@ -46,46 +145,55 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadSearchHistory = async () => {
+  const loadSearchHistory = useCallback(async () => {
     try {
       const res = await preferenceService.getSearchHistory();
       setSearchHistory(res.data);
     } catch (error) {
       console.error('Error loading search history:', error);
     }
-  };
+  }, []);
 
-  const handleSearchChange = async (term) => {
+  // Memoizar listas filtradas: solo recalcular si cambia restaurants o searchTerm
+  const filteredRestaurants = useMemo(() => {
+    if (!searchTerm) return restaurants;
+    const term = searchTerm.toLowerCase();
+    return restaurants.filter(r =>
+      r.nombre.toLowerCase().includes(term) ||
+      r.descripcion?.toLowerCase().includes(term)
+    );
+  }, [restaurants, searchTerm]);
+
+  const featuredBanners = useMemo(
+    () => restaurants.filter(r => r.plan === 'premium' && r.banner_url),
+    [restaurants]
+  );
+
+  // Memoizar las búsquedas recientes (solo el array de términos)
+  const searchTerms = useMemo(
+    () => searchHistory.map(h => h.termino),
+    [searchHistory]
+  );
+
+  const handleSearchChange = useCallback((term) => {
     setSearchTerm(term);
-    if (term.trim()) {
-      try {
-        // Aquí asumimos que el backend guarda el historial automáticamente
-        // o podrías llamar a un servicio de guardado aquí.
-      } catch (e) {
-        console.error('Error saving search:', e);
-      }
-    }
-  };
+  }, []);
 
-  const clearHistory = async () => {
+  const handleSelectSearch = useCallback((term) => {
+    setSearchTerm(term);
+    setIsSearchFocused(false);
+  }, []);
+
+  const clearHistory = useCallback(async () => {
     try {
       await preferenceService.clearSearchHistory();
       setSearchHistory([]);
     } catch (e) {
       console.error('Error clearing history:', e);
     }
-  };
-
-  const filteredRestaurants = restaurants.filter(r =>
-    r.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const featuredBanners = restaurants.filter(r =>
-    r.plan === 'premium' && r.banner_url
-  );
+  }, []);
 
   if (loading) return <Loading />;
 
@@ -124,11 +232,8 @@ export default function HomePage() {
             </div>
             {isSearchFocused && (
               <RecentSearches
-                searches={searchHistory.map(h => h.termino)}
-                onSelect={(term) => {
-                  handleSearchChange(term);
-                  setIsSearchFocused(false);
-                }}
+                searches={searchTerms}
+                onSelect={handleSelectSearch}
                 onClear={clearHistory}
               />
             )}
@@ -162,57 +267,11 @@ export default function HomePage() {
             <div className="flex gap-4 sm:gap-6 animate-marquee w-max">
               {/* First set of banners */}
               {featuredBanners.map((res) => (
-                <Link
-                  key={`banner-1-${res.id}`}
-                  to={`/restaurant/${res.id}`}
-                  className="w-64 sm:w-80 md:w-[450px] h-40 sm:h-48 rounded-xl sm:rounded-2xl overflow-hidden relative group shadow-lg-soft hover:shadow-xl transition-all flex-shrink-0 active:scale-95 touch-feedback"
-                >
-                  <img
-                    src={getImageUrl(res.banner_url)}
-                    alt={res.nombre}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 p-4 sm:p-6 text-white">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <span className={`text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full uppercase ${
-                        res.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
-                      }`}>
-                        {res.plan}
-                      </span>
-                    </div>
-                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{res.nombre}</h3>
-                    <p className="text-xs sm:text-sm opacity-80 line-clamp-1">{res.descripcion}</p>
-                  </div>
-                </Link>
+                <FeaturedBanner key={`banner-1-${res.id}`} restaurant={res} keyPrefix="banner-1" />
               ))}
               {/* Duplicate set for seamless loop */}
               {featuredBanners.map((res) => (
-                <Link
-                  key={`banner-2-${res.id}`}
-                  to={`/restaurant/${res.id}`}
-                  className="w-64 sm:w-80 md:w-[450px] h-40 sm:h-48 rounded-xl sm:rounded-2xl overflow-hidden relative group shadow-lg-soft hover:shadow-xl transition-all flex-shrink-0 active:scale-95 touch-feedback"
-                >
-                  <img
-                    src={getImageUrl(res.banner_url)}
-                    alt={res.nombre}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 p-4 sm:p-6 text-white">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <span className={`text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full uppercase ${
-                        res.plan === 'premium' ? 'bg-yellow-400 text-dark' : 'bg-gray-400 text-dark'
-                      }`}>
-                        {res.plan}
-                      </span>
-                    </div>
-                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{res.nombre}</h3>
-                    <p className="text-xs sm:text-sm opacity-80 line-clamp-1">{res.descripcion}</p>
-                  </div>
-                </Link>
+                <FeaturedBanner key={`banner-2-${res.id}`} restaurant={res} keyPrefix="banner-2" />
               ))}
             </div>
           </div>
@@ -242,70 +301,7 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredRestaurants.map((restaurant, index) => (
-              <Link
-                key={restaurant.id}
-                to={`/restaurant/${restaurant.id}`}
-                className="group card-lg hover:shadow-lg-soft cursor-pointer transform transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 animate-slideUp active:scale-95 touch-feedback"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {/* Image Section */}
-                <div className="relative mb-4 sm:mb-5 rounded-xl overflow-hidden bg-gradient-warm h-40 sm:h-48">
-                  {restaurant.imagen_url ? (
-                    <img
-                      src={getImageUrl(restaurant.imagen_url)}
-                      alt={restaurant.nombre}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent text-4xl sm:text-6xl">
-                      🍽️
-                    </div>
-                  )}
-                  {/* Badge */}
-                   <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1 shadow-medium">
-                     <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                     <span className="font-bold text-gray-800 text-xs sm:text-sm">
-                       {Number(restaurant.calificacion)?.toFixed(1) || '5.0'}
-                     </span>
-                   </div>
-                   {restaurant.plan && restaurant.plan !== 'basico' && (
-                     <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-primary/90 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-bold uppercase shadow-sm">
-                       {restaurant.plan}
-                     </div>
-                   )}
-                </div>
-
-                {/* Content Section */}
-                <div className="space-y-2 sm:space-y-3">
-                  <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-dark group-hover:text-primary transition-colors line-clamp-2 min-h-[44px]">
-                    {restaurant.nombre}
-                  </h3>
-
-                  <p className="text-gray-600 text-xs sm:text-sm text-ellipsis-2 leading-relaxed min-h-[40px]">
-                    {restaurant.descripcion || 'Disfruta de deliciosos platillos'}
-                  </p>
-
-                  {/* Info Row */}
-                  <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 pt-2 sm:pt-3 border-t border-gray-100 flex-wrap">
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <MapPin size={14} className="text-primary flex-shrink-0" />
-                      <span className="truncate">{restaurant.ciudad}</span>
-                    </div>
-                    {restaurant.horario_apertura && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-xs">🕐</span>
-                        <span>{restaurant.horario_apertura?.slice(0, 5)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* CTA Button */}
-                <button className="w-full mt-4 sm:mt-5 bg-gradient-primary text-white font-semibold py-2.5 sm:py-3 rounded-lg hover:shadow-lg transition-all duration-300 group-hover:scale-105 origin-center min-h-[44px] active:scale-95 touch-feedback">
-                  Ver Menú
-                </button>
-              </Link>
+              <RestaurantCard key={restaurant.id} restaurant={restaurant} index={index} />
             ))}
           </div>
         )}
@@ -314,27 +310,6 @@ export default function HomePage() {
       {/* Info Section */}
       <section className="bg-light py-10 sm:py-12 md:py-16 lg:py-24 px-4 mt-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-10 sm:mb-12">
-            <div className="text-center card p-5 sm:p-6 hover:shadow-lg transition-all active:scale-95 touch-feedback">
-              <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">⚡</div>
-              <h3 className="text-xl sm:text-2xl font-bold text-dark mb-2">Rápido</h3>
-              <p className="text-gray-600 text-sm sm:text-base">Ordena en segundos y recibe tu comida pronto</p>
-            </div>
-            <div className="text-center card p-5 sm:p-6 hover:shadow-lg transition-all active:scale-95 touch-feedback">
-              <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">👨‍🍳</div>
-              <h3 className="text-xl sm:text-2xl font-bold text-dark mb-2">Calidad</h3>
-              <p className="text-gray-600 text-sm sm:text-base">Los mejores restaurantes verificados de Gigantá</p>
-            </div>
-            <div className="text-center card p-5 sm:p-6 hover:shadow-lg transition-all active:scale-95 touch-feedback">
-              <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">📱</div>
-              <h3 className="text-xl sm:text-2xl font-bold text-dark mb-2">Simple</h3>
-              <p className="text-gray-600 text-sm sm:text-base">Interfaz intuitiva y fácil de usar</p>
-            </div>
-          </div>
-
-          {/* Separator */}
-          <div className="divider my-6 sm:my-8" />
-
           {/* CTA Section */}
           <div className="text-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-dark mb-3 sm:mb-4">
@@ -346,7 +321,7 @@ export default function HomePage() {
               <span className="font-semibold">Contactanos ahora </span>
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
-              <a href="mailto:info@gigantya.com" className="btn btn-primary btn-lg min-h-[48px]">
+              <a href="https://w.app/3k9utn" target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-lg min-h-[48px]">
                 Contactar Ventas
               </a>
               <Link to="/register" className="btn btn-outline btn-lg min-h-[48px]">
@@ -370,4 +345,3 @@ export default function HomePage() {
     </div>
   );
 }
-
