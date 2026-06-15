@@ -38,7 +38,7 @@ fi
 echo -e "${YELLOW}📥 [2/7] Descargando últimos cambios...${NC}"
 cd "$APP_DIR"
 if [ -d ".git" ]; then
-    git pull origin main
+    git pull origin master
     echo -e "${GREEN}   ✅ Cambios descargados${NC}"
 else
     echo -e "${RED}   ❌ No es un repositorio git${NC}"
@@ -61,10 +61,15 @@ fi
 echo -e "${YELLOW}🏗️  [4/7] Compilando frontend...${NC}"
 cd "$APP_DIR/client"
 
-# Verificar si existe .env, si no copiar de .env.production
-if [ ! -f ".env" ] && [ -f ".env.production" ]; then
-    cp .env.production .env
-    echo -e "${YELLOW}   ⚠️  .env creado desde .env.production${NC}"
+# Verificar si existe .env, si no copiar de .env.production o .env.example
+if [ ! -f ".env" ]; then
+    if [ -f ".env.production" ]; then
+        cp .env.production .env
+        echo -e "${YELLOW}   ⚠️  .env creado desde .env.production${NC}"
+    elif [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo -e "${YELLOW}   ⚠️  .env creado desde .env.example - REVISAR VARIABLES${NC}"
+    fi
 fi
 
 npm install
