@@ -109,9 +109,12 @@ export async function createRestaurantWithConnection(restaurantData, connection)
  */
 export async function getRestaurants(filtros = {}) {
   let sql = `
-    SELECT * FROM restaurantes
-    WHERE estado = 'activo' AND aprobado = 1
-      AND (plan = 'basico' OR fecha_vencimiento_plan IS NULL OR fecha_vencimiento_plan >= NOW())
+    SELECT r.* FROM restaurantes r
+    JOIN usuarios u ON r.usuario_id = u.id
+    WHERE r.estado = 'activo'
+      AND r.aprobado = 1
+      AND u.estado = 'activo'
+      AND (r.plan = 'basico' OR r.fecha_vencimiento_plan IS NULL OR r.fecha_vencimiento_plan >= NOW())
   `;
   const params = [];
 
@@ -139,9 +142,10 @@ export async function getRestaurants(filtros = {}) {
  */
 export async function getRestaurantById(id) {
   const sql = `
-    SELECT r.* 
+    SELECT r.*
     FROM restaurantes r
-    WHERE r.id = ? AND r.estado = 'activo'
+    JOIN usuarios u ON r.usuario_id = u.id
+    WHERE r.id = ? AND r.estado = 'activo' AND u.estado = 'activo'
   `;
 
   const restaurante = await queryOne(sql, [id]);

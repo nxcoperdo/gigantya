@@ -103,6 +103,11 @@ export async function getUserByEmail(email) {
   return queryOne(sql, [email]);
 }
 
+export async function getUserByEmailIgnoreStatus(email) {
+  const sql = 'SELECT * FROM usuarios WHERE email = ?';
+  return queryOne(sql, [email]);
+}
+
 /**
  * Obtener usuario por ID
  */

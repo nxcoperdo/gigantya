@@ -100,11 +100,17 @@ export async function login(req, res) {
       });
     }
 
-    // Buscar usuario
-    const usuario = await UserModel.getUserByEmail(email);
+    // Buscar usuario (sin importar el estado para poder informar si está suspendido)
+    const usuario = await UserModel.getUserByEmailIgnoreStatus(email);
     if (!usuario) {
-      return res.status(401).json({ 
-        error: 'Credenciales inválidas' 
+      return res.status(401).json({
+        error: 'Credenciales inválidas'
+      });
+    }
+
+    if (usuario.estado === 'suspendido') {
+      return res.status(403).json({
+        error: 'Tu cuenta ha sido suspendida. Por favor, contacta al administrador.'
       });
     }
 

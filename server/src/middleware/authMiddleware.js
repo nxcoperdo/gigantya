@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
+import * as UserModel from '../models/User.js';
 
 /**
  * Middleware para verificar token JWT
  */
-export function verifyToken(req, res, next) {
+export async function verifyToken(req, res, next) {
   try {
     const token = req.headers.authorization?.split(' ')[1];
 
@@ -15,6 +16,15 @@ export function verifyToken(req, res, next) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Verificar si el usuario sigue activo en la base de datos
+    const usuario = await UserModel.getUserById(decoded.id);
+    if (!usuario || usuario.estado === 'suspendido') {
+      return res.status(403).json({
+        error: 'Tu sesión ha expirado o tu cuenta ha sido suspendida'
+      });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {

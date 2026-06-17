@@ -165,7 +165,7 @@ const Header = memo(function Header() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity active:scale-95 touch-feedback">
-            <div className="text-2xl md:text-3xl">🍽️</div>
+            <img src="/favicon.jpg" alt="GigantYa" className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-cover" />
             <span className="text-lg md:text-xl lg:text-2xl font-heading font-bold text-dark">GigantYa</span>
           </Link>
 
