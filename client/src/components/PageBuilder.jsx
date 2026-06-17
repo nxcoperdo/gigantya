@@ -21,8 +21,8 @@ function RestaurantPreview({ restaurant, config }) {
   const radiusValue = config.borderRadius === 'small' ? '4px' : config.borderRadius === 'large' ? '24px' : '12px';
 
   const dynamicStyles = {
-    '--color-primary': config.primaryColor || '#c94b3b',
-    '--color-secondary': config.secondaryColor || '#f2b8b0',
+    '--color-primary': config.primaryColor || '#FF6B00',
+    '--color-secondary': config.secondaryColor || '#FFAE73',
     '--font-family': config.fontFamily || 'Inter',
     '--border-radius': radiusValue,
   };
@@ -101,8 +101,8 @@ function RestaurantPreview({ restaurant, config }) {
 
 export default function PageBuilder({ restaurant, onSave, onUpdate }) {
   const [config, setConfig] = useState({
-    primaryColor: '#c94b3b',
-    secondaryColor: '#f2b8b0',
+    primaryColor: '#FF6B00',
+    secondaryColor: '#FFAE73',
     fontFamily: 'Inter',
     borderRadius: 'medium',
     logoUrl: '',
