@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Plus, Trash2, CheckCircle, Edit2 } from 'lucide-react';
-import { addressService } from '../services/api';
+import { MapPin, Plus, Trash2, CheckCircle, Edit2, ExternalLink } from 'lucide-react';
+import { addressService, zonaService } from '../services/api';
+import AddressAutocomplete from './AddressAutocomplete';
 
 export default function AddressesTab() {
   const [addresses, setAddresses] = useState([]);
+  const [sectores, setSectores] = useState([]);
+  const [barriosBySector, setBarriosBySector] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingSectores, setLoadingSectores] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -13,16 +17,51 @@ export default function AddressesTab() {
   const [formData, setFormData] = useState({
     tipo: 'residencia',
     direccion: '',
-    ciudad: 'GigantYA, Huila',
+    ciudad: 'Gigante, Huila',
     telefono: '',
     notas: '',
     es_default: false,
+    sector_id: '',
+    barrio_id: '',
+    latitud: null,
+    longitud: null,
+    direccion_formateada: '',
+    place_id: '',
   });
 
-  // Cargar direcciones
+  // Cargar direcciones y sectores al montar
   useEffect(() => {
     loadAddresses();
+    loadSectores();
   }, []);
+
+  const loadSectores = async () => {
+    try {
+      setLoadingSectores(true);
+      const res = await zonaService.getSectores();
+      setSectores(res.data.sectores || []);
+    } catch (err) {
+      console.error('Error cargando sectores:', err);
+    } finally {
+      setLoadingSectores(false);
+    }
+  };
+
+  const loadBarrios = async (sectorId) => {
+    if (!sectorId) return [];
+    // Normalizar a string para mantener una sola clave consistente con `formData.sector_id`
+    const key = String(sectorId);
+    if (barriosBySector[key]) return barriosBySector[key];
+    try {
+      const res = await zonaService.getBarrios(key);
+      const barrios = res.data.barrios || [];
+      setBarriosBySector(prev => ({ ...prev, [key]: barrios }));
+      return barrios;
+    } catch (err) {
+      console.error('Error cargando barrios:', err);
+      return [];
+    }
+  };
 
   const loadAddresses = async () => {
     try {
@@ -40,15 +79,22 @@ export default function AddressesTab() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+      // Si cambia el sector, limpiamos el barrio para evitar IDs huérfanos
+      if (name === 'sector_id') {
+        next.barrio_id = '';
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.direccion.trim()) {
       setError('La dirección es requerida');
       return;
@@ -56,27 +102,42 @@ export default function AddressesTab() {
 
     try {
       setLoading(true);
-      
+
+      const payload = {
+        ...formData,
+        barrio_id: formData.barrio_id ? Number(formData.barrio_id) : null,
+        latitud: formData.latitud ?? null,
+        longitud: formData.longitud ?? null,
+        direccion_formateada: formData.direccion_formateada || null,
+        place_id: formData.place_id || null,
+      };
+
       if (editingId) {
-        await addressService.update(editingId, formData);
+        await addressService.update(editingId, payload);
         setSuccess('Dirección actualizada exitosamente');
       } else {
-        await addressService.create(formData);
+        await addressService.create(payload);
         setSuccess('Dirección agregada exitosamente');
       }
 
       setFormData({
         tipo: 'residencia',
         direccion: '',
-        ciudad: 'GigantYA, Huila',
+        ciudad: 'Gigante, Huila',
         telefono: '',
         notas: '',
         es_default: false,
+        sector_id: '',
+        barrio_id: '',
+        latitud: null,
+        longitud: null,
+        direccion_formateada: '',
+        place_id: '',
       });
       setShowForm(false);
       setEditingId(null);
       setError('');
-      
+
       await loadAddresses();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -86,7 +147,7 @@ export default function AddressesTab() {
     }
   };
 
-  const handleEdit = (address) => {
+  const handleEdit = async (address) => {
     setFormData({
       tipo: address.tipo,
       direccion: address.direccion,
@@ -94,9 +155,19 @@ export default function AddressesTab() {
       telefono: address.telefono || '',
       notas: address.notas || '',
       es_default: address.es_default === 1,
+      sector_id: address.sector_id ? String(address.sector_id) : '',
+      barrio_id: address.barrio_id ? String(address.barrio_id) : '',
+      latitud: address.latitud !== null && address.latitud !== undefined ? Number(address.latitud) : null,
+      longitud: address.longitud !== null && address.longitud !== undefined ? Number(address.longitud) : null,
+      direccion_formateada: address.direccion_formateada || '',
+      place_id: address.place_id || '',
     });
     setEditingId(address.id);
     setShowForm(true);
+    // Si el sector viene con barrio, precargar la lista (usar string como clave)
+    if (address.sector_id) {
+      await loadBarrios(String(address.sector_id));
+    }
   };
 
   const handleDelete = async (id) => {
@@ -140,9 +211,13 @@ export default function AddressesTab() {
     );
   }
 
+  const barriosDelSectorSeleccionado = formData.sector_id
+    ? (barriosBySector[formData.sector_id] || [])
+    : [];
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-dark mb-6 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-6 flex items-center gap-2">
         <MapPin className="text-primary" size={24} />
         Mis Direcciones
       </h2>
@@ -173,7 +248,7 @@ export default function AddressesTab() {
       {/* Formulario */}
       {showForm && (
         <div className="card-lg bg-gradient-light border border-primary border-opacity-20">
-          <h3 className="text-xl font-bold text-dark mb-4">
+          <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-4">
             {editingId ? 'Editar Dirección' : 'Nueva Dirección'}
           </h3>
 
@@ -207,16 +282,66 @@ export default function AddressesTab() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-2">Dirección *</label>
-              <input
-                type="text"
+              <label className="block text-sm font-semibold mb-2">Dirección (calle/carrera/número) *</label>
+              <AddressAutocomplete
+                id="direccion-input"
                 name="direccion"
                 value={formData.direccion}
-                onChange={handleChange}
-                placeholder="Calle 5 #12-45, Apto 301"
-                className="input"
+                onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
+                onPlaceSelected={(place) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    direccion: place.direccion,
+                    direccion_formateada: place.direccion_formateada,
+                    latitud: place.latitud,
+                    longitud: place.longitud,
+                    place_id: place.place_id,
+                    ciudad: place.ciudad || prev.ciudad,
+                  }));
+                }}
+                placeholder="Calle 5 #12-45"
                 required
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Sector *</label>
+                <select
+                  name="sector_id"
+                  value={formData.sector_id}
+                  onChange={handleChange}
+                  className="input"
+                  required
+                  disabled={loadingSectores}
+                >
+                  <option value="">
+                    {loadingSectores ? 'Cargando sectores…' : 'Selecciona un sector'}
+                  </option>
+                  {sectores.map(s => (
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Barrio *</label>
+                <select
+                  name="barrio_id"
+                  value={formData.barrio_id}
+                  onChange={handleChange}
+                  className="input"
+                  required
+                  disabled={!formData.sector_id}
+                >
+                  <option value="">
+                    {formData.sector_id ? 'Selecciona un barrio' : 'Primero selecciona un sector'}
+                  </option>
+                  {barriosDelSectorSeleccionado.map(b => (
+                    <option key={b.id} value={b.id}>{b.nombre}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>
@@ -248,7 +373,7 @@ export default function AddressesTab() {
                 name="es_default"
                 checked={formData.es_default}
                 onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300"
+                className="w-4 h-4 rounded border-[color:var(--border-default)]"
               />
               <span className="text-sm font-medium">Establecer como dirección predeterminada</span>
             </label>
@@ -269,10 +394,16 @@ export default function AddressesTab() {
                   setFormData({
                     tipo: 'residencia',
                     direccion: '',
-                    ciudad: 'GigantYA, Huila',
+                    ciudad: 'Gigante, Huila',
                     telefono: '',
                     notas: '',
                     es_default: false,
+                    sector_id: '',
+                    barrio_id: '',
+                    latitud: null,
+                    longitud: null,
+                    direccion_formateada: '',
+                    place_id: '',
                   });
                 }}
                 className="btn btn-outline"
@@ -287,10 +418,10 @@ export default function AddressesTab() {
       {/* Lista de direcciones */}
       <div className="space-y-3">
         {addresses.length === 0 ? (
-          <div className="text-center py-12 bg-light rounded-lg">
-            <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-600">No tienes direcciones guardadas</p>
-            <p className="text-sm text-gray-500 mt-2">Agrega una dirección para facilitar tus compras</p>
+          <div className="text-center py-12 bg-[color:var(--bg-subtle)] rounded-lg">
+            <MapPin className="w-16 h-16 mx-auto text-[color:var(--text-subtle)] mb-4" />
+            <p className="text-[color:var(--text-secondary)]">No tienes direcciones guardadas</p>
+            <p className="text-sm text-[color:var(--text-muted)] mt-2">Agrega una dirección para facilitar tus compras</p>
           </div>
         ) : (
           addresses.map(address => (
@@ -299,30 +430,58 @@ export default function AddressesTab() {
               className={`card-lg border-2 transition-all ${
                 address.es_default === 1
                   ? 'border-primary bg-gradient-light'
-                  : 'border-gray-200'
+                  : 'border-[color:var(--border-default)]'
               }`}
             >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="inline-block px-3 py-1 bg-primary bg-opacity-10 text-primary rounded-full text-xs font-semibold capitalize">
                       {address.tipo}
                     </span>
                     {address.es_default === 1 && (
-                      <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                        <CheckCircle size={14} />
-                        Predeterminada
-                      </span>
+                      <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
+                      style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
+                    >
+                      <CheckCircle size={14} />
+                      Predeterminada
+                    </span>
+                    )}
+                    {address.sector_nombre && (
+                      <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
+                    >
+                      📍 {address.sector_nombre}
+                      {address.barrio_nombre ? ` · ${address.barrio_nombre}` : ''}
+                    </span>
                     )}
                   </div>
 
-                  <p className="font-semibold text-dark mb-1">{address.direccion}</p>
-                  <p className="text-sm text-gray-600">{address.ciudad}</p>
+                  <p className="font-semibold text-[color:var(--text-primary)] mb-1">{address.direccion}</p>
+                  {address.direccion_formateada && address.direccion_formateada !== address.direccion && (
+                    <p className="text-xs text-[color:var(--text-muted)] mb-1 italic">
+                      {address.direccion_formateada}
+                    </p>
+                  )}
+                  <p className="text-sm text-[color:var(--text-secondary)]">{address.ciudad}</p>
                   {address.telefono && (
-                    <p className="text-sm text-gray-600">📞 {address.telefono}</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">📞 {address.telefono}</p>
                   )}
                   {address.notas && (
-                    <p className="text-sm text-gray-500 italic mt-2">💬 {address.notas}</p>
+                    <p className="text-sm text-[color:var(--text-muted)] italic mt-2">💬 {address.notas}</p>
+                  )}
+                  {address.latitud !== null && address.latitud !== undefined && address.longitud !== null && address.longitud !== undefined && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${address.latitud},${address.longitud}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-primary hover:underline"
+                    >
+                      <ExternalLink size={12} />
+                      Ver en Google Maps
+                    </a>
                   )}
                 </div>
 
@@ -336,10 +495,13 @@ export default function AddressesTab() {
                   </button>
                   <button
                     onClick={() => handleDelete(address.id)}
-                    className="btn btn-ghost p-2 hover:bg-red-100"
+                    className="btn btn-ghost p-2"
+                    style={{ color: 'var(--danger-text)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                     title="Eliminar"
                   >
-                    <Trash2 size={18} className="text-red-500" />
+                    <Trash2 size={18} />
                   </button>
                   {address.es_default !== 1 && (
                     <button
@@ -358,4 +520,3 @@ export default function AddressesTab() {
     </div>
   );
 }
-

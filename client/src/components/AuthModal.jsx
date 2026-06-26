@@ -28,7 +28,7 @@ export default function AuthModal({ isOpen, onClose }) {
       onClick={handleBackdropClick}
     >
       {/* Modal */}
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-scaleIn overflow-hidden">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-scaleIn overflow-hidden">
         {/* Header con gradiente */}
         <div className="bg-gradient-primary text-white px-6 py-8 relative overflow-hidden">
           {/* Decorative elements */}
@@ -54,10 +54,10 @@ export default function AuthModal({ isOpen, onClose }) {
         <div className="p-8">
           {/* Message */}
           <div className="mb-8">
-            <h3 className="text-xl font-bold text-dark mb-3 text-center">
+            <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-3 text-center">
               ¡Oops! Necesitas autenticarte
             </h3>
-            <p className="text-gray-600 text-base leading-relaxed text-center">
+            <p className="text-[color:var(--text-secondary)] text-base leading-relaxed text-center">
               Para explorar menús y hacer pedidos, debes iniciar sesión o crear una cuenta primero. ¡Es rápido y fácil!
             </p>
           </div>
@@ -76,7 +76,7 @@ export default function AuthModal({ isOpen, onClose }) {
             {/* Register Button */}
             <button
               onClick={handleRegister}
-              className="w-full bg-light border-2 border-primary text-primary hover:bg-primaryLight font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-3 transition-all duration-300 transform hover:shadow-lg hover:-translate-y-0.5"
+              className="w-full bg-[color:var(--bg-subtle)] border-2 border-primary text-primary hover:bg-primaryLight font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-3 transition-all duration-300 transform hover:shadow-lg hover:-translate-y-0.5"
             >
               <UserPlus size={20} />
               Registrarse
@@ -85,13 +85,13 @@ export default function AuthModal({ isOpen, onClose }) {
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 h-px bg-gray-300"></div>
-            <span className="text-gray-500 text-sm">o</span>
-            <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
+            <span className="text-[color:var(--text-muted)] text-sm">o</span>
+            <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
           </div>
 
           {/* Secondary action */}
-          <p className="text-center text-gray-600 text-sm">
+          <p className="text-center text-[color:var(--text-secondary)] text-sm">
             ¿Ya tienes cuenta?{' '}
             <button
               onClick={handleLogin}
@@ -103,8 +103,8 @@ export default function AuthModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer info */}
-        <div className="bg-gray-50 px-8 py-4 border-t border-gray-100">
-          <p className="text-xs text-gray-500 text-center">
+        <div className="bg-[color:var(--bg-subtle)] px-8 py-4 border-t border-[color:var(--border-subtle)]">
+          <p className="text-xs text-[color:var(--text-muted)] text-center">
             Tus datos son seguros con nosotros. Protegido con encriptación SSL.
           </p>
         </div>

@@ -13,6 +13,17 @@ const router = express.Router();
 router.post('/upload', verifyToken, requireRestaurant, upload.single('image'), productController.uploadProductImage);
 
 /**
+ * @route   GET /api/products/all
+ * @desc    Listar productos de todos los restaurantes aprobados (feed home)
+ *          Ordena por plan del restaurante: premium → profesional → basico.
+ * @access  Public
+ * @query   categoria (opcional, filtra por nombre de categoría)
+ */
+// IMPORTANTE: declarar `/all` ANTES de `/:id` para que Express no lo
+// confunda con un id numérico.
+router.get('/all', productController.listProducts);
+
+/**
  * @route   GET /api/products/restaurant/:restaurante_id
  * @desc    Obtener productos de un restaurante
  * @access  Public

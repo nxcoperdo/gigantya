@@ -96,7 +96,7 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
 
   if (!shouldRender) return null;
 
-  const panelClassName = `absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transform will-change-transform transition-all duration-300 ease-out ${
+  const panelClassName = `absolute right-0 top-0 h-full w-full max-w-md bg-[color:var(--bg-elevated)] shadow-2xl transform will-change-transform transition-all duration-300 ease-out ${
     isEntering ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
   }`;
 
@@ -112,22 +112,22 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
       <div className={panelClassName}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="p-4 border-b border-[color:var(--border-subtle)] flex items-center justify-between bg-[color:var(--bg-subtle)]/50">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-gray-800">Notificaciones</h2>
+              <h2 className="text-lg font-bold text-[color:var(--text-primary)]">Notificaciones</h2>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              className="p-2 hover:bg-[color:var(--bg-muted)] rounded-full transition-colors"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-[color:var(--text-muted)]" />
             </button>
           </div>
 
           {/* Actions */}
           {unreadCount > 0 && (
-            <div className="p-3 border-b border-gray-100 flex justify-end">
+            <div className="p-3 border-b border-[color:var(--border-subtle)] flex justify-end">
               <button
                 onClick={handleMarkAllRead}
                 className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-dark transition-colors"
@@ -141,31 +141,33 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
           {/* List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {loading ? (
-              <div className="flex justify-center items-center h-full text-gray-400">Cargando...</div>
+              <div className="flex justify-center items-center h-full text-[color:var(--text-muted)]">Cargando...</div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <div className="bg-gray-100 p-4 rounded-full mb-3">
-                  <Bell className="w-8 h-8 text-gray-400" />
+                <div className="bg-[color:var(--bg-muted)] p-4 rounded-full mb-3">
+                  <Bell className="w-8 h-8 text-[color:var(--text-subtle)]" />
                 </div>
-                <p className="text-gray-500">No tienes notificaciones pendientes</p>
+                <p className="text-[color:var(--text-muted)]">No tienes notificaciones pendientes</p>
               </div>
             ) : (
               notifications.map(n => (
                 <div
                   key={n.id}
-                  className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md ${
-                    n.leido === 0 ? 'bg-blue-50/50 border-blue-100' : 'bg-white border-gray-100'
-                  }`}
+                  className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md`}
+                  style={n.leido === 0
+                    ? { backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-border)' }
+                    : { backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }
+                  }
                   onClick={() => handleMarkAsRead(n.id)}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-sm text-gray-800">{n.titulo}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(n.creado_en).toLocaleDateString()}</span>
+                    <span className="font-semibold text-sm text-[color:var(--text-primary)]">{n.titulo}</span>
+                    <span className="text-[10px] text-[color:var(--text-muted)]">{new Date(n.creado_en).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{n.mensaje}</p>
+                  <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">{n.mensaje}</p>
                   {n.leido === 0 && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-blue-600">
-                      <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+                    <div className="mt-2 flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--info-text)' }}>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--info-text)' }} />
                       Nuevo
                     </div>
                   )}

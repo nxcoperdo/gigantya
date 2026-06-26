@@ -1,5 +1,6 @@
 import express from 'express';
 import * as restaurantController from '../controllers/restaurantController.js';
+import * as restaurantShippingController from '../controllers/restaurantShippingController.js';
 import { verifyToken, requireRestaurant } from '../middleware/authMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 
@@ -43,6 +44,13 @@ router.put('/:id', verifyToken, requireRestaurant, upload.fields([
  * @access  Private - Restaurant
  */
 router.get('/me/stats', verifyToken, requireRestaurant, restaurantController.getRestaurantStats);
+
+/**
+ * Costos de envío por sector — accesibles también por el dueño del restaurante.
+ * El controller valida que `req.user.id` sea el `usuario_id` del restaurante.
+ */
+router.get('/:id/envios-sectores', verifyToken, requireRestaurant, restaurantShippingController.getEnviosSectores);
+router.put('/:id/envios-sectores', verifyToken, requireRestaurant, restaurantShippingController.replaceEnviosSectores);
 
 export default router;
 

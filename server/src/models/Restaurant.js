@@ -13,9 +13,9 @@ export async function createRestaurant(restaurantData) {
     horario_apertura,
     horario_cierre,
     imagen_url,
-    // FIX: la migración inicial define la ciudad con tilde ('GigantYA, Huila').
+    // FIX: la migración inicial define la ciudad con tilde ('Gigante, Huila').
     // Unificamos para evitar inconsistencias al filtrar por ciudad.
-    ciudad = 'GigantYA, Huila'
+    ciudad = 'Gigante, Huila'
   } = restaurantData;
 
   const sql = `
@@ -66,7 +66,7 @@ export async function createRestaurantWithConnection(restaurantData, connection)
     horario_apertura,
     horario_cierre,
     imagen_url,
-    ciudad = 'GigantYA, Huila'
+    ciudad = 'Gigante, Huila'
   } = restaurantData;
 
   const sql = `
@@ -108,9 +108,20 @@ export async function createRestaurantWithConnection(restaurantData, connection)
  * Obtener todos los restaurantes aprobados
  */
 export async function getRestaurants(filtros = {}) {
+  // Detectar nombre real de la columna de puntaje en `calificaciones`
+  // (la BD puede llamarse `calificacion` o `puntuacion` según la migración).
+  const cols = await query("SHOW COLUMNS FROM calificaciones");
+  const ratingCol =
+    cols.find(c => c.Field === 'calificacion') ? 'calificacion' :
+    cols.find(c => c.Field === 'puntuacion') ? 'puntuacion' : null;
+
   let sql = `
-    SELECT r.* FROM restaurantes r
+    SELECT r.*,
+           COALESCE(AVG(c.${ratingCol ?? 'calificacion'}), 0) AS calificacion_promedio,
+           COUNT(c.id) AS total_calificaciones
+    FROM restaurantes r
     JOIN usuarios u ON r.usuario_id = u.id
+    LEFT JOIN calificaciones c ON c.restaurante_id = r.id
     WHERE r.estado = 'activo'
       AND r.aprobado = 1
       AND u.estado = 'activo'
@@ -128,7 +139,21 @@ export async function getRestaurants(filtros = {}) {
     params.push(`%${filtros.nombre}%`);
   }
 
-  sql += ' ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
+  // Filtro por categoría de producto: el restaurante debe tener al menos
+  // un producto activo en una categoría con ese nombre. Mantiene el orden
+  // premium → profesional → basico definido más abajo.
+  if (filtros.categoria) {
+    sql += ` AND EXISTS (
+      SELECT 1 FROM productos p
+      JOIN categorias c ON p.categoria_id = c.id
+      WHERE p.restaurante_id = r.id
+        AND p.estado = 'activo'
+        AND c.nombre = ?
+    )`;
+    params.push(filtros.categoria);
+  }
+
+  sql += ' GROUP BY r.id ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
 
   try {
     return await query(sql, params);
@@ -153,9 +178,6 @@ export async function getRestaurantById(id) {
   if (!restaurante) return null;
 
   // Parsear campos JSON
-  console.log('RestaurantModel - Raw configuracion_impuestos:', restaurante.configuracion_impuestos);
-  console.log('RestaurantModel - Raw configuracion_envios:', restaurante.configuracion_envios);
-
   if (restaurante.configuracion_impuestos) {
     try {
       restaurante.configuracion_impuestos = JSON.parse(restaurante.configuracion_impuestos);
@@ -177,9 +199,6 @@ export async function getRestaurantById(id) {
   } else {
     restaurante.configuracion_envios = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
   }
-
-  console.log('RestaurantModel - Parsed configuracion_impuestos:', restaurante.configuracion_impuestos);
-  console.log('RestaurantModel - Parsed configuracion_envios:', restaurante.configuracion_envios);
 
   // Obtener categorías y productos
   const productos = await query(`

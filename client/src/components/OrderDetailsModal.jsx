@@ -1,13 +1,14 @@
 import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { orderService } from '../services/api';
+import AddressMapPreview from './AddressMapPreview';
 
 const ORDER_STATE_STYLES = {
-  Pendiente: { bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-yellow-200' },
-  Preparando: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
-  Listo: { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' },
-  Entregado: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200' },
-  Cancelado: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200' },
+  Pendiente:  { bg: 'var(--warning-bg)',         text: 'var(--warning-text)',         border: 'var(--warning-border)' },
+  Preparando: { bg: 'var(--info-bg)',            text: 'var(--info-text)',            border: 'var(--info-border)' },
+  Listo:      { bg: 'var(--accent-purple-bg)',   text: 'var(--accent-purple-text)',   border: 'var(--border-subtle)' },
+  Entregado:  { bg: 'var(--success-bg)',         text: 'var(--success-text)',         border: 'var(--success-border)' },
+  Cancelado:  { bg: 'var(--danger-bg)',          text: 'var(--danger-text)',          border: 'var(--danger-border)' },
 };
 
 const PAYMENT_METHOD_LABELS = {
@@ -49,19 +50,31 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
   const displayOrder = fullOrderData || order;
   const styleClasses = ORDER_STATE_STYLES[displayOrder.estado] || ORDER_STATE_STYLES.Pendiente;
   const items = Array.isArray(displayOrder.items) ? displayOrder.items : displayOrder.detalles || [];
+  const stateStyle = {
+    backgroundColor: styleClasses.bg,
+    borderColor: styleClasses.border
+  };
+  const stateBadgeStyle = {
+    backgroundColor: styleClasses.bg,
+    color: styleClasses.text,
+    borderColor: styleClasses.border
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-scaleUp max-h-[90vh] overflow-y-auto">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-scaleUp max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className={`${styleClasses.bg} ${styleClasses.border} border-b-2 p-6`}>
+        <div className="border-b-2 p-6" style={stateStyle}>
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-2xl md:text-3xl font-heading font-bold text-dark">
+                <h2 className="text-2xl md:text-3xl font-heading font-bold text-[color:var(--text-primary)]">
                   Pedido #{displayOrder.id}
                 </h2>
-                <span className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 ${styleClasses.bg} ${styleClasses.text} ${styleClasses.border}`}>
+                <span
+                  className="px-3 py-1.5 rounded-full text-xs font-bold border-2"
+                  style={stateBadgeStyle}
+                >
                   {displayOrder.estado}
                 </span>
               </div>
@@ -74,7 +87,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
               <X size={24} />
             </button>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[color:var(--text-secondary)]">
             Fecha: {displayOrder.creado_en ? new Date(displayOrder.creado_en).toLocaleString('es-CO') : 'No disponible'}
           </p>
         </div>
@@ -84,36 +97,36 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
           {loading && (
             <div className="py-8 text-center">
               <Loader size={32} className="mx-auto text-primary animate-spin mb-3" />
-              <p className="text-gray-600">Cargando detalles del pedido...</p>
+              <p className="text-[color:var(--text-secondary)]">Cargando detalles del pedido...</p>
             </div>
           )}
 
           {!loading && (
             <>
               {/* Cliente Info */}
-              <section className="bg-light rounded-xl p-4 space-y-3">
-                <h3 className="font-bold text-dark text-lg flex items-center gap-2">
+              <section className="bg-[color:var(--bg-subtle)] rounded-xl p-4 space-y-3">
+                <h3 className="font-bold text-[color:var(--text-primary)] text-lg flex items-center gap-2">
                   <User size={18} className="text-primary" />
                   Información del Cliente
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-3 border border-gray-200">
-                    <p className="text-xs text-gray-500 font-semibold uppercase">Nombre</p>
-                    <p className="text-dark font-semibold mt-1">{displayOrder.cliente_nombre || 'No disponible'}</p>
+                  <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
+                    <p className="text-xs text-[color:var(--text-muted)] font-semibold uppercase">Nombre</p>
+                    <p className="text-[color:var(--text-primary)] font-semibold mt-1">{displayOrder.cliente_nombre || 'No disponible'}</p>
                   </div>
-                  <div className="bg-white rounded-lg p-3 border border-gray-200">
-                    <p className="text-xs text-gray-500 font-semibold uppercase flex items-center gap-1">
+                  <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
+                    <p className="text-xs text-[color:var(--text-muted)] font-semibold uppercase flex items-center gap-1">
                       <Phone size={14} />
                       Teléfono
                     </p>
-                    <p className="text-dark font-semibold mt-1">{displayOrder.cliente_telefono || 'No disponible'}</p>
+                    <p className="text-[color:var(--text-primary)] font-semibold mt-1">{displayOrder.cliente_telefono || 'No disponible'}</p>
                   </div>
-                  <div className="bg-white rounded-lg p-3 border border-gray-200">
-                    <p className="text-xs text-gray-500 font-semibold uppercase flex items-center gap-1">
+                  <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
+                    <p className="text-xs text-[color:var(--text-muted)] font-semibold uppercase flex items-center gap-1">
                       <DollarSign size={14} />
                       Método de Pago
                     </p>
-                    <p className="text-dark font-semibold mt-1">
+                    <p className="text-[color:var(--text-primary)] font-semibold mt-1">
                       {PAYMENT_METHOD_LABELS[displayOrder.metodo_pago] || displayOrder.metodo_pago || 'No definido'}
                     </p>
                   </div>
@@ -122,40 +135,66 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
 
               {/* Dirección */}
               {(displayOrder.direccion_entrega || displayOrder.direccion) && (
-                <section className="bg-light rounded-xl p-4 space-y-3">
-                  <h3 className="font-bold text-dark text-lg flex items-center gap-2">
+                <section className="bg-[color:var(--bg-subtle)] rounded-xl p-4 space-y-3">
+                  <h3 className="font-bold text-[color:var(--text-primary)] text-lg flex items-center gap-2">
                     <MapPin size={18} className="text-primary" />
                     Dirección de Entrega
                   </h3>
-                  <div className="bg-white rounded-lg p-3 border border-gray-200">
-                    <p className="text-dark">{displayOrder.direccion_entrega || displayOrder.direccion}</p>
-                  </div>
+
+                  {/* Si hay coordenadas de Google Maps, mostramos dirección formateada + mapa + botón */}
+                  {displayOrder.latitud !== null && displayOrder.latitud !== undefined && displayOrder.longitud !== null && displayOrder.longitud !== undefined ? (
+                    <div className="space-y-3">
+                      <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
+                        <p className="text-[color:var(--text-primary)] font-semibold">
+                          {displayOrder.direccion_formateada || displayOrder.direccion_entrega || displayOrder.direccion}
+                        </p>
+                        {displayOrder.direccion_formateada && displayOrder.direccion_entrega && displayOrder.direccion_formateada !== displayOrder.direccion_entrega && (
+                          <p className="text-xs text-[color:var(--text-muted)] mt-1">
+                            Referencia cliente: {displayOrder.direccion_entrega}
+                          </p>
+                        )}
+                      </div>
+                      <AddressMapPreview
+                        latitud={displayOrder.latitud}
+                        longitud={displayOrder.longitud}
+                        direccion={displayOrder.direccion_formateada || displayOrder.direccion_entrega}
+                      />
+                    </div>
+                  ) : (
+                    /* Fallback: dirección como texto plano (pedidos viejos sin Maps) */
+                    <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
+                      <p className="text-[color:var(--text-primary)]">{displayOrder.direccion_entrega || displayOrder.direccion}</p>
+                      <p className="text-xs text-[color:var(--text-muted)] mt-1 italic">
+                        Esta dirección no tiene coordenadas de Google Maps. Pídele al cliente que actualice su dirección usando el buscador.
+                      </p>
+                    </div>
+                  )}
                 </section>
               )}
 
               {/* Productos */}
-              <section className="bg-light rounded-xl p-4 space-y-3">
-                <h3 className="font-bold text-dark text-lg flex items-center gap-2">
+              <section className="bg-[color:var(--bg-subtle)] rounded-xl p-4 space-y-3">
+                <h3 className="font-bold text-[color:var(--text-primary)] text-lg flex items-center gap-2">
                   <Package size={18} className="text-primary" />
                   Productos ({items.length || displayOrder.items_count || 0})
                 </h3>
                 {items.length > 0 ? (
                   <div className="space-y-2">
                     {items.map((item) => (
-                      <div key={item.id} className="bg-white rounded-lg p-3 border border-gray-200 flex items-start justify-between gap-4">
+                      <div key={item.id} className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)] flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-dark truncate">{item.nombre || item.producto_nombre || 'Producto sin nombre'}</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="font-semibold text-[color:var(--text-primary)] truncate">{item.nombre || item.producto_nombre || 'Producto sin nombre'}</p>
+                          <p className="text-sm text-[color:var(--text-secondary)]">
                             {item.descripcion || item.producto_descripcion || 'Sin descripción'}
                           </p>
                           {item.especificaciones && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-[color:var(--text-muted)] mt-1">
                               <span className="font-medium">Especificaciones:</span> {item.especificaciones}
                             </p>
                           )}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-[color:var(--text-secondary)]">
                             {item.cantidad || 1}x
                           </p>
                           <p className="font-bold text-primary text-lg">
@@ -166,25 +205,28 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm bg-white rounded-lg p-3">No hay detalles de productos disponibles</p>
+                  <p className="text-[color:var(--text-muted)] text-sm bg-[color:var(--bg-elevated)] rounded-lg p-3">No hay detalles de productos disponibles</p>
                 )}
               </section>
 
               {/* Resumen */}
               <section className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 space-y-3 border border-primary/20">
-                <h3 className="font-bold text-dark text-lg">Resumen del Pedido</h3>
+                <h3 className="font-bold text-[color:var(--text-primary)] text-lg">Resumen del Pedido</h3>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Subtotal:</span>
-                    <span className="font-semibold text-dark">${Number(displayOrder.subtotal || 0).toLocaleString('es-CO')}</span>
+                    <span className="text-[color:var(--text-secondary)]">Subtotal:</span>
+                    <span className="font-semibold text-[color:var(--text-primary)]">${Number(displayOrder.subtotal || 0).toLocaleString('es-CO')}</span>
                   </div>
                   {displayOrder.cupon_codigo && (
-                    <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg">
-                      <span className="text-green-700 font-semibold flex items-center gap-2">
+                    <div
+                      className="flex items-center justify-between px-3 py-2 rounded-lg"
+                      style={{ backgroundColor: 'var(--success-bg)' }}
+                    >
+                      <span className="font-semibold flex items-center gap-2" style={{ color: 'var(--success-text)' }}>
                         <Tag size={16} />
                         Cupón: {displayOrder.cupon_codigo}
                       </span>
-                      <span className="font-semibold text-green-700">
+                      <span className="font-semibold" style={{ color: 'var(--success-text)' }}>
                         {displayOrder.cupon_tipo_descuento === 'porcentaje'
                           ? `${displayOrder.cupon_descuento}%`
                           : `$${Number(displayOrder.cupon_descuento).toLocaleString('es-CO')}`}
@@ -193,18 +235,21 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                   )}
                   {displayOrder.descuento > 0 && (
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Descuento:</span>
-                      <span className="font-semibold text-red-600">-${Number(displayOrder.descuento).toLocaleString('es-CO')}</span>
+                      <span className="text-[color:var(--text-secondary)]">Descuento:</span>
+                      <span className="font-semibold" style={{ color: 'var(--danger-text)' }}>-${Number(displayOrder.descuento).toLocaleString('es-CO')}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Envío:</span>
-                    <span className={displayOrder.costo_envio === 0 ? 'text-green-600 font-semibold' : ''}>
+                    <span className="text-[color:var(--text-secondary)]">Envío:</span>
+                    <span
+                      className={displayOrder.costo_envio === 0 ? 'font-semibold' : ''}
+                      style={displayOrder.costo_envio === 0 ? { color: 'var(--success-text)' } : undefined}
+                    >
                       {displayOrder.costo_envio === 0 ? 'Gratis' : `$${Number(displayOrder.costo_envio).toLocaleString('es-CO')}`}
                     </span>
                   </div>
-                  <div className="border-t border-gray-300 pt-2 mt-2 flex items-center justify-between">
-                    <span className="font-bold text-dark flex items-center gap-2">
+                  <div className="border-t border-[color:var(--border-default)] pt-2 mt-2 flex items-center justify-between">
+                    <span className="font-bold text-[color:var(--text-primary)] flex items-center gap-2">
                       <DollarSign size={18} className="text-primary" />
                       Total:
                     </span>
@@ -217,9 +262,9 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
 
               {/* Notas */}
               {displayOrder.notas && (
-                <section className="bg-light rounded-xl p-4 space-y-3">
-                  <h3 className="font-bold text-dark">Notas del Pedido</h3>
-                  <p className="text-gray-700 bg-white rounded-lg p-3 border border-gray-200">{displayOrder.notas}</p>
+                <section className="bg-[color:var(--bg-subtle)] rounded-xl p-4 space-y-3">
+                  <h3 className="font-bold text-[color:var(--text-primary)]">Notas del Pedido</h3>
+                  <p className="text-[color:var(--text-secondary)] bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">{displayOrder.notas}</p>
                 </section>
               )}
             </>
@@ -227,7 +272,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-6 bg-light flex gap-3 justify-end">
+        <div className="border-t border-[color:var(--border-default)] p-6 bg-[color:var(--bg-subtle)] flex gap-3 justify-end">
           <button
             onClick={onClose}
             className="btn btn-outline"

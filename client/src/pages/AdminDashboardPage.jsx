@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin } from 'lucide-react';
 import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
+import ZonasAdmin from '../components/ZonasAdmin';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -206,21 +207,27 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-light py-8 md:py-12">
+    <div className="min-h-screen bg-[color:var(--bg-subtle)] py-8 md:py-12">
       <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-8">
 
         {/* Header Section */}
-        <section className="card-lg bg-gradient-to-br from-white to-amber-50/60 p-6 md:p-8">
+        <section
+          className="card-lg p-6 md:p-8"
+          style={{ backgroundImage: 'linear-gradient(to bottom right, var(--bg-elevated), var(--warning-bg))' }}
+        >
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="flex flex-col gap-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold text-xs w-fit">
+              <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full font-semibold text-xs w-fit"
+              style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}
+            >
                 <ShieldCheck size={14} />
                 Super Administrador
               </div>
-              <h1 className="text-3xl md:text-4xl font-heading font-bold text-dark">
+              <h1 className="text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)]">
                 Centro de Control Gigantya
               </h1>
-              <p className="text-gray-600 max-w-2xl">
+              <p className="text-[color:var(--text-secondary)] max-w-2xl">
                 Gestión total de la plataforma: usuarios, restaurantes, pedidos y analíticas globales.
               </p>
             </div>
@@ -269,20 +276,21 @@ export default function AdminDashboardPage() {
         </section>
 
         {/* Navigation Tabs */}
-        <nav className="flex flex-wrap gap-2 p-1 bg-gray-200/50 rounded-xl w-fit">
+        <nav className="flex flex-wrap gap-2 p-1 bg-[color:var(--bg-muted)] rounded-xl w-fit">
           {[
             { id: 'overview', label: 'Vista General', icon: <BarChart3 size={16} /> },
             { id: 'users', label: 'Usuarios', icon: <Users size={16} /> },
             { id: 'restaurants', label: 'Restaurantes', icon: <Store size={16} /> },
             { id: 'orders', label: 'Pedidos', icon: <ClipboardList size={16} /> },
             { id: 'categories', label: 'Categorías', icon: <Tags size={16} /> },
+            { id: 'zonas', label: 'Zonas', icon: <MapPin size={16} /> },
             { id: 'analytics', label: 'Analíticas', icon: <Package size={16} /> },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-                activeTab === tab.id ? 'bg-white text-primary shadow-sm' : 'text-gray-600 hover:bg-white/50'
+                activeTab === tab.id ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm' : 'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-base)]/50'
               }`}
             >
               {tab.icon}
@@ -299,24 +307,31 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-fadeIn">
               <div className="xl:col-span-2 space-y-8">
                 <section className="card-lg">
-                  <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-dark">Pendientes de Aprobación</h2>
+                  <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Pendientes de Aprobación</h2>
                     <AlertCircle className="text-primary" size={24} />
                   </div>
                   <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     {pendingRestaurants.length === 0 ? (
-                      <div className="col-span-2 py-10 text-center text-gray-500">No hay solicitudes pendientes.</div>
+                      <div className="col-span-2 py-10 text-center text-[color:var(--text-muted)]">No hay solicitudes pendientes.</div>
                     ) : (
                       pendingRestaurants.map((res) => (
-                        <div key={res.id} className="border border-gray-200 rounded-2xl p-4 bg-white space-y-3">
+                        <div key={res.id} className="border border-[color:var(--border-default)] rounded-2xl p-4 bg-[color:var(--bg-elevated)] space-y-3">
                           <div className="flex justify-between items-start">
-                            <h3 className="font-bold text-dark">{res.nombre}</h3>
-                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">Pendiente</span>
+                            <h3 className="font-bold text-[color:var(--text-primary)]">{res.nombre}</h3>
+                            <span
+                              className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
+                            >Pendiente</span>
                           </div>
-                          <p className="text-xs text-gray-600">{res.descripcion || 'Sin descripción'}</p>
+                          <p className="text-xs text-[color:var(--text-secondary)]">{res.descripcion || 'Sin descripción'}</p>
                           <div className="flex gap-2">
                             <button onClick={() => handleApprove(res.id)} className="btn btn-primary btn-small flex-1 py-1 text-xs">Aprobar</button>
-                            <button onClick={() => handleReject(res.id)} className="btn btn-outline btn-small flex-1 py-1 text-xs text-red-600 border-red-200">Rechazar</button>
+                            <button
+                              onClick={() => handleReject(res.id)}
+                              className="btn btn-outline btn-small flex-1 py-1 text-xs"
+                              style={{ color: 'var(--danger-text)' }}
+                            >Rechazar</button>
                           </div>
                         </div>
                       ))
@@ -326,7 +341,7 @@ export default function AdminDashboardPage() {
               </div>
               <aside className="space-y-6">
                 <section className="card-lg p-6">
-                  <h3 className="text-lg font-bold text-dark mb-4">Resumen Rápido</h3>
+                  <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-4">Resumen Rápido</h3>
                   <div className="space-y-3 text-sm">
                     <InfoRow label="Pendientes" value={pendingCount} />
                     <InfoRow label="Aprobados" value={stats?.restaurantes_aprobados ?? 0} />
@@ -340,13 +355,13 @@ export default function AdminDashboardPage() {
           {/* TAB: USERS */}
           {activeTab === 'users' && (
             <section className="card-lg overflow-hidden animate-fadeIn">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-dark">Gestión de Usuarios</h2>
+              <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Gestión de Usuarios</h2>
                 <Users className="text-primary" size={24} />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                  <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                     <tr>
                       <th className="px-6 py-3">Usuario</th>
                       <th className="px-6 py-3">Rol</th>
@@ -354,23 +369,27 @@ export default function AdminDashboardPage() {
                       <th className="px-6 py-3 text-right">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {users.map(user => (
-                      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={user.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
                         <td className="px-6 py-4">
-                          <p className="font-semibold text-dark">{user.nombre}</p>
-                          <p className="text-xs text-gray-500">{user.email}</p>
+                          <p className="font-semibold text-[color:var(--text-primary)]">{user.nombre}</p>
+                          <p className="text-xs text-[color:var(--text-muted)]">{user.email}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                            user.tipo_usuario === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-700'
-                          }`}>{user.tipo_usuario}</span>
+                          <span
+                            className="text-xs font-bold px-2 py-1 rounded-full"
+                            style={user.tipo_usuario === 'admin'
+                              ? { backgroundColor: 'var(--accent-purple-bg)', color: 'var(--accent-purple-text)' }
+                              : { backgroundColor: 'var(--bg-muted)', color: 'var(--text-secondary)' }
+                            }
+                          >{user.tipo_usuario}</span>
                         </td>
                         <td className="px-6 py-4">
                           <select
                             value={user.estado}
                             onChange={(e) => handleStatusChange(user.id, e.target.value)}
-                            className="text-xs p-1 border rounded outline-none"
+                            className="text-xs p-1 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded outline-none"
                           >
                             <option value="activo">Activo</option>
                             <option value="inactivo">Inactivo</option>
@@ -380,7 +399,13 @@ export default function AdminDashboardPage() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
                             <button onClick={() => handleEditUser(user)} className="p-2 text-primary hover:bg-primary/10 rounded-lg"><Save size={18} /></button>
-                            <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                            <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-2 rounded-lg"
+                            style={{ color: 'var(--danger-text)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          ><Trash2 size={18} /></button>
                           </div>
                         </td>
                       </tr>
@@ -394,13 +419,13 @@ export default function AdminDashboardPage() {
           {/* TAB: RESTAURANTS */}
           {activeTab === 'restaurants' && (
             <section className="card-lg overflow-hidden animate-fadeIn">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-dark">Gestión de Restaurantes</h2>
+              <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Gestión de Restaurantes</h2>
                 <Store className="text-primary" size={24} />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                  <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                     <tr>
                       <th className="px-6 py-3">Restaurante</th>
                       <th className="px-6 py-3">Estado</th>
@@ -410,45 +435,53 @@ export default function AdminDashboardPage() {
                       <th className="px-6 py-3 text-right">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {restaurants.length === 0 ? (
-                      <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-500">No hay restaurantes registrados.</td></tr>
+                      <tr><td colSpan="6" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay restaurantes registrados.</td></tr>
                     ) : (
                       restaurants.map(res => (
-                        <tr key={res.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={res.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
                           <td className="px-6 py-4">
-                            <p className="font-semibold text-dark">{res.nombre}</p>
-                            <p className="text-xs text-gray-500">{res.email || 'Sin email'}</p>
+                            <p className="font-semibold text-[color:var(--text-primary)]">{res.nombre}</p>
+                            <p className="text-xs text-[color:var(--text-muted)]">{res.email || 'Sin email'}</p>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                              res.estado === 'activo' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                            }`}>
-                              {res.estado}
-                            </span>
+                            <span
+                            className="text-xs font-bold px-2 py-1 rounded-full"
+                            style={res.estado === 'activo'
+                              ? { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
+                              : { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
+                            }
+                          >
+                            {res.estado}
+                          </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                              res.aprobado === 1 ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
-                            }`}>
-                              {res.aprobado === 1 ? 'Aprobado' : 'Pendiente'}
-                            </span>
+                            <span
+                            className="text-xs font-bold px-2 py-1 rounded-full"
+                            style={res.aprobado === 1
+                              ? { backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }
+                              : { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
+                            }
+                          >
+                            {res.aprobado === 1 ? 'Aprobado' : 'Pendiente'}
+                          </span>
                           </td>
                           <td className="px-6 py-4">
                             <select
                               value={res.plan || 'basico'}
                               onChange={(e) => handleUpdatePlan(res.id, e.target.value)}
-                              className="text-xs p-1 border rounded outline-none bg-white"
+                              className="text-xs p-1 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded outline-none"
                             >
                               <option value="basico">🥉 Básico</option>
                               <option value="profesional">🥈 Profesional</option>
                               <option value="premium">🥇 Premium</option>
                             </select>
                           </td>
-                          <td className="px-6 py-4 text-xs text-gray-600">
+                          <td className="px-6 py-4 text-xs text-[color:var(--text-secondary)]">
                             {res.fecha_vencimiento_plan
                               ? new Date(res.fecha_vencimiento_plan).toLocaleDateString('es-CO')
-                              : <span className="text-gray-400">—</span>}
+                              : <span className="text-[color:var(--text-subtle)]">—</span>}
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -462,7 +495,13 @@ export default function AdminDashboardPage() {
                               >
                                 <Percent size={18} />
                               </button>
-                              <button onClick={() => handleDeleteUser(res.usuario_id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                              <button
+                                onClick={() => handleDeleteUser(res.usuario_id)}
+                                className="p-2 rounded-lg"
+                                style={{ color: 'var(--danger-text)' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              ><Trash2 size={18} /></button>
                             </div>
                           </td>
                         </tr>
@@ -477,13 +516,13 @@ export default function AdminDashboardPage() {
           {/* TAB: ORDERS */}
           {activeTab === 'orders' && (
             <section className="card-lg overflow-hidden animate-fadeIn">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-dark">Gestión Global de Pedidos</h2>
+              <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Gestión Global de Pedidos</h2>
                 <ClipboardList className="text-primary" size={24} />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                  <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                     <tr>
                       <th className="px-6 py-3">Pedido ID</th>
                       <th className="px-6 py-3">Cliente</th>
@@ -493,21 +532,27 @@ export default function AdminDashboardPage() {
                       <th className="px-6 py-3 text-right">Acción</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {orders.length === 0 ? (
-                      <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-500">No hay pedidos registrados.</td></tr>
+                      <tr><td colSpan="6" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay pedidos registrados.</td></tr>
                     ) : (
                       orders.map(order => (
-                        <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-xs text-gray-500">#{order.id}</td>
-                          <td className="px-6 py-4 font-semibold text-dark">{order.cliente}</td>
-                          <td className="px-6 py-4 text-sm">{order.restaurante}</td>
+                        <tr key={order.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
+                          <td className="px-6 py-4 font-mono text-xs text-[color:var(--text-muted)]">#{order.id}</td>
+                          <td className="px-6 py-4 font-semibold text-[color:var(--text-primary)]">{order.cliente}</td>
+                          <td className="px-6 py-4 text-sm text-[color:var(--text-secondary)]">{order.restaurante}</td>
                           <td className="px-6 py-4 text-sm font-bold">${Number(order.total).toLocaleString('es-CO')}</td>
                           <td className="px-6 py-4">
-                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                              order.estado === 'Entregado' ? 'bg-green-50 text-green-700' :
-                              order.estado === 'Cancelado' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
-                            }`}>
+                            <span
+                              className="text-xs font-bold px-2 py-1 rounded-full"
+                              style={
+                                order.estado === 'Entregado'
+                                  ? { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
+                                  : order.estado === 'Cancelado'
+                                    ? { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
+                                    : { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
+                              }
+                            >
                               {order.estado}
                             </span>
                           </td>
@@ -515,7 +560,7 @@ export default function AdminDashboardPage() {
                             <select
                               value={order.estado}
                               onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                              className="text-xs p-1 border rounded outline-none"
+                              className="text-xs p-1 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded outline-none"
                             >
                               <option value="Pendiente">Pendiente</option>
                               <option value="Preparando">Preparando</option>
@@ -536,8 +581,8 @@ export default function AdminDashboardPage() {
           {/* TAB: CATEGORIES */}
           {activeTab === 'categories' && (
             <section className="card-lg overflow-hidden animate-fadeIn">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-dark">Gestión de Categorías</h2>
+              <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Gestión de Categorías</h2>
                 <Tags className="text-primary" size={24} />
               </div>
 
@@ -554,7 +599,7 @@ export default function AdminDashboardPage() {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                  <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                     <tr>
                       <th className="px-6 py-3">Restaurante</th>
                       <th className="px-6 py-3">Nombre</th>
@@ -563,23 +608,23 @@ export default function AdminDashboardPage() {
                       <th className="px-6 py-3 text-right">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {categories.length === 0 ? (
-                      <tr><td colSpan="5" className="px-6 py-10 text-center text-gray-500">No hay categorías registradas.</td></tr>
+                      <tr><td colSpan="5" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay categorías registradas.</td></tr>
                     ) : (
                       categories.map(cat => (
-                        <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={cat.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
                           <td className="px-6 py-4">
-                            <p className="font-semibold text-dark">{cat.restaurante_nombre || 'Restaurante desconocido'}</p>
+                            <p className="font-semibold text-[color:var(--text-primary)]">{cat.restaurante_nombre || 'Restaurante desconocido'}</p>
                           </td>
                           <td className="px-6 py-4">
-                            <p className="font-semibold text-dark">{cat.nombre}</p>
+                            <p className="font-semibold text-[color:var(--text-primary)]">{cat.nombre}</p>
                           </td>
                           <td className="px-6 py-4">
-                            <p className="text-sm text-gray-600">{cat.descripcion || 'Sin descripción'}</p>
+                            <p className="text-sm text-[color:var(--text-secondary)]">{cat.descripcion || 'Sin descripción'}</p>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-xs font-bold text-gray-600">{cat.orden}</span>
+                            <span className="text-xs font-bold text-[color:var(--text-secondary)]">{cat.orden}</span>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
@@ -598,7 +643,10 @@ export default function AdminDashboardPage() {
                                     handleDeleteCategory(cat.id);
                                   }
                                 }}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                                className="p-2 rounded-lg"
+                                style={{ color: 'var(--danger-text)' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                               >
                                 <Trash2 size={18} />
                               </button>
@@ -613,24 +661,31 @@ export default function AdminDashboardPage() {
             </section>
           )}
 
+          {/* TAB: ZONAS (sectores / barrios) */}
+          {activeTab === 'zonas' && (
+            <div className="animate-fadeIn">
+              <ZonasAdmin />
+            </div>
+          )}
+
           {/* TAB: ANALYTICS */}
           {activeTab === 'analytics' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
               <section className="card-lg p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <Store className="text-primary" size={24} />
-                  <h2 className="text-2xl font-bold text-dark">Top Restaurantes</h2>
+                  <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Top Restaurantes</h2>
                 </div>
                 <div className="space-y-4">
                   {analytics.topRestaurants.map((res, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl bg-white shadow-sm">
+                    <div key={i} className="flex items-center justify-between p-3 border border-[color:var(--border-subtle)] rounded-xl bg-[color:var(--bg-elevated)] shadow-sm">
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-amber-600 w-5">#{i+1}</span>
-                        <span className="font-semibold text-dark">{res.nombre}</span>
+                        <span className="font-bold w-5" style={{ color: 'var(--warning-text)' }}>#{i+1}</span>
+                        <span className="font-semibold text-[color:var(--text-primary)]">{res.nombre}</span>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-dark">${Number(res.ingresos).toLocaleString('es-CO')}</p>
-                        <p className="text-[10px] text-gray-500">{res.total_pedidos} pedidos</p>
+                        <p className="text-sm font-bold text-[color:var(--text-primary)]">${Number(res.ingresos).toLocaleString('es-CO')}</p>
+                        <p className="text-[10px] text-[color:var(--text-muted)]">{res.total_pedidos} pedidos</p>
                       </div>
                     </div>
                   ))}
@@ -639,19 +694,19 @@ export default function AdminDashboardPage() {
               <section className="card-lg p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <Package className="text-primary" size={24} />
-                  <h2 className="text-2xl font-bold text-dark">Productos Estrella</h2>
+                  <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Productos Estrella</h2>
                 </div>
                 <div className="space-y-4">
                   {analytics.topProducts.map((prod, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl bg-white shadow-sm">
+                    <div key={i} className="flex items-center justify-between p-3 border border-[color:var(--border-subtle)] rounded-xl bg-[color:var(--bg-elevated)] shadow-sm">
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-amber-600 w-5">#{i+1}</span>
+                        <span className="font-bold w-5" style={{ color: 'var(--warning-text)' }}>#{i+1}</span>
                         <div className="flex flex-col">
-                          <span className="font-semibold text-dark">{prod.nombre}</span>
-                          <span className="text-[10px] text-gray-500">{prod.restaurante}</span>
+                          <span className="font-semibold text-[color:var(--text-primary)]">{prod.nombre}</span>
+                          <span className="text-[10px] text-[color:var(--text-muted)]">{prod.restaurante}</span>
                         </div>
                       </div>
-                      <span className="text-sm font-bold text-dark">{prod.cantidad_vendida} vendid.</span>
+                      <span className="text-sm font-bold text-[color:var(--text-primary)]">{prod.cantidad_vendida} vendid.</span>
                     </div>
                   ))}
                 </div>
@@ -663,7 +718,7 @@ export default function AdminDashboardPage() {
         {/* GLOBAL NOTIFICATION MODAL */}
         {isNotifyModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fadeIn" onClick={(e) => e.target === e.currentTarget && setIsNotifyModalOpen(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-scaleIn overflow-hidden">
+            <div className="bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-scaleIn overflow-hidden">
               <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Bell size={20} />
@@ -687,12 +742,12 @@ export default function AdminDashboardPage() {
                 }}
               >
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-500 uppercase">Título del anuncio</label>
-                  <input name="titulo" required className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ej: ¡Nueva promoción de verano!" />
+                  <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Título del anuncio</label>
+                  <input name="titulo" required className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ej: ¡Nueva promoción de verano!" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-500 uppercase">Mensaje</label>
-                  <textarea name="mensaje" required rows="4" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Escribe aquí el mensaje para todos los usuarios..."></textarea>
+                  <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Mensaje</label>
+                  <textarea name="mensaje" required rows="4" className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Escribe aquí el mensaje para todos los usuarios..."></textarea>
                 </div>
                 <button type="submit" className="btn btn-primary w-full py-3 font-bold inline-flex items-center justify-center gap-2">
                   <Bell size={18} /> Enviar a todos los usuarios
@@ -768,7 +823,7 @@ function PlanAssignmentModal({ plan, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
         <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck size={20} />
@@ -778,30 +833,30 @@ function PlanAssignmentModal({ plan, onClose, onSubmit }) {
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Fecha de vencimiento *</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Fecha de vencimiento *</label>
             <input
               type="date"
               name="fecha_vencimiento"
               defaultValue={defaultDate}
               required
               min={new Date().toISOString().slice(0, 10)}
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Monto pagado (opcional)</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Monto pagado (opcional)</label>
             <input
               type="number"
               name="monto_pagado"
               step="1000"
               min="0"
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="120000"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Método de pago (opcional)</label>
-            <select name="metodo_pago" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20">
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Método de pago (opcional)</label>
+            <select name="metodo_pago" className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20">
               <option value="">—</option>
               <option value="efectivo">Efectivo</option>
               <option value="transferencia">Transferencia</option>
@@ -810,11 +865,11 @@ function PlanAssignmentModal({ plan, onClose, onSubmit }) {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Notas (opcional)</label>
-            <textarea name="notas" rows="2" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Pago recibido, renovación, etc." />
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Notas (opcional)</label>
+            <textarea name="notas" rows="2" className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Pago recibido, renovación, etc." />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-[color:var(--text-secondary)] bg-[color:var(--bg-muted)] hover:bg-[color:var(--border-default)]">
               Cancelar
             </button>
             <button type="submit" className="flex-1 py-2.5 rounded-xl font-bold text-white bg-primary hover:bg-primaryDark shadow-md inline-flex items-center justify-center gap-2">
@@ -863,7 +918,7 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
         <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tags size={20} />
@@ -875,12 +930,12 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Restaurante *</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Restaurante *</label>
             <select
               name="restaurante_id"
               value={formData.restaurante_id}
               onChange={handleChange}
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Seleccione un restaurante</option>
               {restaurants.map(rest => (
@@ -891,41 +946,41 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Nombre *</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Nombre *</label>
             <input
               name="nombre"
               value={formData.nombre}
               onChange={handleChange}
               required
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Ej: Bebidas, Entrantes, Postres"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Descripción</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Descripción</label>
             <textarea
               name="descripcion"
               value={formData.descripcion}
               onChange={handleChange}
               rows="3"
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Descripción opcional de la categoría"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Orden</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Orden</label>
             <input
               name="orden"
               value={formData.orden}
               onChange={handleChange}
               type="number"
               min="0"
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="0"
             />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-[color:var(--text-secondary)] bg-[color:var(--bg-muted)] hover:bg-[color:var(--border-default)]">
               Cancelar
             </button>
             <button type="submit" className="flex-1 py-2.5 rounded-xl font-bold text-white bg-primary hover:bg-primaryDark shadow-md inline-flex items-center justify-center gap-2">
@@ -941,13 +996,16 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
 
 function AdminStatCard({ title, value, icon }) {
   return (
-    <div className="card-lg bg-white">
+    <div className="card-lg bg-[color:var(--bg-elevated)]">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-sm text-gray-500 font-medium">{title}</p>
-          <h3 className="text-3xl font-heading font-bold text-dark">{value}</h3>
+          <p className="text-sm text-[color:var(--text-muted)] font-medium">{title}</p>
+          <h3 className="text-3xl font-heading font-bold text-[color:var(--text-primary)]">{value}</h3>
         </div>
-        <div className="w-11 h-11 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+        <div
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
+        >
           {icon}
         </div>
       </div>
@@ -957,9 +1015,9 @@ function AdminStatCard({ title, value, icon }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-      <span className="font-semibold text-gray-500">{label}</span>
-      <span className="text-right text-gray-800">{value}</span>
+    <div className="flex items-center justify-between gap-4 border-b border-[color:var(--border-subtle)] pb-3 last:border-0 last:pb-0">
+      <span className="font-semibold text-[color:var(--text-muted)]">{label}</span>
+      <span className="text-right text-[color:var(--text-primary)]">{value}</span>
     </div>
   );
 }

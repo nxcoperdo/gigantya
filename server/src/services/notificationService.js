@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import twilio from 'twilio';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -7,7 +6,7 @@ dotenv.config();
 /**
  * Servicio de Notificaciones Externas
  *
- * Maneja el envío de emails y SMS para notificaciones del sistema.
+ * Maneja el envío de emails y mensajes de WhatsApp para notificaciones del sistema.
  * Se activa cuando un pedido cambia de estado o hay eventos importantes.
  *
  * Configuración requerida en .env:
@@ -15,8 +14,9 @@ dotenv.config();
  * - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
  * - EMAIL_FROM: "nombre <email@dominio.com>"
  *
- * - SMS_ENABLED=true/false
- * - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+ * - WHATSAPP_ENABLED=true/false
+ * - WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_API_TOKEN, WHATSAPP_BUSINESS_ACCOUNT_ID
+ * - WHATSAPP_API_VERSION, WHATSAPP_LANGUAGE_CODE
  */
 
 // ====================================================
@@ -56,29 +56,44 @@ function isEmailEnabled() {
 }
 
 // ====================================================
-// CONFIGURACIÓN DE SMS (TWILIO)
+// CONFIGURACIÓN DE WHATSAPP BUSINESS CLOUD API (META)
 // ====================================================
 
-let twilioClient = null;
+let whatsAppApiBase = null;
 
-function getTwilioClient() {
-  if (twilioClient) return twilioClient;
+function getWhatsAppConfig() {
+  if (whatsAppApiBase !== null) return whatsAppApiBase ? { base: whatsAppApiBase } : null;
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const token = process.env.WHATSAPP_API_TOKEN;
+  const apiVersion = process.env.WHATSAPP_API_VERSION || 'v20.0';
 
-  if (!accountSid || !authToken || !twilioPhone) {
-    console.log('[NotificationService] SMS no configurado (faltan variables Twilio)');
+  if (!phoneId || !token) {
+    console.log('[NotificationService] WhatsApp no configurado (faltan variables)');
+    whatsAppApiBase = false;
     return null;
   }
 
-  twilioClient = twilio(accountSid, authToken);
-  return twilioClient;
+  whatsAppApiBase = `https://graph.facebook.com/${apiVersion}/${phoneId}`;
+  return { base: whatsAppApiBase };
 }
 
-function isSmsEnabled() {
-  return process.env.SMS_ENABLED === 'true' && getTwilioClient() !== null;
+function isWhatsAppEnabled() {
+  return process.env.WHATSAPP_ENABLED === 'true' && getWhatsAppConfig() !== null;
+}
+
+/**
+ * Normaliza un número de teléfono al formato E.164 sin '+' que requiere
+ * la WhatsApp Cloud API. Si el número ya trae el código de país 57 (Colombia)
+ * se respeta; si no, se prefijará con 57.
+ */
+function normalizePhoneForWhatsApp(rawPhone) {
+  if (!rawPhone) return null;
+  // E.164 sin '+': solo dígitos, con código de país (Colombia = 57 por defecto)
+  const digits = String(rawPhone).replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  // Si ya trae 57 al inicio (Colombia), respetar; si no, prefijar
+  return digits.startsWith('57') ? digits : `57${digits}`;
 }
 
 // ====================================================
@@ -321,59 +336,117 @@ function getSubjectForTemplate(template, pedido) {
 }
 
 // ====================================================
-// FUNCIONES DE ENVÍO DE SMS (TWILIO)
+// FUNCIONES DE ENVÍO DE WHATSAPP (META CLOUD API)
 // ====================================================
 
 /**
- * Enviar SMS a un número de teléfono
+ * Enviar un mensaje de WhatsApp usando una plantilla pre-aprobada por Meta.
+ *
+ * @param {object}  params
+ * @param {string}  params.to            - Número de teléfono destino (E.164 con o sin '+')
+ * @param {string}  params.template      - Nombre de la plantilla aprobada en Meta Business Manager
+ * @param {string}  [params.languageCode]- Código de idioma (ej. 'es'). Default: WHATSAPP_LANGUAGE_CODE o 'es'
+ * @param {string[]} [params.parameters] - Array de strings que reemplazan {{1}}, {{2}}, ... en la plantilla
  */
-export async function sendSms({ to, body }) {
-  if (!isSmsEnabled()) {
-    console.log('[NotificationService] SMS no enviado (deshabilitado o sin configurar)');
-    return { sent: false, reason: 'sms_not_configured' };
+export async function sendWhatsApp({ to, template, languageCode, parameters }) {
+  if (!isWhatsAppEnabled()) {
+    console.log('[NotificationService] WhatsApp no enviado (deshabilitado o sin configurar)');
+    return { sent: false, reason: 'whatsapp_not_configured' };
   }
 
-  const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+  const finalTo = normalizePhoneForWhatsApp(to);
+  if (!finalTo) {
+    console.warn('[NotificationService] WhatsApp no enviado: teléfono inválido', to);
+    return { sent: false, reason: 'invalid_phone' };
+  }
 
-  // Normalizar número (quitar espacios, guiones, agregar + si no tiene)
-  const normalizedTo = to.replace(/[\s\-\(\)]/g, '');
-  const finalTo = normalizedTo.startsWith('+') ? normalizedTo : `+${normalizedTo}`;
+  const { base } = getWhatsAppConfig();
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to: finalTo,
+    type: 'template',
+    template: {
+      name: template,
+      language: { code: languageCode || process.env.WHATSAPP_LANGUAGE_CODE || 'es' },
+      components: parameters && parameters.length
+        ? [{ type: 'body', parameters: parameters.map(p => ({ type: 'text', text: String(p) })) }]
+        : []
+    }
+  };
 
   try {
-    const message = await getTwilioClient().messages.create({
-      body,
-      from: twilioPhone,
-      to: finalTo
+    const res = await fetch(`${base}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.WHATSAPP_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
     });
 
-    console.log(`[NotificationService] SMS enviado a ${finalTo}: ${message.sid}`);
-    return { sent: true, sid: message.sid };
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[NotificationService] Error WhatsApp:', res.status, JSON.stringify(data));
+      return { sent: false, error: data.error?.message || `HTTP ${res.status}`, meta: data };
+    }
+
+    console.log(`[NotificationService] WhatsApp enviado a ${finalTo}: ${data.messages?.[0]?.id}`);
+    return { sent: true, messageId: data.messages?.[0]?.id };
   } catch (error) {
-    console.error('[NotificationService] Error enviando SMS:', error.message);
+    console.error('[NotificationService] Error enviando WhatsApp:', error.message);
     return { sent: false, error: error.message };
   }
 }
 
 /**
- * Enviar SMS de notificación de pedido
+ * Mapa de plantillas WhatsApp por tipo de notificación.
+ * Los nombres de plantilla deben existir en Meta Business Manager y estar APROBADOS.
+ * Las funciones `params` devuelven los valores que reemplazan {{1}}, {{2}}, ... en cada plantilla.
  */
-export async function sendOrderSms({ to, type, pedido }) {
-  const messages = {
-    newOrder: `🍽️ GigantYA: Tu pedido #${pedido.id} ha sido confirmado. Total: $${Number(pedido.total).toLocaleString('es-CO')}`,
-    preparing: `🍳 GigantYA: Tu pedido #${pedido.id} está siendo preparado. ¡Pronto estará listo!`,
-    ready: `✅ GigantYA: Tu pedido #${pedido.id} está listo para entrega.`,
-    delivered: `🎉 GigantYA: Tu pedido #${pedido.id} ha sido entregado. ¡Gracias!`,
-    paymentApproved: `✅ GigantYA: Tu pago del pedido #${pedido.id} ha sido aprobado.`,
-    paymentRejected: `⚠️ GigantYA: Tu pago del pedido #${pedido.id} ha sido rechazado. Contacta al restaurante.`
-  };
+const WhatsAppTemplates = {
+  newOrder: {
+    template: 'order_confirmed',
+    params: pedido => [String(pedido.id), `$${Number(pedido.total).toLocaleString('es-CO')}`]
+  },
+  preparing: {
+    template: 'order_preparing',
+    params: pedido => [String(pedido.id)]
+  },
+  ready: {
+    template: 'order_ready',
+    params: pedido => [String(pedido.id)]
+  },
+  delivered: {
+    template: 'order_delivered',
+    params: pedido => [String(pedido.id)]
+  },
+  paymentApproved: {
+    template: 'payment_approved',
+    params: pedido => [String(pedido.id)]
+  },
+  paymentRejected: {
+    template: 'payment_rejected',
+    params: pedido => [String(pedido.id), pedido.motivo || 'Contacta al restaurante']
+  }
+};
 
-  const body = messages[type];
-  if (!body) {
-    console.error('[NotificationService] Tipo de SMS no encontrado:', type);
-    return { sent: false, reason: 'sms_type_not_found' };
+/**
+ * Enviar WhatsApp de notificación de pedido según el tipo.
+ */
+export async function sendOrderWhatsApp({ to, type, pedido, motivo }) {
+  const config = WhatsAppTemplates[type];
+  if (!config) {
+    console.error('[NotificationService] Tipo de WhatsApp no encontrado:', type);
+    return { sent: false, reason: 'whatsapp_type_not_found' };
   }
 
-  return sendSms({ to, body });
+  const pedidoConMotivo = motivo ? { ...pedido, motivo } : pedido;
+  return sendWhatsApp({
+    to,
+    template: config.template,
+    parameters: config.params(pedidoConMotivo)
+  });
 }
 
 // ====================================================
@@ -382,7 +455,7 @@ export async function sendOrderSms({ to, type, pedido }) {
 
 /**
  * Notificar cambio de estado de pedido
- * Envía email y/o SMS según configuración
+ * Envía email y/o WhatsApp según configuración
  */
 export async function notifyOrderStatusChange({
   pedido,
@@ -393,7 +466,7 @@ export async function notifyOrderStatusChange({
 }) {
   const results = {
     email: null,
-    sms: null
+    whatsapp: null
   };
 
   // Determinar tipo de notificación según estado
@@ -427,13 +500,14 @@ export async function notifyOrderStatusChange({
     });
   }
 
-  // SMS opcional para estados críticos
+  // WhatsApp opcional para estados críticos
   if (pedido.cliente_telefono && ['Entregado', 'Pago Rechazado'].includes(nuevoEstado)) {
-    const smsType = nuevoEstado === 'Entregado' ? 'delivered' : 'paymentRejected';
-    results.sms = await sendOrderSms({
+    const whatsappType = nuevoEstado === 'Entregado' ? 'delivered' : 'paymentRejected';
+    results.whatsapp = await sendOrderWhatsApp({
       to: pedido.cliente_telefono,
-      type: smsType,
-      pedido
+      type: whatsappType,
+      pedido,
+      motivo
     });
   }
 
@@ -447,8 +521,8 @@ export async function notifyNewOrder({ pedido, restauranteEmail, clienteEmail })
   const results = {
     customerEmail: null,
     restaurantEmail: null,
-    customerSms: null,
-    restaurantSms: null
+    customerWhatsapp: null,
+    restaurantWhatsapp: null
   };
 
   // Email al cliente
@@ -479,15 +553,15 @@ export async function notifyNewOrder({ pedido, restauranteEmail, clienteEmail })
 export default {
   // Configuración
   isEmailEnabled,
-  isSmsEnabled,
+  isWhatsAppEnabled,
 
   // Email
   sendEmail,
   sendOrderNotification,
 
-  // SMS
-  sendSms,
-  sendOrderSms,
+  // WhatsApp
+  sendWhatsApp,
+  sendOrderWhatsApp,
 
   // Funciones principales
   notifyOrderStatusChange,

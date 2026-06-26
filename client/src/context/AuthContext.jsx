@@ -70,6 +70,13 @@ export function AuthProvider({ children }) {
     setError(null);
   };
 
+  // Útil cuando el usuario sospecha que hay un token viejo/muerto en
+  // localStorage que está bloqueando el login (p.ej. tras una suspensión
+  // y reactivación). Limpia las credenciales locales sin recargar.
+  const clearLocalSession = () => {
+    logout();
+  };
+
   const value = {
     user,
     token,
@@ -79,6 +86,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    clearLocalSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

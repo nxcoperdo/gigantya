@@ -10,12 +10,25 @@ import pool from '../config/database.js';
  */
 export async function createOrder(req, res) {
   try {
-    const { restaurante_id, items, notas, direccion_entrega, telefono_contacto, coupon_code, cupon_codigo, cupon_descuento, metodo_pago, costo_envio, total: totalFromFrontend } = req.body;
-
-    console.log('=== createOrder ===');
-    console.log('req.body:', req.body);
-    console.log('costo_envio recibido:', costo_envio);
-    console.log('totalFromFrontend recibido:', totalFromFrontend);
+    const {
+      restaurante_id,
+      items,
+      notas,
+      direccion_entrega,
+      telefono_contacto,
+      coupon_code,
+      cupon_codigo,
+      cupon_descuento,
+      metodo_pago,
+      costo_envio,
+      total: totalFromFrontend,
+      barrio_id,
+      // Campos opcionales de Google Maps (Places Autocomplete del cliente)
+      latitud,
+      longitud,
+      direccion_formateada,
+      place_id,
+    } = req.body;
 
     // Validar que sea cliente
     if (req.user.tipo_usuario !== 'cliente') {
@@ -94,6 +107,13 @@ export async function createOrder(req, res) {
       coupon_id: couponId,
       metodo_pago: paymentMethod,
       costo_envio: costo_envio || 0,
+      barrio_id: barrio_id || null,
+      // Campos opcionales de Google Maps — si vienen, el modelo intentará geocoding
+      // para resolver el sector por punto geográfico.
+      latitud: latitud ?? null,
+      longitud: longitud ?? null,
+      direccion_formateada: direccion_formateada ?? null,
+      place_id: place_id ?? null,
       total: (typeof totalFromFrontend === 'number' && totalFromFrontend > 0) ? totalFromFrontend : null
     });
 

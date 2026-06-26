@@ -25,6 +25,31 @@ export async function getProductsByRestaurant(req, res) {
 }
 
 /**
+ * Listar productos de todos los restaurantes (feed público de la home).
+ * Acepta `?categoria=<nombre>` para filtrar.
+ */
+export async function listProducts(req, res) {
+  try {
+    const { categoria } = req.query;
+    const filtros = {};
+    if (categoria) filtros.categoria = categoria;
+
+    const productos = await ProductModel.getAllProducts(filtros);
+
+    res.json({
+      total: productos.length,
+      productos
+    });
+  } catch (error) {
+    console.error('Error listando productos:', error);
+    res.status(500).json({
+      error: 'Error listando productos',
+      detalles: error.message
+    });
+  }
+}
+
+/**
  * Obtener un producto específico
  */
 export async function getProduct(req, res) {
@@ -441,6 +466,7 @@ export async function deleteProductGalleryImage(req, res) {
 
 export default {
   getProductsByRestaurant,
+  listProducts,
   getProduct,
   createProduct,
   updateProduct,

@@ -89,6 +89,56 @@ export async function getProductById(id) {
 }
 
 /**
+ * Listar productos de todos los restaurantes aprobados y activos,
+ * con el nombre/plan del restaurante padre y la categoría del producto
+ * ya unidos. Pensado para el feed público de la home (vista "Productos").
+ *
+ * Ordena por plan del restaurante (premium → profesional → basico) y,
+ * dentro del mismo plan, por producto más reciente. Replica los mismos
+ * filtros que `RestaurantModel.getRestaurants` para que nunca aparezca
+ * un producto cuyo restaurante esté pendiente de aprobación, inactivo,
+ * o con plan vencido.
+ */
+export async function getAllProducts(filtros = {}) {
+  let sql = `
+    SELECT
+      p.*,
+      c.nombre  AS categoria_nombre,
+      c.orden   AS categoria_orden,
+      r.nombre  AS restaurante_nombre,
+      r.plan    AS restaurante_plan,
+      r.ciudad  AS restaurante_ciudad,
+      r.horario_apertura AS restaurante_horario_apertura,
+      r.horario_cierre   AS restaurante_horario_cierre
+    FROM productos p
+    JOIN restaurantes r ON p.restaurante_id = r.id
+    JOIN usuarios     u ON r.usuario_id = u.id
+    LEFT JOIN categorias c ON p.categoria_id = c.id
+    WHERE p.estado = 'activo'
+      AND r.estado = 'activo'
+      AND r.aprobado = 1
+      AND u.estado = 'activo'
+      AND (r.plan = 'basico' OR r.fecha_vencimiento_plan IS NULL OR r.fecha_vencimiento_plan >= NOW())
+  `;
+  const params = [];
+
+  if (filtros.categoria) {
+    sql += ' AND c.nombre = ?';
+    params.push(filtros.categoria);
+  }
+
+  // Mismo orden que la lista de restaurantes: premium → profesional → basico.
+  // Dentro de cada plan, los productos más recientes primero.
+  sql += ' ORDER BY FIELD(r.plan, "premium", "profesional", "basico"), p.creado_en DESC';
+
+  try {
+    return await query(sql, params);
+  } catch (error) {
+    throw new Error(`Error obteniendo productos: ${error.message}`);
+  }
+}
+
+/**
  * Actualizar producto
  */
 export async function updateProduct(id, updateData) {
@@ -240,6 +290,7 @@ export default {
   createProduct,
   getProductsByRestaurant,
   getProductById,
+  getAllProducts,
   updateProduct,
   deleteProduct,
   toggleProductAvailability,

@@ -31,15 +31,15 @@ const RatingModal = ({ isOpen, onClose, restaurantName, onSubmit }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-      <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-scaleUp">
+      <div className="relative bg-[color:var(--bg-elevated)] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-scaleUp">
         {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="p-6 border-b border-[color:var(--border-subtle)] flex justify-between items-center bg-[color:var(--bg-subtle)]/50">
           <div>
-            <h2 className="text-xl font-bold text-dark">Calificar Restaurante</h2>
-            <p className="text-sm text-gray-500">¿Qué te pareció {restaurantName}?</p>
+            <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Calificar Restaurante</h2>
+            <p className="text-sm text-[color:var(--text-muted)]">¿Qué te pareció {restaurantName}?</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-            <X size={20} className="text-gray-400" />
+          <button onClick={onClose} className="p-2 hover:bg-[color:var(--bg-muted)] rounded-full transition-colors">
+            <X size={20} className="text-[color:var(--text-muted)]" />
           </button>
         </div>
 
@@ -59,7 +59,7 @@ const RatingModal = ({ isOpen, onClose, restaurantName, onSubmit }) => {
                   size={40}
                   fill={(hover || rating) >= num ? 'currentColor' : 'none'}
                   className={`transition-colors duration-200 ${
-                    (hover || rating) >= num ? 'text-yellow-400' : 'text-gray-300'
+                    (hover || rating) >= num ? 'text-yellow-400' : 'text-[color:var(--text-subtle)]'
                   }`}
                 />
               </button>
@@ -68,9 +68,9 @@ const RatingModal = ({ isOpen, onClose, restaurantName, onSubmit }) => {
 
           {/* Comment Field */}
           <div className="w-full space-y-2">
-            <label className="text-sm font-medium text-gray-700 ml-1">Tu experiencia (opcional)</label>
+            <label className="text-sm font-medium text-[color:var(--text-secondary)] ml-1">Tu experiencia (opcional)</label>
             <textarea
-              className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all resize-none h-32"
+              className="w-full p-4 rounded-2xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all resize-none h-32"
               placeholder="Cuéntanos más sobre la comida, la entrega..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -79,15 +79,18 @@ const RatingModal = ({ isOpen, onClose, restaurantName, onSubmit }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-gray-50 flex gap-3">
+        <div className="p-6 bg-[color:var(--bg-subtle)] flex gap-3">
           {error && (
-            <div className="absolute left-1/2 -translate-x-1/2 -translate-y-16 bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm shadow-sm animate-fadeIn">
+            <div
+              className="absolute left-1/2 -translate-x-1/2 -translate-y-16 px-4 py-2 rounded-full text-sm shadow-sm animate-fadeIn"
+              style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}
+            >
               {error}
             </div>
           )}
           <button
             onClick={onClose}
-            className="flex-1 px-6 py-3 rounded-xl font-semibold text-gray-600 hover:bg-gray-200 transition-all"
+            className="flex-1 px-6 py-3 rounded-xl font-semibold text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)] transition-all"
           >
             Cancelar
           </button>

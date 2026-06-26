@@ -5,7 +5,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-dark text-gray-100 mt-16">
+    <footer className="bg-[color:var(--bg-inverted)] text-[color:var(--text-on-inverted)] mt-16">
       {/* Main Footer */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
@@ -13,20 +13,20 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-4xl">🍽️</span>
-              <h3 className="font-heading font-bold text-2xl text-white">GigantYA</h3>
+              <h3 className="font-heading font-bold text-2xl text-[color:var(--text-on-inverted)]">GigantYA</h3>
             </div>
-            <p className="text-gray-400 text-sm leading-relaxed mb-6">
+            <p className="text-[color:var(--text-muted)] text-sm leading-relaxed mb-6">
               La mejor plataforma de pedidos online para restaurantes en Gigante, Huila.
             </p>
             {/* Social Media */}
             <div className="flex gap-3">
-              <a href="#" className="text-gray-400 hover:text-primary transition-colors p-2 hover:bg-gray-800 rounded-lg">
+              <a href="#" className="text-[color:var(--text-muted)] hover:text-primary transition-colors p-2 hover:bg-[color:var(--bg-base)] rounded-lg">
                 <Facebook size={18} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-primary transition-colors p-2 hover:bg-gray-800 rounded-lg">
+              <a href="#" className="text-[color:var(--text-muted)] hover:text-primary transition-colors p-2 hover:bg-[color:var(--bg-base)] rounded-lg">
                 <Instagram size={18} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-primary transition-colors p-2 hover:bg-gray-800 rounded-lg">
+              <a href="#" className="text-[color:var(--text-muted)] hover:text-primary transition-colors p-2 hover:bg-[color:var(--bg-base)] rounded-lg">
                 <Twitter size={18} />
               </a>
             </div>
@@ -34,8 +34,8 @@ export default function Footer() {
 
           {/* Clientes */}
           <div>
-            <h4 className="font-heading font-semibold text-lg text-white mb-6">Para Clientes</h4>
-            <ul className="text-gray-400 text-sm space-y-3">
+            <h4 className="font-heading font-semibold text-lg text-[color:var(--text-on-inverted)] mb-6">Para Clientes</h4>
+            <ul className="text-[color:var(--text-muted)] text-sm space-y-3">
               <li>
                 <Link to="/" className="hover:text-primary transition-colors font-light">
                   → Ver Restaurantes
@@ -61,8 +61,8 @@ export default function Footer() {
 
           {/* Restaurantes */}
           <div>
-            <h4 className="font-heading font-semibold text-lg text-white mb-6">Para Restaurantes</h4>
-            <ul className="text-gray-400 text-sm space-y-3">
+            <h4 className="font-heading font-semibold text-lg text-[color:var(--text-on-inverted)] mb-6">Para Restaurantes</h4>
+            <ul className="text-[color:var(--text-muted)] text-sm space-y-3">
               <li>
                 <a href="coderepairtech@gmail.com" className="hover:text-primary transition-colors font-light">
                   → Contactar
@@ -88,8 +88,8 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-heading font-semibold text-lg text-white mb-6">Legal</h4>
-            <ul className="text-gray-400 text-sm space-y-3">
+            <h4 className="font-heading font-semibold text-lg text-[color:var(--text-on-inverted)] mb-6">Legal</h4>
+            <ul className="text-[color:var(--text-muted)] text-sm space-y-3">
               <li>
                 <a href="#" className="hover:text-primary transition-colors font-light">
                   → Términos de Servicio
@@ -115,8 +115,8 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-heading font-semibold text-lg text-white mb-6">Contacto</h4>
-            <div className="space-y-4 text-sm text-gray-400">
+            <h4 className="font-heading font-semibold text-lg text-[color:var(--text-on-inverted)] mb-6">Contacto</h4>
+            <div className="space-y-4 text-sm text-[color:var(--text-muted)]">
               <div className="flex items-start gap-3">
                 <Mail size={18} className="text-primary mt-0.5 flex-shrink-0" />
                 <a href="coderepairtech@gmail.com" className="hover:text-primary transition-colors font-light">
@@ -140,8 +140,8 @@ export default function Footer() {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-700 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm gap-4">
+        <div className="border-t border-[color:var(--border-strong)] pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center text-[color:var(--text-muted)] text-sm gap-4">
             <p className="font-light">
               &copy; {currentYear} <span className="font-semibold text-primary">GigantYA</span>. Todos los derechos reservados para Code Repair Tech
             </p>

@@ -26,10 +26,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Evitar redirección cuando el usuario está intentando autenticarse
+      // o cuando navega en rutas públicas. Solo redirigir a /login si
+      // realmente está navegando en una ruta autenticada.
+      const path = window.location.pathname || '';
+      const publicAuthPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+      if (!publicAuthPaths.some(p => path.startsWith(p))) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -51,7 +58,7 @@ export const authService = {
 
 export const restaurantService = {
   getAll: (filtros = {}) => api.get('/restaurants', { params: filtros }),
-  getById: (id) => api.get(`/restaurants/${id}`),
+  getById: (id, params = {}) => api.get(`/restaurants/${id}`, { params }),
   create: (data) => api.post('/restaurants', data),
   update: (id, data) => {
     const isFormData = data instanceof FormData;
@@ -69,6 +76,10 @@ export const restaurantService = {
 export const productService = {
   getByRestaurant: (restaurante_id) =>
     api.get(`/products/restaurant/${restaurante_id}`),
+  // Feed público de productos de todos los restaurantes (home).
+  // Orden: premium → profesional → basico (lo aplica el backend).
+  // Acepta filtros, p.ej. { categoria: 'Hamburguesas' }.
+  getAll: (filtros = {}) => api.get('/products/all', { params: filtros }),
   getById: (id) => api.get(`/products/${id}`),
   create: (data) => api.post('/products', data),
   update: (id, data) => api.put(`/products/${id}`, data),
@@ -228,6 +239,43 @@ export const exportService = {
     api.get('/exports/orders/pdf', { params: { estado, limit }, responseType: 'blob' }),
   exportOrdersExcel: (estado = 'todos', limit = 500) =>
     api.get('/exports/orders/excel', { params: { estado, limit }, responseType: 'blob' }),
+};
+
+// ========== ZONAS (sectores / barrios) ==========
+
+export const zonaService = {
+  getSectores: () => api.get('/zonas/sectores'),
+  getBarrios: (sector_id = null) =>
+    api.get('/zonas/barrios', { params: sector_id ? { sector_id } : {} }),
+};
+
+// CRUD admin de sectores / barrios (la UI admin usa zonaService para
+// lectura y rutas /admin/* para escritura, así que se reusan ambos sets)
+export const zonaAdminService = {
+  getSectores: () => api.get('/admin/sectores'),
+  createSector: (data) => api.post('/admin/sectores', data),
+  updateSector: (id, data) => api.put(`/admin/sectores/${id}`, data),
+  deleteSector: (id) => api.delete(`/admin/sectores/${id}`),
+
+  getBarrios: (sector_id = null) =>
+    api.get('/admin/barrios', { params: sector_id ? { sector_id } : {} }),
+  createBarrio: (data) => api.post('/admin/barrios', data),
+  updateBarrio: (id, data) => api.put(`/admin/barrios/${id}`, data),
+  deleteBarrio: (id) => api.delete(`/admin/barrios/${id}`),
+};
+
+// ========== ENVÍOS POR SECTOR (admin / restaurante) ==========
+
+export const restaurantShippingService = {
+  getEnviosSectores: (restauranteId) =>
+    api.get(`/admin/restaurants/${restauranteId}/envios-sectores`),
+  replaceEnviosSectores: (restauranteId, sectores) =>
+    api.put(`/admin/restaurants/${restauranteId}/envios-sectores`, { sectores }),
+  // Variantes para el dueño del restaurante (rutas bajo /api/restaurants/:id)
+  getEnviosSectoresRestaurant: (restauranteId) =>
+    api.get(`/restaurants/${restauranteId}/envios-sectores`),
+  replaceEnviosSectoresRestaurant: (restauranteId, sectores) =>
+    api.put(`/restaurants/${restauranteId}/envios-sectores`, { sectores }),
 };
 
 export default api;

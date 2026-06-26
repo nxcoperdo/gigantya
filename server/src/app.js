@@ -40,6 +40,7 @@ import couponRoutes from './routes/couponRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
+import zonaRoutes from './routes/zonaRoutes.js';
 
 
 // ========== MIDDLEWARES DE SEGURIDAD ==========
@@ -145,6 +146,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exports', exportRoutes);
+app.use('/api/zonas', zonaRoutes);
 
 // Ruta de bienvenida
 app.get('/api', (req, res) => {

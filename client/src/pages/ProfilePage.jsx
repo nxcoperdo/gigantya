@@ -89,7 +89,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-light py-8 md:py-12">
+    <div className="min-h-screen bg-[color:var(--bg-subtle)] py-8 md:py-12">
       <div className="max-w-4xl mx-auto px-4 md:px-6">
         {/* Header */}
         <div className="card-lg bg-gradient-warm mb-8">
@@ -98,10 +98,10 @@ export default function ProfilePage() {
               👤
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-heading font-bold text-dark">
+              <h1 className="text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)]">
                 {user?.nombre}
               </h1>
-              <p className="text-gray-600">
+              <p className="text-[color:var(--text-secondary)]">
                 Cuenta de {user?.tipo_usuario === 'cliente' ? 'cliente' : 'restaurante'}
               </p>
             </div>
@@ -122,13 +122,13 @@ export default function ProfilePage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-2 mb-6 border-b border-[color:var(--border-default)] overflow-x-auto">
           <button
             onClick={() => setActiveTab('info')}
             className={`px-4 py-3 font-semibold border-b-2 transition-all duration-300 whitespace-nowrap ${
               activeTab === 'info'
                 ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-primary'
+                : 'border-transparent text-[color:var(--text-secondary)] hover:text-primary'
             }`}
           >
             <FileText className="inline mr-2" size={18} />
@@ -139,7 +139,7 @@ export default function ProfilePage() {
             className={`px-4 py-3 font-semibold border-b-2 transition-all duration-300 whitespace-nowrap ${
               activeTab === 'addresses'
                 ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-primary'
+                : 'border-transparent text-[color:var(--text-secondary)] hover:text-primary'
             }`}
           >
             <MapPin className="inline mr-2" size={18} />
@@ -150,7 +150,7 @@ export default function ProfilePage() {
             className={`px-4 py-3 font-semibold border-b-2 transition-all duration-300 whitespace-nowrap ${
               activeTab === 'purchases'
                 ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-primary'
+                : 'border-transparent text-[color:var(--text-secondary)] hover:text-primary'
             }`}
           >
             <ShoppingBag className="inline mr-2" size={18} />
@@ -161,7 +161,7 @@ export default function ProfilePage() {
             className={`px-4 py-3 font-semibold border-b-2 transition-all duration-300 whitespace-nowrap ${
               activeTab === 'password'
                 ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-primary'
+                : 'border-transparent text-[color:var(--text-secondary)] hover:text-primary'
             }`}
           >
             <Lock className="inline mr-2" size={18} />
@@ -174,7 +174,7 @@ export default function ProfilePage() {
           {activeTab === 'info' && (
             // ...existing code...
             <form onSubmit={handleUpdateProfile} className="space-y-6">
-              <h2 className="text-2xl font-bold text-dark mb-6">
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-6">
                 Editar Información Personal
               </h2>
 
@@ -199,7 +199,7 @@ export default function ProfilePage() {
                   disabled
                   className="input opacity-75 bg-gray-50"
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-[color:var(--text-muted)] mt-2">
                   Para cambiar email, contacta con soporte
                 </p>
               </div>
@@ -232,8 +232,8 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500 mb-4">
+              <div className="pt-4 border-t border-[color:var(--border-default)]">
+                <p className="text-sm text-[color:var(--text-muted)] mb-4">
                   Cuenta creada: {new Date(user?.creado_en).toLocaleDateString('es-CO')}
                 </p>
                 <button
@@ -264,12 +264,15 @@ export default function ProfilePage() {
 
           {activeTab === 'password' && (
             <form onSubmit={handleChangePassword} className="space-y-6">
-              <h2 className="text-2xl font-bold text-dark mb-6">
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-6">
                 Cambiar Contraseña
               </h2>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
+              <div
+                className="alert alert-info mb-6"
+                style={{ borderRadius: '0.5rem' }}
+              >
+                <p className="text-sm">
                   Por seguridad, ingresa tu contraseña actual y la nueva contraseña para confirmar el cambio.
                 </p>
               </div>
@@ -313,7 +316,7 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-[color:var(--border-default)]">
                 <button
                   type="submit"
                   disabled={loading}

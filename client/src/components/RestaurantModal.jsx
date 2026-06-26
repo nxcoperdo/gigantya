@@ -147,24 +147,24 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-slideUp">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-xl font-bold text-dark">Editar Datos del Restaurante</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={20} className="text-gray-500" />
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-slideUp">
+        <div className="flex items-center justify-between p-4 border-b border-[color:var(--border-subtle)] flex-shrink-0">
+          <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Editar Datos del Restaurante</h2>
+          <button onClick={onClose} className="p-2 hover:bg-[color:var(--bg-muted)] rounded-full transition-colors">
+            <X size={20} className="text-[color:var(--text-muted)]" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
+            <div className="alert alert-error">
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-5">
             <div className="flex flex-col items-center gap-3">
-              <div className="relative w-36 h-36 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden group">
+              <div className="relative w-36 h-36 rounded-2xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] flex items-center justify-center overflow-hidden group">
                 {imagePreview ? (
                   <>
                     <img src={imagePreview} alt="Imagen restaurante" className="w-full h-full object-cover" />
@@ -174,9 +174,9 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                     </label>
                   </>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-100 transition-colors">
-                    <ImageIcon size={32} className="text-gray-400 mb-2" />
-                    <span className="text-xs text-gray-500">Subir imagen</span>
+                  <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-[color:var(--bg-muted)] transition-colors">
+                    <ImageIcon size={32} className="text-[color:var(--text-subtle)] mb-2" />
+                    <span className="text-xs text-[color:var(--text-muted)]">Subir imagen</span>
                     <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                   </label>
                 )}
@@ -185,7 +185,8 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                 <button
                   type="button"
                   onClick={handleRemoveImage}
-                  className="text-xs text-red-500 hover:underline flex items-center gap-1"
+                  className="text-xs hover:underline flex items-center gap-1"
+                  style={{ color: 'var(--danger-text)' }}
                 >
                   <Trash2 size={12} /> Quitar imagen
                 </button>
@@ -193,84 +194,90 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Restaurante</label>
+              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Nombre del Restaurante</label>
               <input
                 type="text"
                 name="nombre"
                 value={formData.nombre}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Descripción</label>
               <textarea
                 name="descripcion"
                 value={formData.descripcion}
                 onChange={handleInputChange}
                 rows="3"
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Dirección</label>
               <input
                 type="text"
                 name="direccion"
                 value={formData.direccion}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Teléfono</label>
               <input
                 type="text"
                 name="telefono"
                 value={formData.telefono}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Apertura</label>
+                <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Apertura</label>
                 <input
                   type="time"
                   name="horario_apertura"
                   value={formData.horario_apertura}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cierre</label>
+                <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Cierre</label>
                 <input
                   type="time"
                   name="horario_cierre"
                   value={formData.horario_cierre}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 />
               </div>
             </div>
 
             {restaurant?.plan === 'premium' && (
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
-                <div className="flex items-center gap-2 text-amber-700 font-bold text-sm">
-                  <Star size={16} />
-                  Banner Promocional (exclusivo Premium)
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-amber-600 uppercase mb-1">Imagen del Banner</label>
-                  <div className="relative w-full h-32 rounded-xl border-2 border-dashed border-amber-300 bg-white flex items-center justify-center overflow-hidden group">
+              <div
+              className="p-4 rounded-xl space-y-3"
+              style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }}
+            >
+              <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--warning-text)' }}>
+                <Star size={16} />
+                Banner Promocional (exclusivo Premium)
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--warning-text)' }}>Imagen del Banner</label>
+                <div
+                  className="relative w-full h-32 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden group"
+                  style={{ borderColor: 'var(--warning-border)', backgroundColor: 'var(--bg-elevated)' }}
+                >
                     {bannerPreview || formData.banner_url ? (
                       <>
                         <img src={bannerPreview || formData.banner_url} alt="Banner promocional" className="w-full h-full object-cover" />
@@ -280,9 +287,14 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                         </label>
                       </>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-amber-50 transition-colors">
-                        <ImageIcon size={32} className="text-amber-400 mb-2" />
-                        <span className="text-xs text-amber-600 font-medium">Subir banner</span>
+                      <label
+                        className="flex flex-col items-center justify-center w-full h-full cursor-pointer transition-colors"
+                        style={{ color: 'var(--warning-text)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--warning-bg)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <ImageIcon size={32} style={{ color: 'var(--warning-text)', opacity: 0.7 }} className="mb-2" />
+                        <span className="text-xs font-medium" style={{ color: 'var(--warning-text)' }}>Subir banner</span>
                         <input type="file" className="hidden" accept="image/*" onChange={handleBannerChange} />
                       </label>
                     )}
@@ -291,23 +303,27 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                     <button
                       type="button"
                       onClick={handleRemoveBanner}
-                      className="mt-2 text-xs text-red-500 hover:underline flex items-center gap-1"
+                      className="mt-2 text-xs hover:underline flex items-center gap-1"
+                      style={{ color: 'var(--danger-text)' }}
                     >
                       <Trash2 size={12} /> Quitar banner
                     </button>
                   )}
-                  <p className="text-[10px] text-amber-500 mt-2 flex items-center gap-1">
+                  <p
+                    className="text-[10px] mt-2 flex items-center gap-1"
+                    style={{ color: 'var(--warning-text)', opacity: 0.8 }}
+                  >
                     <ImageIcon size={10} />
                     Tamaño recomendado: <span className="font-semibold">1920x600 px</span> (proporción 16:5)
                   </p>
-                  <p className="text-[10px] text-amber-500">Aparecerá en la página de inicio (carousel principal).</p>
+                  <p className="text-[10px]" style={{ color: 'var(--warning-text)', opacity: 0.8 }}>Aparecerá en la página de inicio (carousel principal).</p>
                 </div>
               </div>
             )}
 
             {restaurant?.plan === 'profesional' && (
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-600">
-                <p className="font-semibold text-gray-700">💡 Sube a Premium</p>
+              <div className="p-4 rounded-xl bg-[color:var(--bg-subtle)] border border-[color:var(--border-default)] text-sm text-[color:var(--text-secondary)]">
+                <p className="font-semibold text-[color:var(--text-secondary)]">💡 Sube a Premium</p>
                 <p>El banner promocional en la página de inicio es exclusivo del plan Premium.</p>
               </div>
             )}
@@ -317,7 +333,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
             >
               Cancelar
             </button>

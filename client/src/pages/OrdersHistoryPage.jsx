@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, TrendingUp, Package, Star, Eye } from 'lucide-react';
+import { Clock, CheckCircle, TrendingUp, Package, Star, Eye, RefreshCcw } from 'lucide-react';
 import api from '../services/api';
 import Loading from '../components/Loading';
 import RatingModal from '../components/RatingModal';
@@ -10,6 +10,8 @@ import { ratingService } from '../services/api';
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [ratingModal, setRatingModal] = useState({ isOpen: false, pedidoId: null, restauranteId: null, restauranteNombre: '' });
   const [thankYouOpen, setThankYouOpen] = useState(false);
@@ -47,28 +49,43 @@ export default function OrdersHistoryPage() {
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = async ({ showSpinner = true } = {}) => {
     try {
-      setLoading(true);
-       const response = await api.get('/orders/client/my-orders');
+      if (showSpinner) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+      const response = await api.get('/orders/client/my-orders');
       setOrders(response.data.pedidos || []);
+      setLastRefreshedAt(new Date());
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
-      setLoading(false);
+      if (showSpinner) {
+        setLoading(false);
+      } else {
+        setRefreshing(false);
+      }
+    }
+  };
+
+  const handleRefresh = () => {
+    if (!refreshing && !loading) {
+      fetchOrders({ showSpinner: false });
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'Pendiente':
-        return <Clock className="text-yellow-500" size={24} />;
+        return <Clock style={{ color: 'var(--warning-text)' }} size={24} />;
       case 'Preparando':
-        return <TrendingUp className="text-blue-500" size={24} />;
+        return <TrendingUp style={{ color: 'var(--info-text)' }} size={24} />;
       case 'Listo':
-        return <Package className="text-purple-500" size={24} />;
+        return <Package style={{ color: 'var(--accent-purple-text)' }} size={24} />;
       case 'Entregado':
-        return <CheckCircle className="text-green-500" size={24} />;
+        return <CheckCircle style={{ color: 'var(--success-text)' }} size={24} />;
       default:
         return <Clock size={24} />;
     }
@@ -77,15 +94,15 @@ export default function OrdersHistoryPage() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Pendiente':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+        return { backgroundColor: 'var(--warning-bg)', borderColor: 'var(--warning-border)', color: 'var(--warning-text)' };
       case 'Preparando':
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return { backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-border)', color: 'var(--info-text)' };
       case 'Listo':
-        return 'bg-purple-50 border-purple-200 text-purple-800';
+        return { backgroundColor: 'var(--accent-purple-bg)', borderColor: 'var(--border-subtle)', color: 'var(--accent-purple-text)' };
       case 'Entregado':
-        return 'bg-green-50 border-green-200 text-green-800';
+        return { backgroundColor: 'var(--success-bg)', borderColor: 'var(--success-border)', color: 'var(--success-text)' };
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-800';
+        return { backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-default)', color: 'var(--text-secondary)' };
     }
   };
 
@@ -96,11 +113,30 @@ export default function OrdersHistoryPage() {
   if (loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-light py-8 md:py-12">
+    <div className="min-h-screen bg-[color:var(--bg-subtle)] py-8 md:py-12">
       <div className="max-w-6xl mx-auto px-4 md:px-6">
-        <h1 className="text-4xl md:text-5xl font-heading font-bold text-dark mb-8">
-          Mis Pedidos
-        </h1>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <h1 className="text-4xl md:text-5xl font-heading font-bold text-[color:var(--text-primary)]">
+            Mis Pedidos
+          </h1>
+          <div className="flex flex-col items-start md:items-end gap-1">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="btn btn-outline inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              aria-label="Refrescar pedidos"
+            >
+              <RefreshCcw size={16} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Actualizando…' : 'Refrescar'}
+            </button>
+            {lastRefreshedAt && (
+              <span className="text-xs text-[color:var(--text-muted)]">
+                Última actualización: {lastRefreshedAt.toLocaleString('es-CO')}
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Status Filter */}
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
@@ -109,7 +145,7 @@ export default function OrdersHistoryPage() {
             className={`px-4 py-2 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${
               selectedStatus === null
                 ? 'bg-primary text-white shadow-lg'
-                : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-primary'
+                : 'bg-[color:var(--bg-elevated)] text-[color:var(--text-secondary)] border-2 border-[color:var(--border-default)] hover:border-primary'
             }`}
           >
             Todos ({orders.length})
@@ -123,7 +159,7 @@ export default function OrdersHistoryPage() {
                 className={`px-4 py-2 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${
                   selectedStatus === status
                     ? 'bg-primary text-white shadow-lg'
-                    : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-primary'
+                    : 'bg-[color:var(--bg-elevated)] text-[color:var(--text-secondary)] border-2 border-[color:var(--border-default)] hover:border-primary'
                 }`}
               >
                 {status} ({count})
@@ -142,15 +178,18 @@ export default function OrdersHistoryPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-dark mb-1">
+                    <h3 className="text-2xl font-bold text-[color:var(--text-primary)] mb-1">
                       Pedido #{order.id}
                     </h3>
-                    <p className="text-gray-600">
+                    <p className="text-[color:var(--text-secondary)]">
                       {order.restaurante_nombre}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold border-2 ${getStatusColor(order.estado)}`}>
+                    <div
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold border-2"
+                      style={getStatusColor(order.estado)}
+                    >
                       {getStatusIcon(order.estado)}
                       <span>{order.estado}</span>
                     </div>
@@ -161,23 +200,23 @@ export default function OrdersHistoryPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Fecha</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className="text-sm text-[color:var(--text-muted)] mb-1">Fecha</p>
+                    <p className="font-semibold text-[color:var(--text-primary)]">
                       {new Date(order.creado_en).toLocaleDateString('es-CO')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Hora</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className="text-sm text-[color:var(--text-muted)] mb-1">Hora</p>
+                    <p className="font-semibold text-[color:var(--text-primary)]">
                       {new Date(order.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Items</p>
-                    <p className="font-semibold text-gray-800">{order.items_count} productos</p>
+                    <p className="text-sm text-[color:var(--text-muted)] mb-1">Items</p>
+                    <p className="font-semibold text-[color:var(--text-primary)]">{order.items_count} productos</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Total</p>
+                    <p className="text-sm text-[color:var(--text-muted)] mb-1">Total</p>
                     <p className="text-2xl font-heading font-bold text-primary">
                       ${order.total?.toLocaleString('es-CO')}
                     </p>
@@ -187,23 +226,23 @@ export default function OrdersHistoryPage() {
                 {order.notas && (
                   <>
                     <div className="divider" />
-                    <div className="bg-light p-3 rounded-lg">
-                      <p className="text-sm text-gray-600">
+                    <div className="bg-[color:var(--bg-subtle)] p-3 rounded-lg">
+                      <p className="text-sm text-[color:var(--text-secondary)]">
                         <strong>Notas:</strong> {order.notas}
                       </p>
                     </div>
                   </>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-3 flex-wrap">
-                  <p className="text-sm text-gray-500">
+                <div className="mt-4 pt-4 border-t border-[color:var(--border-default)] flex justify-between items-center gap-3 flex-wrap">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Última actualización: {new Date(order.actualizado_en).toLocaleString('es-CO')}
                   </p>
 
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleViewOrderDetails(order)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all duration-300 active:scale-95 border border-gray-200"
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)] transition-all duration-300 active:scale-95 border border-[color:var(--border-default)]"
                       title="Ver detalles del pedido"
                     >
                       <Eye size={16} />
@@ -227,10 +266,10 @@ export default function OrdersHistoryPage() {
         ) : (
           <div className="text-center py-12 card-lg">
             <Package size={80} className="text-primary mb-6 mx-auto opacity-30" />
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-2">
               No tienes pedidos
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-[color:var(--text-secondary)] mb-6">
               {selectedStatus
                 ? `No hay pedidos con estado "${selectedStatus}"`
                 : 'Realiza tu primer pedido ahora'}

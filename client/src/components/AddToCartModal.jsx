@@ -27,11 +27,11 @@ export default function AddToCartModal({ isOpen, onClose, producto, cantidad }) 
 
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-        <div className="relative bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 animate-scaleIn pointer-events-auto">
+        <div className="relative bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 animate-scaleIn pointer-events-auto">
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100 active:scale-95 touch-feedback"
+            className="absolute top-4 right-4 text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)] transition-colors p-1 rounded-lg hover:bg-[color:var(--bg-muted)] active:scale-95 touch-feedback"
             aria-label="Cerrar"
           >
             <X size={24} />
@@ -39,34 +39,37 @@ export default function AddToCartModal({ isOpen, onClose, producto, cantidad }) 
 
           {/* Success Icon */}
           <div className="flex justify-center mb-6">
-            <div className="relative w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-              <Check className="text-green-600 w-12 h-12 animate-scaleIn" strokeWidth={3} />
+            <div
+              className="relative w-20 h-20 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'var(--success-bg)' }}
+            >
+              <Check className="w-12 h-12 animate-scaleIn" strokeWidth={3} style={{ color: 'var(--success-text)' }} />
             </div>
           </div>
 
           {/* Content */}
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-dark mb-2">
+            <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-2">
               ¡Agregado al carrito!
             </h2>
-            <p className="text-gray-600 mb-4">
+            <p className="text-[color:var(--text-secondary)] mb-4">
               {producto.nombre}
             </p>
 
             {/* Product Info */}
-            <div className="bg-light rounded-lg p-4 mb-6">
+            <div className="bg-[color:var(--bg-subtle)] rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-600">Cantidad:</span>
+                <span className="text-[color:var(--text-secondary)]">Cantidad:</span>
                 <span className="text-2xl font-bold text-primary">{cantidad}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Precio unitario:</span>
-                <span className="text-xl font-semibold text-dark">
+                <span className="text-[color:var(--text-secondary)]">Precio unitario:</span>
+                <span className="text-xl font-semibold text-[color:var(--text-primary)]">
                   {formatCurrency(producto.precio)}
                 </span>
               </div>
-              <div className="border-t border-gray-200 mt-3 pt-3 flex items-center justify-between">
-                <span className="text-gray-700 font-semibold">Subtotal:</span>
+              <div className="border-t border-[color:var(--border-default)] mt-3 pt-3 flex items-center justify-between">
+                <span className="text-[color:var(--text-secondary)] font-semibold">Subtotal:</span>
                 <span className="text-2xl font-bold text-primary">
                   {formatCurrency(producto.precio * cantidad)}
                 </span>
@@ -95,7 +98,7 @@ export default function AddToCartModal({ isOpen, onClose, producto, cantidad }) 
           </div>
 
           {/* Auto-close message */}
-          <p className="text-xs text-gray-400 text-center mt-4">
+          <p className="text-xs text-[color:var(--text-muted)] text-center mt-4">
             Se cerrará automáticamente en 5 segundos
           </p>
         </div>

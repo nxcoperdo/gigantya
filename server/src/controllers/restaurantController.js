@@ -1,17 +1,63 @@
 import * as RestaurantModel from '../models/Restaurant.js';
 import * as StatsModel from '../models/Stats.js';
+import * as BarrioModel from '../models/Barrio.js';
+import * as RestauranteEnvioSectorModel from '../models/RestauranteEnvioSector.js';
 import { query } from '../config/database.js';
+
+/**
+ * Calcular el costo de envío de un restaurante a un barrio/sector específico.
+ * Si el restaurante tiene config de envío por sector y el barrio existe, devuelve
+ * el costo configurado. Si no, devuelve el costo_fijo global. Si no hay envío
+ * activo, devuelve 0.
+ */
+function calcularEnvioParaBarrio(restaurante, barrioId) {
+  const envios = restaurante.configuracion_envios
+    ? (typeof restaurante.configuracion_envios === 'string'
+        ? JSON.parse(restaurante.configuracion_envios)
+        : restaurante.configuracion_envios)
+    : { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
+
+  if (!envios.activo) {
+    return {
+      costo: 0,
+      sector_id: null,
+      sector_nombre: null,
+      barrio_id: barrioId || null,
+      envio_gratis_aplicado: false,
+      envio_activo: false
+    };
+  }
+
+  // Si el cliente pasó barrio_id y el barrio existe, resolver su sector.
+  // Para mantener el endpoint liviano y asíncrono-friendly, devolvemos lo que
+  // podemos sincronizar sin tocar la BD. El cliente también puede llamar al
+  // endpoint /api/restaurants/:id?barrio_id=X y el handler resuelve abajo.
+  return {
+    costo: Number(envios.costo_fijo) || 0,
+    sector_id: null,
+    sector_nombre: null,
+    barrio_id: barrioId || null,
+    envio_gratis_activo: !!envios.envio_gratis_activo,
+    envio_gratis_desde: Number(envios.envio_gratis_desde) || 0,
+    envio_gratis_aplicado: false,
+    envio_activo: true
+  };
+}
 
 /**
  * Listar todos los restaurantes aprobados
  */
 export async function listRestaurants(req, res) {
   try {
-    const { ciudad, nombre } = req.query;
+    const { ciudad, nombre, categoria, q } = req.query;
     const filtros = {};
 
     if (ciudad) filtros.ciudad = ciudad;
     if (nombre) filtros.nombre = nombre;
+    // `q` es la búsqueda libre del frontend (se reutiliza el campo `nombre`
+    // para no romper consumidores existentes del query param).
+    if (q) filtros.nombre = q;
+    if (categoria) filtros.categoria = categoria;
 
     const restaurantes = await RestaurantModel.getRestaurants(filtros);
 
@@ -21,36 +67,79 @@ export async function listRestaurants(req, res) {
     });
   } catch (error) {
     console.error('Error listando restaurantes:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error listando restaurantes',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 }
 
 /**
  * Obtener detalles de un restaurante con su menú
+ * Si se pasa `?barrio_id=X`, devuelve también `envio_para_barrio` con el costo
+ * de envío resuelto según el sector del barrio.
  */
 export async function getRestaurant(req, res) {
   try {
     const { id } = req.params;
+    const { barrio_id } = req.query;
 
     const restaurante = await RestaurantModel.getRestaurantById(id);
 
     if (!restaurante) {
-      return res.status(404).json({ 
-        error: 'Restaurante no encontrado' 
+      return res.status(404).json({
+        error: 'Restaurante no encontrado'
       });
     }
 
-    res.json({
-      restaurante
-    });
+    const response = { restaurante };
+
+    if (barrio_id) {
+      try {
+        const barrio = await BarrioModel.getBarrioById(Number(barrio_id));
+        if (barrio) {
+          const envios = restaurante.configuracion_envios
+            ? (typeof restaurante.configuracion_envios === 'string'
+                ? JSON.parse(restaurante.configuracion_envios)
+                : restaurante.configuracion_envios)
+            : { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
+
+          let costo = 0;
+          if (envios.activo) {
+            const sectorCosto = await RestauranteEnvioSectorModel.getCosto(Number(id), Number(barrio.sector_id));
+            if (sectorCosto !== null && sectorCosto !== undefined) {
+              costo = sectorCosto;
+            } else {
+              costo = Number(envios.costo_fijo) || 0;
+            }
+          }
+
+          response.envio_para_barrio = {
+            costo,
+            sector_id: Number(barrio.sector_id),
+            sector_nombre: barrio.sector_nombre,
+            barrio_id: Number(barrio.id),
+            barrio_nombre: barrio.nombre,
+            envio_gratis_activo: !!envios.envio_gratis_activo,
+            envio_gratis_desde: Number(envios.envio_gratis_desde) || 0,
+            envio_gratis_aplicado: false,
+            envio_activo: !!envios.activo
+          };
+        } else {
+          response.envio_para_barrio = calcularEnvioParaBarrio(restaurante, barrio_id);
+        }
+      } catch (barrioError) {
+        console.error('Error resolviendo envío por barrio:', barrioError);
+        response.envio_para_barrio = calcularEnvioParaBarrio(restaurante, barrio_id);
+      }
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Error obteniendo restaurante:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error obteniendo restaurante',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 }
@@ -152,6 +241,63 @@ export async function updateRestaurant(req, res) {
     }
 
     if (updateData && Object.keys(updateData).length > 0) {
+      // Sanitizar/validar custom_config.social (Facebook / Instagram) si viene presente.
+      // Solo los planes con `redes_sociales` pueden persistir estos campos.
+      if (updateData.custom_config && typeof updateData.custom_config === 'object') {
+        const socialInput = updateData.custom_config.social;
+
+        if (socialInput && typeof socialInput === 'object') {
+          const cleanedSocial = {};
+
+          for (const network of ['facebook', 'instagram']) {
+            const raw = socialInput[network];
+
+            // Si no viene el campo, se omite (no se pisa lo guardado).
+            if (raw === undefined) continue;
+
+            // null o string vacío → guardar como null (permite "borrar" una URL).
+            if (raw === null || (typeof raw === 'string' && raw.trim() === '')) {
+              cleanedSocial[network] = null;
+              continue;
+            }
+
+            // Debe ser string.
+            if (typeof raw !== 'string') {
+              return res.status(400).json({
+                error: `URL de ${network} inválida`
+              });
+            }
+
+            // Validar formato URL. new URL() lanza TypeError si no parsea.
+            try {
+              const parsed = new URL(raw.trim());
+              // Solo aceptamos http/https (evita javascript:, data:, file:, etc.)
+              if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                return res.status(400).json({
+                  error: `URL de ${network} inválida (solo http/https)`
+                });
+              }
+              cleanedSocial[network] = parsed.toString();
+            } catch {
+              return res.status(400).json({
+                error: `URL de ${network} inválida`
+              });
+            }
+          }
+
+          if (Object.keys(cleanedSocial).length > 0) {
+            updateData.custom_config = {
+              ...updateData.custom_config,
+              social: cleanedSocial
+            };
+          } else {
+            // El bloque social quedó completamente vacío → eliminarlo del custom_config.
+            const { social: _omit, ...restConfig } = updateData.custom_config;
+            updateData.custom_config = restConfig;
+          }
+        }
+      }
+
       await RestaurantModel.updateRestaurant(id, updateData);
     }
 

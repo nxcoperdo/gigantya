@@ -110,9 +110,14 @@ export async function getUserByEmailIgnoreStatus(email) {
 
 /**
  * Obtener usuario por ID
+ *
+ * Importante: NO filtrar por `estado` aquí. El middleware `verifyToken`
+ * ya valida explícitamente que el usuario no esté `suspendido`/`inactivo`,
+ * y filtrar en el modelo oculta el estado que el middleware necesita
+ * inspeccionar (causa raíz del bug de "loop de login" tras suspensión).
  */
 export async function getUserById(id) {
-  const sql = 'SELECT id, nombre, email, telefono, tipo_usuario, estado, documento_identidad, creado_en FROM usuarios WHERE id = ? AND estado = "activo"';
+  const sql = 'SELECT id, nombre, email, telefono, tipo_usuario, estado, documento_identidad, creado_en FROM usuarios WHERE id = ?';
   return queryOne(sql, [id]);
 }
 

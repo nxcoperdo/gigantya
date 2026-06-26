@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,15 +27,16 @@ const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 export default function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <CartProvider>
-          <ScrollToTop />
-          <div className="flex flex-col min-h-screen">
-            <Header />
+      <ThemeProvider>
+        <AuthProvider>
+          <CartProvider>
+            <ScrollToTop />
+            <div className="flex flex-col min-h-screen">
+              <Header />
 
-            <main className="flex-1">
-              <Suspense fallback={<Loading />}>
-                <Routes>
+              <main className="flex-1">
+                <Suspense fallback={<Loading />}>
+                  <Routes>
                   {/* Rutas Públicas */}
                   <Route path="/" element={<HomePage />} />
                   <Route path="/login" element={<LoginPage />} />
@@ -110,6 +112,7 @@ export default function App() {
           </div>
         </CartProvider>
       </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 }

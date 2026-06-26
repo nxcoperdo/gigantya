@@ -44,11 +44,23 @@ export async function getDefaultAddress(req, res) {
  */
 export async function createAddress(req, res) {
   try {
-    const { tipo, direccion, ciudad, telefono, notas, es_default } = req.body;
+    const {
+      tipo,
+      direccion,
+      ciudad,
+      telefono,
+      notas,
+      es_default,
+      // Campos opcionales de Google Maps (Places Autocomplete)
+      latitud,
+      longitud,
+      direccion_formateada,
+      place_id,
+    } = req.body;
 
     if (!direccion || !direccion.trim()) {
-      return res.status(400).json({ 
-        error: 'La dirección es requerida' 
+      return res.status(400).json({
+        error: 'La dirección es requerida'
       });
     }
 
@@ -56,10 +68,14 @@ export async function createAddress(req, res) {
       usuario_id: req.user.id,
       tipo: tipo || 'residencia',
       direccion,
-      ciudad: ciudad || 'GigantYA, Huila',
+      ciudad: ciudad || 'Gigante, Huila',
       telefono,
       notas,
-      es_default: es_default ? 1 : 0
+      es_default: es_default ? 1 : 0,
+      latitud: latitud ?? null,
+      longitud: longitud ?? null,
+      direccion_formateada: direccion_formateada ?? null,
+      place_id: place_id ?? null,
     });
 
     const newAddress = await AddressModel.getAddressById(addressId, req.user.id);
@@ -70,9 +86,9 @@ export async function createAddress(req, res) {
     });
   } catch (error) {
     console.error('Error creando dirección:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error creando dirección',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 }
@@ -83,11 +99,23 @@ export async function createAddress(req, res) {
 export async function updateAddress(req, res) {
   try {
     const { id } = req.params;
-    const { tipo, direccion, ciudad, telefono, notas, es_default } = req.body;
+    const {
+      tipo,
+      direccion,
+      ciudad,
+      telefono,
+      notas,
+      es_default,
+      // Campos opcionales de Google Maps
+      latitud,
+      longitud,
+      direccion_formateada,
+      place_id,
+    } = req.body;
 
     if (!id) {
-      return res.status(400).json({ 
-        error: 'ID de dirección es requerido' 
+      return res.status(400).json({
+        error: 'ID de dirección es requerido'
       });
     }
 
@@ -98,6 +126,11 @@ export async function updateAddress(req, res) {
     if (telefono !== undefined) updateData.telefono = telefono;
     if (notas !== undefined) updateData.notas = notas;
     if (es_default !== undefined) updateData.es_default = es_default ? 1 : 0;
+    // Campos de Maps: solo se actualizan si vienen en el body (incluso null para "borrar")
+    if ('latitud' in req.body) updateData.latitud = latitud;
+    if ('longitud' in req.body) updateData.longitud = longitud;
+    if ('direccion_formateada' in req.body) updateData.direccion_formateada = direccion_formateada;
+    if ('place_id' in req.body) updateData.place_id = place_id;
 
     await AddressModel.updateAddress(id, req.user.id, updateData);
 
@@ -109,9 +142,9 @@ export async function updateAddress(req, res) {
     });
   } catch (error) {
     console.error('Error actualizando dirección:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error actualizando dirección',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 }

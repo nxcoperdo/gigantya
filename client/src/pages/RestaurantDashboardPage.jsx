@@ -7,6 +7,7 @@ import OrderDetailsModal from '../components/OrderDetailsModal';
 import CouponsView from '../components/CouponsView';
 import PaymentTabs from '../components/PaymentTabs';
 import PageBuilder from '../components/PageBuilder';
+import RestaurantShippingTaxModal from '../components/RestaurantShippingTaxModal';
 import {
   LayoutDashboard,
   Clock3,
@@ -35,18 +36,22 @@ import {
   Users,
   TrendingUp,
   Lock,
+  Truck,
+  DollarSign,
 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 
+// Estilos de estado de pedido: usan vars semánticas (legibles en dark mode).
+// Devuelven {backgroundColor, color, borderColor} para pasar a style={}.
 const ORDER_STATE_STYLES = {
-  Pendiente: 'bg-yellow-50 text-yellow-800 border-yellow-200',
-  Preparando: 'bg-blue-50 text-blue-800 border-blue-200',
-  Listo: 'bg-purple-50 text-purple-800 border-purple-200',
-  Entregado: 'bg-green-50 text-green-800 border-green-200',
-  Cancelado: 'bg-red-50 text-red-800 border-red-200',
-  'Comprobante Enviado': 'bg-orange-50 text-orange-800 border-orange-200',
-  'Pago Confirmado': 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  'Pago Rechazado': 'bg-red-50 text-red-800 border-red-200',
+  Pendiente:         { backgroundColor: 'var(--warning-bg)',  color: 'var(--warning-text)',  borderColor: 'var(--warning-border)' },
+  Preparando:        { backgroundColor: 'var(--info-bg)',     color: 'var(--info-text)',     borderColor: 'var(--info-border)' },
+  Listo:             { backgroundColor: 'var(--accent-purple-bg)', color: 'var(--accent-purple-text)', borderColor: 'var(--accent-purple-border, var(--border-subtle))' },
+  Entregado:         { backgroundColor: 'var(--success-bg)',  color: 'var(--success-text)',  borderColor: 'var(--success-border)' },
+  Cancelado:         { backgroundColor: 'var(--danger-bg)',   color: 'var(--danger-text)',   borderColor: 'var(--danger-border)' },
+  'Comprobante Enviado': { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-border)' },
+  'Pago Confirmado': { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-border)' },
+  'Pago Rechazado':  { backgroundColor: 'var(--danger-bg)',  color: 'var(--danger-text)',  borderColor: 'var(--danger-border)' },
 };
 
 const NEXT_STATUS_BY_STATE = {
@@ -65,31 +70,34 @@ const PAYMENT_METHOD_LABELS = {
 function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrder, onViewDetails, isMuted = false }) {
   const nextStatus = NEXT_STATUS_BY_STATE[order.estado];
   return (
-    <article className={`border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-white hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
+    <article className={`border border-[color:var(--border-default)] rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-[color:var(--bg-elevated)] hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-base sm:text-lg font-bold text-dark">Pedido #{order.id}</h3>
-            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${ORDER_STATE_STYLES[order.estado] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+            <h3 className="text-base sm:text-lg font-bold text-[color:var(--text-primary)]">Pedido #{order.id}</h3>
+            <span
+              className="px-2.5 py-1 rounded-full text-xs font-semibold border"
+              style={ORDER_STATE_STYLES[order.estado] || { backgroundColor: 'var(--bg-muted)', color: 'var(--text-secondary)', borderColor: 'var(--border-default)' }}
+            >
               {order.estado}
             </span>
-            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 flex items-center gap-1">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] border border-[color:var(--border-default)] flex items-center gap-1">
               <Banknote size={14} />
               <span className="hidden xs:inline">{PAYMENT_METHOD_LABELS[order.metodo_pago] || order.metodo_pago || 'No definido'}</span>
               <span className="xs:hidden">{(PAYMENT_METHOD_LABELS[order.metodo_pago] || order.metodo_pago || 'No definido').slice(0, 8)}</span>
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm">
-            <p className="text-gray-600">Cliente: <span className="font-semibold text-gray-800">{order.cliente_nombre || 'Sin nombre'}</span></p>
-            <p className="text-gray-600">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
+            <p className="text-[color:var(--text-secondary)]">Cliente: <span className="font-semibold text-[color:var(--text-primary)]">{order.cliente_nombre || 'Sin nombre'}</span></p>
+            <p className="text-[color:var(--text-secondary)]">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
           </div>
-          <p className="text-gray-600 text-sm">Fecha: {order.creado_en ? new Date(order.creado_en).toLocaleString('es-CO') : 'No disponible'}</p>
+          <p className="text-[color:var(--text-secondary)] text-sm">Fecha: {order.creado_en ? new Date(order.creado_en).toLocaleString('es-CO') : 'No disponible'}</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-[color:var(--border-subtle)]">
           <div className="space-y-1">
             <p className="text-xl sm:text-2xl font-heading font-bold text-primary">${Number(order.total || 0).toLocaleString('es-CO')}</p>
-            <p className="text-xs sm:text-sm text-gray-500">{order.items_count || 0} producto(s)</p>
+            <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">{order.items_count || 0} producto(s)</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -126,7 +134,8 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrd
                 type="button"
                 disabled={updatingOrderId === order.id}
                 onClick={() => handleCancelOrder(order.id)}
-                className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px] text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
+                className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px]"
+                style={{ color: 'var(--danger-text)' }}
                 title="Cancelar pedido"
               >
                 <Trash2 size={14} />
@@ -145,23 +154,23 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, action,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden animate-scaleUp">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl max-w-md w-full shadow-xl overflow-hidden animate-scaleUp">
         <div className="p-6 text-center">
           <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle size={32} />
           </div>
-          <h3 className="text-xl font-bold text-dark mb-2">{title}</h3>
-          <p className="text-gray-600 mb-6">{message}</p>
+          <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-2">{title}</h3>
+          <p className="text-[color:var(--text-secondary)] mb-6">{message}</p>
 
           {action === 'cancel' && (
             <div className="text-left mb-6">
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-[color:var(--text-secondary)] mb-2">
                 Motivo de la cancelación *
               </label>
               <textarea
                 value={reason}
                 onChange={(e) => onReasonChange(e.target.value)}
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-primary outline-none transition-colors min-h-[100px] text-sm"
+                className="w-full p-3 border-2 border-[color:var(--border-default)] rounded-xl bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:border-primary outline-none transition-colors min-h-[100px] text-sm"
                 placeholder="Ej: El cliente canceló por teléfono, falta de ingredientes, etc."
                 required
               />
@@ -171,7 +180,7 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, action,
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="flex-1 py-2.5 rounded-xl font-bold text-[color:var(--text-secondary)] bg-[color:var(--bg-muted)] hover:bg-[color:var(--border-default)] transition-colors"
             >
               Cancelar
             </button>
@@ -207,6 +216,7 @@ export default function RestaurantDashboardPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [deletingProductId, setDeletingProductId] = useState(null);
   const [isRestaurantModalOpen, setIsRestaurantModalOpen] = useState(false);
+  const [isShippingTaxModalOpen, setIsShippingTaxModalOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState({ isOpen: false, orderId: null, nextStatus: null, action: 'status' });
   const [cancellationReason, setCancellationReason] = useState('');
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
@@ -508,19 +518,19 @@ export default function RestaurantDashboardPage() {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen bg-light py-8 md:py-12">
+      <div className="min-h-screen bg-[color:var(--bg-subtle)] py-8 md:py-12">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="card-lg text-center py-12">
             <AlertCircle size={72} className="mx-auto text-primary mb-4" />
-            <h1 className="text-3xl md:text-4xl font-heading font-bold text-dark mb-3">
+            <h1 className="text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)] mb-3">
               No tienes un restaurante asociado
             </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
+            <p className="text-[color:var(--text-secondary)] max-w-2xl mx-auto mb-6">
               Tu cuenta está registrada como restaurante, pero todavía no hay un perfil de restaurante configurado.
               Contacta al equipo administrativo para habilitar tu panel operativo.
             </p>
-            <div className="text-sm text-gray-500">
-              Usuario: <span className="font-semibold text-gray-700">{profile?.nombre}</span>
+            <div className="text-sm text-[color:var(--text-muted)]">
+              Usuario: <span className="font-semibold text-[color:var(--text-secondary)]">{profile?.nombre}</span>
             </div>
           </div>
         </div>
@@ -529,9 +539,9 @@ export default function RestaurantDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-light py-4 sm:py-6 md:py-8 lg:py-12">
+    <div className="min-h-screen bg-[color:var(--bg-subtle)] py-4 sm:py-6 md:py-8 lg:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 space-y-4 sm:space-y-6 md:space-y-8">
-        <section className="card-lg bg-gradient-to-br from-white to-red-50/60">
+        <section className="card-lg bg-gradient-to-br from-[color:var(--bg-elevated)] to-red-50/60">
           <div className="flex flex-col gap-4 sm:gap-6">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-xs sm:text-sm mb-3">
@@ -539,15 +549,15 @@ export default function RestaurantDashboardPage() {
                 <LayoutDashboard size={16} className="inline xs:hidden" />
                 Dashboard restaurante
                 {restaurant.plan && (
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-white text-primary text-[10px] uppercase shadow-sm border border-primary/20">
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-[color:var(--bg-elevated)] text-primary text-[10px] uppercase shadow-sm border border-primary/20">
                     Plan {restaurant.plan}
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-dark mb-2 break-words">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)] mb-2 break-words">
                 {restaurant.nombre}
               </h1>
-              <p className="text-gray-600 text-sm sm:text-base max-w-2xl">
+              <p className="text-[color:var(--text-secondary)] text-sm sm:text-base max-w-2xl">
                 Gestiona tu negocio de manera eficiente desde un solo lugar.
               </p>
             </div>
@@ -559,8 +569,8 @@ export default function RestaurantDashboardPage() {
                   onClick={() => setActiveTab('orders')}
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'orders'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark bg-gray-50'
+                      ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                      : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
                   }`}
                 >
                   <ClipboardList size={16} />
@@ -576,8 +586,8 @@ export default function RestaurantDashboardPage() {
                   onClick={() => setActiveTab('management')}
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'management'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark bg-gray-50'
+                      ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                      : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
                   }`}
                 >
                   <Settings size={16} />
@@ -590,8 +600,8 @@ export default function RestaurantDashboardPage() {
                   }}
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'payments'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark bg-gray-50'
+                      ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                      : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
                   }`}
                 >
                   <FileText size={16} />
@@ -607,8 +617,8 @@ export default function RestaurantDashboardPage() {
                   onClick={() => setActiveTab('coupons')}
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'coupons'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-500 hover:text-dark bg-gray-50'
+                      ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                      : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
                   }`}
                 >
                   <Ticket size={16} />
@@ -620,8 +630,8 @@ export default function RestaurantDashboardPage() {
                       onClick={() => setActiveTab('builder')}
                       className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                         activeTab === 'builder'
-                          ? 'bg-white text-primary shadow-sm'
-                          : 'text-gray-500 hover:text-dark bg-gray-50'
+                          ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                          : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
                       }`}
                     >
                       <Palette size={16} />
@@ -631,8 +641,8 @@ export default function RestaurantDashboardPage() {
                       onClick={() => setActiveTab('stats')}
                       className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                         activeTab === 'stats'
-                          ? 'bg-white text-primary shadow-sm'
-                          : 'text-gray-500 hover:text-dark bg-gray-50'
+                          ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                          : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
                       }`}
                     >
                       <BarChart3 size={16} />
@@ -645,6 +655,14 @@ export default function RestaurantDashboardPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsShippingTaxModalOpen(true)}
+                  className="btn btn-outline inline-flex items-center justify-center gap-2 min-h-[44px] border-primary/40 text-primary hover:bg-primary/5"
+                >
+                  <DollarSign size={16} />
+                  Envíos e Impuestos
+                </button>
+                <button
+                  type="button"
                   onClick={refreshData}
                   className="btn btn-primary inline-flex items-center justify-center gap-2 min-h-[44px]"
                 >
@@ -652,7 +670,7 @@ export default function RestaurantDashboardPage() {
                   Refrescar datos
                 </button>
                 {lastRefreshedAt && (
-                  <div className="text-xs text-gray-500 space-y-0.5">
+                  <div className="text-xs text-[color:var(--text-muted)] space-y-0.5">
                     <span className="block">Última actualización: {lastRefreshedAt.toLocaleString('es-CO')}</span>
                     <span className="block font-medium text-primary/80">Cada 7 segundos</span>
                   </div>
@@ -676,11 +694,12 @@ export default function RestaurantDashboardPage() {
           const esVencido = dias <= 0;
           return (
             <div
-              className={`rounded-2xl p-4 border-2 flex items-start gap-3 ${
-                esVencido
-                  ? 'bg-red-50 border-red-200 text-red-800'
-                  : 'bg-amber-50 border-amber-200 text-amber-800'
-              }`}
+              className="rounded-2xl p-4 border-2 flex items-start gap-3"
+              style={{
+                backgroundColor: esVencido ? 'var(--danger-bg)' : 'var(--warning-bg)',
+                borderColor: esVencido ? 'var(--danger-border)' : 'var(--warning-border)',
+                color: esVencido ? 'var(--danger-text)' : 'var(--warning-text)'
+              }}
             >
               <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
               <div>
@@ -775,6 +794,13 @@ export default function RestaurantDashboardPage() {
         onClose={() => setIsOrderDetailsModalOpen(false)}
         order={selectedOrderForDetails}
       />
+
+      <RestaurantShippingTaxModal
+        isOpen={isShippingTaxModalOpen}
+        onClose={() => setIsShippingTaxModalOpen(false)}
+        onSucceeded={refreshData}
+        restaurant={restaurant}
+      />
     </div>
   );
 }
@@ -821,8 +847,8 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
       <div className="card-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-bold text-dark">Recepción de Pedidos</h2>
-            <p className="text-gray-600 text-xs sm:text-sm">Gestiona la operatividad de tu restaurante en tiempo real.</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-[color:var(--text-primary)]">Recepción de Pedidos</h2>
+            <p className="text-[color:var(--text-secondary)] text-xs sm:text-sm">Gestiona la operatividad de tu restaurante en tiempo real.</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -847,7 +873,7 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
         </div>
 
         {ordersLoading ? (
-          <div className="py-10 text-center text-gray-500">
+          <div className="py-10 text-center text-[color:var(--text-muted)]">
             <div className="spinner spinner-md mx-auto mb-3"></div>
             <p>Cargando pedidos...</p>
           </div>
@@ -857,14 +883,14 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
             <section>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-1.5 h-5 sm:h-6 bg-primary rounded-full"></div>
-                <h3 className="text-base sm:text-lg font-bold text-dark">Pedidos Activos</h3>
+                <h3 className="text-base sm:text-lg font-bold text-[color:var(--text-primary)]">Pedidos Activos</h3>
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
                   {activeOrders.length}
                 </span>
               </div>
 
               {activeOrders.length === 0 ? (
-                <div className="py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500">
+                <div className="py-8 text-center bg-[color:var(--bg-subtle)] rounded-2xl border-2 border-dashed border-[color:var(--border-default)] text-[color:var(--text-muted)]">
                   <Package size={32} className="mx-auto mb-2 opacity-30" />
                   <p className="text-sm sm:text-base">No hay pedidos activos en este momento.</p>
                 </div>
@@ -885,28 +911,28 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
             </section>
 
             {/* --- COMPLETED ORDERS --- */}
-            <section className="pt-4 sm:pt-6 border-t border-gray-100">
+            <section className="pt-4 sm:pt-6 border-t border-[color:var(--border-subtle)]">
               <button
                 onClick={() => setIsCompletedExpanded(!isCompletedExpanded)}
-                className="flex items-center justify-between w-full p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group active:scale-95 touch-feedback"
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-[color:var(--bg-subtle)] hover:bg-[color:var(--bg-muted)] transition-colors group active:scale-95 touch-feedback"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-1.5 h-5 sm:h-6 bg-gray-400 rounded-full"></div>
-                  <h3 className="text-sm sm:text-md font-bold text-gray-600 group-hover:text-dark transition-colors">Pedidos Completados / Recientes</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">
+                  <div className="w-1.5 h-5 sm:h-6 bg-[color:var(--text-subtle)] rounded-full"></div>
+                  <h3 className="text-sm sm:text-md font-bold text-[color:var(--text-secondary)] group-hover:text-[color:var(--text-primary)] transition-colors">Pedidos Completados / Recientes</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] text-xs font-bold">
                     {completedOrders.length}
                   </span>
                 </div>
                 <RefreshCcw
                   size={16}
-                  className={`text-gray-400 transition-transform duration-300 flex-shrink-0 ${isCompletedExpanded ? 'rotate-180' : ''}`}
+                  className={`text-[color:var(--text-subtle)] transition-transform duration-300 flex-shrink-0 ${isCompletedExpanded ? 'rotate-180' : ''}`}
                 />
               </button>
 
               {isCompletedExpanded && (
                 <div className="mt-4 space-y-3 sm:space-y-4">
                   {completedOrders.length === 0 ? (
-                    <div className="py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500">
+                    <div className="py-8 text-center bg-[color:var(--bg-subtle)] rounded-2xl border-2 border-dashed border-[color:var(--border-default)] text-[color:var(--text-muted)]">
                       <Package size={32} className="mx-auto mb-2 opacity-30" />
                       <p className="text-sm sm:text-base">No hay pedidos completados recientemente.</p>
                     </div>
@@ -939,11 +965,11 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
       <div className="xl:col-span-2 card-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-dark">Gestión de Productos</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-[color:var(--text-primary)]">Gestión de Productos</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs sm:text-sm text-gray-600">
-              <span className="font-semibold text-green-600">{stats.activeProducts}</span> activos de {' '}
+            <p className="text-xs sm:text-sm text-[color:var(--text-secondary)]">
+              <span className="font-semibold text-success">{stats.activeProducts}</span> activos de {' '}
               <span className="font-semibold">{products.length}</span> totales
             </p>
             <button
@@ -958,9 +984,9 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
           </div>
         </div>
         {productsLoading ? (
-          <div className="py-8 text-center text-gray-500">Cargando productos...</div>
+          <div className="py-8 text-center text-[color:var(--text-muted)]">Cargando productos...</div>
         ) : products.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">
+          <div className="py-8 text-center text-[color:var(--text-muted)]">
             <UtensilsCrossed size={40} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm sm:text-base">No tienes productos cargados todavía.</p>
           </div>
@@ -969,15 +995,15 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
             {products.map((product) => {
               const available = product.disponible === 1 || product.disponible === true;
               return (
-                <div key={product.id} className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-white hover:shadow-sm transition-shadow">
+                <div key={product.id} className="border border-[color:var(--border-default)] rounded-xl p-3 sm:p-4 bg-[color:var(--bg-elevated)] hover:shadow-sm transition-shadow">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       {product.imagen_url && (
-                        <img src={getImageUrl(product.imagen_url)} alt={product.nombre} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                        <img src={getImageUrl(product.imagen_url)} alt={product.nombre} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover bg-[color:var(--bg-muted)] flex-shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-dark truncate">{product.nombre}</h3>
-                        <p className="text-xs sm:text-sm text-gray-500 line-clamp-1">{product.descripcion || 'Sin descripción'}</p>
+                        <h3 className="font-semibold text-[color:var(--text-primary)] truncate">{product.nombre}</h3>
+                        <p className="text-xs sm:text-sm text-[color:var(--text-muted)] line-clamp-1">{product.descripcion || 'Sin descripción'}</p>
                         <p className="mt-1 text-sm font-bold text-primary">${Number(product.precio || 0).toLocaleString('es-CO')}</p>
                       </div>
                     </div>
@@ -992,13 +1018,32 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
                         {available ? <ToggleRight size={24} className="sm:size-28" /> : <ToggleLeft size={24} className="sm:size-28" />}
                       </button>
                       <div className="flex items-center gap-1">
-                        <button type="button" onClick={() => openProductModal(product)} className="p-2 text-gray-500 hover:text-primary transition-colors"><Pencil size={16} /></button>
-                        <button type="button" onClick={() => handleDeleteProduct(product.id)} disabled={deletingProductId === product.id} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><Trash2 size={16} className={deletingProductId === product.id ? 'animate-spin' : ''} /></button>
+                        <button type="button" onClick={() => openProductModal(product)} className="p-2 text-[color:var(--text-muted)] hover:text-primary transition-colors"><Pencil size={16} /></button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(product.id)}
+                          disabled={deletingProductId === product.id}
+                          className="p-2 transition-colors"
+                          style={{ color: 'var(--text-muted)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger-text)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                        >
+                          <Trash2 size={16} className={deletingProductId === product.id ? 'animate-spin' : ''} />
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <div className={`mt-2.5 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold ${available ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                    <span className={`w-2 h-2 rounded-full ${available ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <div
+                    className={`mt-2.5 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold`}
+                    style={available
+                      ? { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
+                      : { backgroundColor: 'var(--bg-muted)', color: 'var(--text-secondary)' }
+                    }
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: available ? 'var(--success-text)' : 'var(--text-subtle)' }}
+                    />
                     {available ? 'Disponible' : 'No disponible'}
                   </div>
                 </div>
@@ -1010,7 +1055,7 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
       <aside className="space-y-4 sm:space-y-6">
         <section className="card-lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg sm:text-2xl font-bold text-dark">Datos del Restaurante</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-[color:var(--text-primary)]">Datos del Restaurante</h2>
             <button
               type="button"
               onClick={() => setIsRestaurantModalOpen(true)}
@@ -1025,17 +1070,17 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
               <img
                 src={getImageUrl(restaurant.imagen_url)}
                 alt={restaurant.nombre || 'Imagen del restaurante'}
-                className="w-full h-32 sm:h-40 rounded-xl object-cover border border-gray-200"
+                className="w-full h-32 sm:h-40 rounded-xl object-cover border border-[color:var(--border-default)]"
               />
             ) : (
-              <div className="w-full h-32 sm:h-40 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-500">
+              <div className="w-full h-32 sm:h-40 rounded-xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] flex flex-col items-center justify-center text-[color:var(--text-muted)]">
                 <ImageIcon size={24} className="mb-2" />
                 <p className="text-xs sm:text-sm font-medium">Sin imagen del restaurante</p>
                 <p className="text-xs">Usa el boton Editar para agregar una foto</p>
               </div>
             )}
           </div>
-          <div className="space-y-2.5 text-xs sm:text-sm text-gray-600">
+          <div className="space-y-2.5 text-xs sm:text-sm text-[color:var(--text-secondary)]">
             <InfoRow label="Ciudad" value={restaurant.ciudad || 'No definida'} />
             <InfoRow label="Dirección" value={restaurant.direccion || 'No definida'} />
             <InfoRow label="Teléfono" value={restaurant.telefono || 'No disponible'} />
@@ -1050,12 +1095,12 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
 
 function StatCard({ title, value, icon, description }) {
   return (
-    <div className="card-lg bg-white p-4 sm:p-5">
+    <div className="card-lg bg-[color:var(--bg-elevated)] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3 sm:gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{title}</p>
-          <h3 className="text-2xl sm:text-3xl font-heading font-bold text-dark mt-1.5 break-words">{value}</h3>
-          <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{description}</p>
+          <p className="text-xs sm:text-sm text-[color:var(--text-muted)] font-medium truncate">{title}</p>
+          <h3 className="text-2xl sm:text-3xl font-heading font-bold text-[color:var(--text-primary)] mt-1.5 break-words">{value}</h3>
+          <p className="text-xs text-[color:var(--text-muted)] mt-1.5 line-clamp-2">{description}</p>
         </div>
         <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
           {icon}
@@ -1067,9 +1112,9 @@ function StatCard({ title, value, icon, description }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 border-b border-gray-100 pb-2.5 last:border-0 last:pb-0">
-      <span className="font-semibold text-gray-500 text-xs sm:text-sm">{label}</span>
-      <span className="text-right text-gray-800 text-xs sm:text-sm break-words">{value}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 border-b border-[color:var(--border-subtle)] pb-2.5 last:border-0 last:pb-0">
+      <span className="font-semibold text-[color:var(--text-muted)] text-xs sm:text-sm">{label}</span>
+      <span className="text-right text-[color:var(--text-primary)] text-xs sm:text-sm break-words">{value}</span>
     </div>
   );
 }
@@ -1080,7 +1125,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
 
   if (!statsData) {
     return (
-      <div className="card-lg p-12 text-center text-gray-500">
+      <div className="card-lg p-12 text-center text-[color:var(--text-muted)]">
         <BarChart3 size={48} className="mx-auto mb-4 opacity-30" />
         <p>Cargando estadísticas avanzadas...</p>
       </div>
@@ -1100,13 +1145,16 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section className="card-lg bg-gradient-to-r from-primary/10 to-primary/5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-dark mb-1">
+            <h2 className="text-xl font-bold text-[color:var(--text-primary)] mb-1">
               Estadísticas del Restaurante
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[color:var(--text-secondary)]">
               Plan actual: <span className="font-bold text-primary capitalize">{restaurant?.plan || 'básico'}</span>
               {isPremium && (
-                <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-bold">
+                <span
+                  className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold"
+                  style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}
+                >
                   ⭐ Premium
                 </span>
               )}
@@ -1132,7 +1180,10 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           </div>
         </div>
         {exportError && (
-          <div className="mt-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          <div
+          className="mt-3 p-2 rounded-lg text-sm"
+          style={{ backgroundColor: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}
+        >
             {exportError}
           </div>
         )}
@@ -1142,7 +1193,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-1 h-6 bg-primary rounded-full"></div>
-          <h3 className="text-lg font-bold text-dark">Ventas Totales</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Ventas Totales</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
@@ -1170,7 +1221,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-1 h-6 bg-primary rounded-full"></div>
-          <h3 className="text-lg font-bold text-dark">Pedidos</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Pedidos</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -1204,13 +1255,13 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section className="card-lg">
         <div className="flex items-center gap-3 mb-4">
           <BarChart3 className="text-primary" size={24} />
-          <h3 className="text-lg font-bold text-dark">Ticket Promedio</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Ticket Promedio</h3>
         </div>
         <div className="flex items-baseline gap-3">
           <span className="text-4xl font-bold text-primary">
             ${Number(statsData.ticket_promedio || 0).toLocaleString('es-CO')}
           </span>
-          <span className="text-sm text-gray-500">Valor promedio por pedido entregado</span>
+          <span className="text-sm text-[color:var(--text-muted)]">Valor promedio por pedido entregado</span>
         </div>
       </section>
 
@@ -1218,14 +1269,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section className="card-lg">
         <div className="flex items-center gap-3 mb-4">
           <UtensilsCrossed className="text-primary" size={24} />
-          <h3 className="text-lg font-bold text-dark">Productos Más Vendidos (Top 10)</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Productos Más Vendidos (Top 10)</h3>
         </div>
         {!statsData.productos_mas_vendidos || statsData.productos_mas_vendidos.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay productos vendidos aún.</p>
+          <p className="text-[color:var(--text-muted)] text-center py-8">No hay productos vendidos aún.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+              <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                 <tr>
                   <th className="px-4 py-3">#</th>
                   <th className="px-4 py-3">Producto</th>
@@ -1233,15 +1284,15 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                   <th className="px-4 py-3 text-right">Ingresos Generados</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[color:var(--border-subtle)]">
                 {statsData.productos_mas_vendidos
                   .filter(p => p.nombre != null)
                   .slice(0, 10)
                   .map((prod, idx) => (
-                    <tr key={`prod-${prod.id}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-bold text-gray-400">#{idx + 1}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-dark">{prod.nombre || 'Sin nombre'}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{prod.cantidad_vendida || 0}</td>
+                    <tr key={`prod-${prod.id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-bold text-[color:var(--text-subtle)]">#{idx + 1}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{prod.nombre || 'Sin nombre'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{prod.cantidad_vendida || 0}</td>
                       <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                         ${Number(prod.ingresos_generados || 0).toLocaleString('es-CO')}
                       </td>
@@ -1257,32 +1308,32 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section className="card-lg">
         <div className="flex items-center gap-3 mb-4">
           <BarChart3 className="text-primary" size={24} />
-          <h3 className="text-lg font-bold text-dark">Ventas por Día (Últimos 30 días)</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Ventas por Día (Últimos 30 días)</h3>
         </div>
         {statsData.ventas_diarias?.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay datos de ventas registrados.</p>
+          <p className="text-[color:var(--text-muted)] text-center py-8">No hay datos de ventas registrados.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+              <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                 <tr>
                   <th className="px-4 py-3">Fecha</th>
                   <th className="px-4 py-3 text-right">Total Ventas</th>
                   <th className="px-4 py-3 text-right">Pedidos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[color:var(--border-subtle)]">
                 {statsData.ventas_diarias?.map((day, idx) => {
                   const fecha = day.fecha ? new Date(day.fecha) : null;
                   return (
-                    <tr key={`day-${day.fecha}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-dark">
+                    <tr key={`day-${day.fecha}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">
                         {fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                         ${Number(day.total_ventas || 0).toLocaleString('es-CO')}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">
+                      <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">
                         {day.total_pedidos || 0}
                       </td>
                     </tr>
@@ -1298,24 +1349,24 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section className="card-lg">
         <div className="flex items-center gap-3 mb-4">
           <Banknote className="text-primary" size={24} />
-          <h3 className="text-lg font-bold text-dark">Métodos de Pago</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Métodos de Pago</h3>
         </div>
         {statsData.metodos_pago?.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay registros de métodos de pago.</p>
+          <p className="text-[color:var(--text-muted)] text-center py-8">No hay registros de métodos de pago.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {metodosPagoConPorcentaje.map((metodo, idx) => (
-              <div key={`${metodo.metodo_pago}-${idx}`} className="border border-gray-200 rounded-xl p-4 bg-white">
+              <div key={`${metodo.metodo_pago}-${idx}`} className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-gray-700 capitalize">
+                  <span className="text-sm font-bold text-[color:var(--text-secondary)] capitalize">
                     {PAYMENT_METHOD_LABELS[metodo.metodo_pago] || metodo.metodo_pago}
                   </span>
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
                     {metodo.porcentaje}%
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-dark">{metodo.cantidad}</p>
-                <p className="text-xs text-gray-500">pedidos</p>
+                <p className="text-2xl font-bold text-[color:var(--text-primary)]">{metodo.cantidad}</p>
+                <p className="text-xs text-[color:var(--text-muted)]">pedidos</p>
                 <p className="text-sm font-bold text-primary mt-2">
                   ${Number(metodo.total_ventas || 0).toLocaleString('es-CO')}
                 </p>
@@ -1329,27 +1380,27 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       <section className="card-lg">
         <div className="flex items-center gap-3 mb-4">
           <Package className="text-primary" size={24} />
-          <h3 className="text-lg font-bold text-dark">Categorías Más Vendidas</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Categorías Más Vendidas</h3>
         </div>
         {!statsData.categorias_mas_vendidas || statsData.categorias_mas_vendidas.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay datos de categorías registrados.</p>
+          <p className="text-[color:var(--text-muted)] text-center py-8">No hay datos de categorías registrados.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+              <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                 <tr>
                   <th className="px-4 py-3">Categoría</th>
                   <th className="px-4 py-3 text-right">Cantidad Vendida</th>
                   <th className="px-4 py-3 text-right">Ingresos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[color:var(--border-subtle)]">
                 {statsData.categorias_mas_vendidas
                   .filter(c => c.categoria != null)
                   .map((cat, idx) => (
-                    <tr key={`cat-${cat.categoria}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-dark">{cat.categoria || 'Sin categoría'}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{cat.cantidad_vendida || 0}</td>
+                    <tr key={`cat-${cat.categoria}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{cat.categoria || 'Sin categoría'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{cat.cantidad_vendida || 0}</td>
                       <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                         ${Number(cat.ingresos_generados || 0).toLocaleString('es-CO')}
                       </td>
@@ -1362,34 +1413,34 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
       </section>
 
       {/* ========== PLAN PROFESIONAL Y PREMIUM: RESUMEN GENERAL ========== */}
-      <section className="card-lg bg-gradient-to-br from-primary/5 to-white">
+      <section className="card-lg bg-gradient-to-br from-primary/5 to-[color:var(--bg-elevated)]">
         <div className="flex items-center gap-3 mb-4">
           <LayoutDashboard className="text-primary" size={24} />
-          <h3 className="text-lg font-bold text-dark">Resumen General</h3>
+          <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Resumen General</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="border border-gray-200 rounded-xl p-4 bg-white">
-            <p className="text-xs text-gray-500 mb-1">Ingresos Totales</p>
+          <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
+            <p className="text-xs text-[color:var(--text-muted)] mb-1">Ingresos Totales</p>
             <p className="text-2xl font-bold text-primary">
               ${Number(statsData.resumen?.ingresos_totales || 0).toLocaleString('es-CO')}
             </p>
           </div>
-          <div className="border border-gray-200 rounded-xl p-4 bg-white">
-            <p className="text-xs text-gray-500 mb-1">Total Pedidos</p>
-            <p className="text-2xl font-bold text-dark">{statsData.pedidos?.total || 0}</p>
+          <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
+            <p className="text-xs text-[color:var(--text-muted)] mb-1">Total Pedidos</p>
+            <p className="text-2xl font-bold text-[color:var(--text-primary)]">{statsData.pedidos?.total || 0}</p>
           </div>
-          <div className="border border-gray-200 rounded-xl p-4 bg-white">
-            <p className="text-xs text-gray-500 mb-1">Ticket Promedio</p>
-            <p className="text-xl font-bold text-dark">
+          <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
+            <p className="text-xs text-[color:var(--text-muted)] mb-1">Ticket Promedio</p>
+            <p className="text-xl font-bold text-[color:var(--text-primary)]">
               ${Number(statsData.ticket_promedio || 0).toLocaleString('es-CO')}
             </p>
           </div>
-          <div className="border border-gray-200 rounded-xl p-4 bg-white">
-            <p className="text-xs text-gray-500 mb-1">Producto Estrella</p>
-            <p className="text-sm font-bold text-dark truncate">
+          <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
+            <p className="text-xs text-[color:var(--text-muted)] mb-1">Producto Estrella</p>
+            <p className="text-sm font-bold text-[color:var(--text-primary)] truncate">
               {statsData.resumen?.producto_estrella?.nombre || 'N/A'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[color:var(--text-muted)]">
               {statsData.resumen?.producto_estrella?.cantidad_vendida || 0} unidades
             </p>
           </div>
@@ -1402,33 +1453,36 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Clock3 className="text-primary" size={24} />
-              <h3 className="text-lg font-bold text-dark">Horarios con Más Ventas</h3>
+              <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Horarios con Más Ventas</h3>
             </div>
             {statsData.hora_pico?.hora != null && (
-              <span className="px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+              <span
+              className="px-3 py-1 rounded-full text-xs font-bold"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}
+            >
                 ⏰ Hora pico: {String(statsData.hora_pico.hora).padStart(2, '0')}:00 - {String(statsData.hora_pico.hora + 1).padStart(2, '0')}:00
               </span>
             )}
           </div>
           {statsData.ventas_por_hora?.length === 0 || !statsData.ventas_por_hora ? (
-            <p className="text-gray-500 text-center py-8">No hay datos de horarios registrados.</p>
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay datos de horarios registrados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                   <tr>
                     <th className="px-4 py-3">Hora</th>
                     <th className="px-4 py-3 text-right">Pedidos</th>
                     <th className="px-4 py-3 text-right">Total Ventas</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {statsData.ventas_por_hora?.filter(h => h.hora != null).map((hora, idx) => (
-                    <tr key={`${hora.hora}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-dark">
+                    <tr key={`${hora.hora}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">
                         {String(hora.hora).padStart(2, '0')}:00 - {String(hora.hora + 1).padStart(2, '0')}:00
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{hora.cantidad_pedidos}</td>
+                      <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{hora.cantidad_pedidos}</td>
                       <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                         ${Number(hora.total_ventas || 0).toLocaleString('es-CO')}
                       </td>
@@ -1449,31 +1503,34 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <BarChart3 className="text-primary" size={24} />
-              <h3 className="text-lg font-bold text-dark">Días Más Rentables</h3>
+              <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Días Más Rentables</h3>
             </div>
             {statsData.dia_mas_rentable && (
-              <span className="px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+              <span
+              className="px-3 py-1 rounded-full text-xs font-bold"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}
+            >
                 📈 Día con más ingresos: {statsData.dia_mas_rentable?.dia || 'N/A'}
               </span>
             )}
           </div>
           {statsData.dias_rentables?.length === 0 || !statsData.dias_rentables ? (
-            <p className="text-gray-500 text-center py-8">No hay datos de días rentables registrados.</p>
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay datos de días rentables registrados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                   <tr>
                     <th className="px-4 py-3">Día</th>
                     <th className="px-4 py-3 text-right">Pedidos</th>
                     <th className="px-4 py-3 text-right">Total Ventas</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {statsData.dias_rentables?.map((dia, idx) => (
-                    <tr key={`${dia.numero_dia}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-dark capitalize">{dia.dia || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{dia.cantidad_pedidos || 0}</td>
+                    <tr key={`${dia.numero_dia}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)] capitalize">{dia.dia || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{dia.cantidad_pedidos || 0}</td>
                       <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                         ${Number(dia.total_ventas || 0).toLocaleString('es-CO')}
                       </td>
@@ -1493,14 +1550,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <section className="card-lg">
           <div className="flex items-center gap-3 mb-4">
             <Users className="text-primary" size={24} />
-            <h3 className="text-lg font-bold text-dark">Clientes Recurrentes (Top 10)</h3>
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Clientes Recurrentes (Top 10)</h3>
           </div>
           {statsData.clientes_recurrentes?.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No hay clientes recurrentes registrados.</p>
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay clientes recurrentes registrados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                   <tr>
                     <th className="px-4 py-3">Cliente</th>
                     <th className="px-4 py-3 text-right">Teléfono</th>
@@ -1508,11 +1565,11 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                     <th className="px-4 py-3 text-right">Gasto Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {statsData.clientes_recurrentes?.map((cliente, idx) => (
-                    <tr key={`${cliente.id}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-dark">{cliente.nombre}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{cliente.telefono || 'N/A'}</td>
+                    <tr key={`${cliente.id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{cliente.nombre}</td>
+                      <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{cliente.telefono || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-right">
                         <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
                           {cliente.total_pedidos}
@@ -1537,14 +1594,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <section className="card-lg">
           <div className="flex items-center gap-3 mb-4">
             <Users className="text-primary" size={24} />
-            <h3 className="text-lg font-bold text-dark">Clientes Nuevos vs Recurrentes</h3>
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Clientes Nuevos vs Recurrentes</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {statsData.clientes_nuevos_vs_recurrentes?.map((tipo, idx) => (
-              <div key={`${tipo.tipo_cliente}-${idx}`} className="border border-gray-200 rounded-xl p-6 bg-white text-center">
-                <p className="text-sm font-bold text-gray-600 mb-2 capitalize">{tipo.tipo_cliente}</p>
+              <div key={`${tipo.tipo_cliente}-${idx}`} className="border border-[color:var(--border-default)] rounded-xl p-6 bg-[color:var(--bg-elevated)] text-center">
+                <p className="text-sm font-bold text-[color:var(--text-secondary)] mb-2 capitalize">{tipo.tipo_cliente}</p>
                 <p className="text-4xl font-bold text-primary">{tipo.cantidad}</p>
-                <p className="text-xs text-gray-500 mt-1">clientes</p>
+                <p className="text-xs text-[color:var(--text-muted)] mt-1">clientes</p>
               </div>
             ))}
           </div>
@@ -1558,29 +1615,32 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <section className="card-lg">
           <div className="flex items-center gap-3 mb-4">
             <ArrowUpRight className="text-primary" size={24} />
-            <h3 className="text-lg font-bold text-dark">Evolución de Ventas</h3>
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Evolución de Ventas</h3>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Comparación mensual */}
-            <div className="border border-gray-200 rounded-xl p-4 bg-white">
-              <h4 className="font-bold text-dark mb-4">Este Mes vs Mes Anterior</h4>
+            <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
+              <h4 className="font-bold text-[color:var(--text-primary)] mb-4">Este Mes vs Mes Anterior</h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Este mes</span>
+                  <span className="text-sm text-[color:var(--text-secondary)]">Este mes</span>
                   <span className="font-bold text-primary">
                     ${Number(statsData.evolucion_ventas?.este_mes?.total || 0).toLocaleString('es-CO')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Mes anterior</span>
-                  <span className="font-bold text-gray-700">
+                  <span className="text-sm text-[color:var(--text-secondary)]">Mes anterior</span>
+                  <span className="font-bold text-[color:var(--text-secondary)]">
                     ${Number(statsData.evolucion_ventas?.mes_anterior?.total || 0).toLocaleString('es-CO')}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-[color:var(--border-default)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-700">Variación</span>
-                    <span className={`font-bold ${Number(statsData.crecimiento_mensual) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className="text-sm font-bold text-[color:var(--text-secondary)]">Variación</span>
+                    <span
+                          className="font-bold"
+                          style={{ color: Number(statsData.crecimiento_mensual) >= 0 ? 'var(--success-text)' : 'var(--danger-text)' }}
+                        >
                       {Number(statsData.crecimiento_mensual) >= 0 ? '+' : ''}{statsData.crecimiento_mensual}%
                     </span>
                   </div>
@@ -1588,25 +1648,32 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
               </div>
             </div>
             {/* Comparación semanal */}
-            <div className="border border-gray-200 rounded-xl p-4 bg-white">
-              <h4 className="font-bold text-dark mb-4">Esta Semana vs Semana Anterior</h4>
+            <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)]">
+              <h4 className="font-bold text-[color:var(--text-primary)] mb-4">Esta Semana vs Semana Anterior</h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Esta semana</span>
+                  <span className="text-sm text-[color:var(--text-secondary)]">Esta semana</span>
                   <span className="font-bold text-primary">
                     ${Number(statsData.evolucion_ventas?.esta_semana?.total || 0).toLocaleString('es-CO')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Semana anterior</span>
-                  <span className="font-bold text-gray-700">
+                  <span className="text-sm text-[color:var(--text-secondary)]">Semana anterior</span>
+                  <span className="font-bold text-[color:var(--text-secondary)]">
                     ${Number(statsData.evolucion_ventas?.semana_anterior?.total || 0).toLocaleString('es-CO')}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-[color:var(--border-default)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-700">Variación</span>
-                    <span className={`font-bold ${Number(statsData.evolucion_ventas?.esta_semana?.total) >= Number(statsData.evolucion_ventas?.semana_anterior?.total) ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className="text-sm font-bold text-[color:var(--text-secondary)]">Variación</span>
+                    <span
+                    className="font-bold"
+                    style={{
+                      color: Number(statsData.evolucion_ventas?.esta_semana?.total) >= Number(statsData.evolucion_ventas?.semana_anterior?.total)
+                        ? 'var(--success-text)'
+                        : 'var(--danger-text)'
+                    }}
+                  >
                       {Number(statsData.evolucion_ventas?.esta_semana?.total) >= Number(statsData.evolucion_ventas?.semana_anterior?.total) ? '+' : '-'}${Math.abs(Number(statsData.evolucion_ventas?.esta_semana?.total) - Number(statsData.evolucion_ventas?.semana_anterior?.total)).toLocaleString('es-CO')}
                     </span>
                   </div>
@@ -1621,16 +1688,22 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
 
       {/* ========== SOLO PREMIUM: TASA DE CRECIMIENTO ========== */}
       {isPremium ? (
-        <section className="card-lg bg-gradient-to-r from-green-50 to-white">
+        <section
+          className="card-lg"
+          style={{ backgroundImage: 'linear-gradient(to right, var(--success-bg), var(--bg-elevated))' }}
+        >
           <div className="flex items-center gap-3 mb-4">
-            <TrendingUp className="text-green-600" size={24} />
-            <h3 className="text-lg font-bold text-dark">Tasa de Crecimiento Mensual</h3>
+            <TrendingUp style={{ color: 'var(--success-text)' }} size={24} />
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Tasa de Crecimiento Mensual</h3>
           </div>
           <div className="flex items-baseline gap-3">
-            <span className={`text-4xl font-bold ${Number(statsData.crecimiento_mensual) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span
+              className="text-4xl font-bold"
+              style={{ color: Number(statsData.crecimiento_mensual) >= 0 ? 'var(--success-text)' : 'var(--danger-text)' }}
+            >
               {Number(statsData.crecimiento_mensual) >= 0 ? '+' : ''}{statsData.crecimiento_mensual}%
             </span>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-[color:var(--text-secondary)]">
               {Number(statsData.crecimiento_mensual) >= 0 ? 'de crecimiento' : 'de decrecimiento'} respecto al mes anterior
             </span>
           </div>
@@ -1644,14 +1717,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <section className="card-lg">
           <div className="flex items-center gap-3 mb-4">
             <Ticket className="text-primary" size={24} />
-            <h3 className="text-lg font-bold text-dark">Rendimiento de Promociones</h3>
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Rendimiento de Promociones</h3>
           </div>
           {statsData.cupones_mas_utilizados?.length === 0 || !statsData.cupones_mas_utilizados ? (
-            <p className="text-gray-500 text-center py-8">No hay cupones utilizados registrados.</p>
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay cupones utilizados registrados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                   <tr>
                     <th className="px-4 py-3">Cupón</th>
                     <th className="px-4 py-3 text-center">Descuento</th>
@@ -1659,19 +1732,22 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                     <th className="px-4 py-3 text-right">Descuento Otorgado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {statsData.cupones_mas_utilizados.map((cupon, idx) => (
-                    <tr key={`${cupon.codigo}-${idx}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-dark">
+                    <tr key={`${cupon.codigo}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">
                         <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs font-bold">
                           {cupon.codigo}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-center text-gray-600">
+                      <td className="px-4 py-3 text-sm text-center text-[color:var(--text-secondary)]">
                         {cupon.tipo_descuento === 'porcentaje' ? `${cupon.descuento || 0}%` : `$${Number(cupon.descuento || 0).toLocaleString('es-CO')}`}
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
-                        <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+                        <span
+                          className="px-2 py-1 rounded-full text-xs font-bold"
+                          style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}
+                        >
                           {cupon.veces_utilizado || 0}
                         </span>
                       </td>
@@ -1694,14 +1770,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <section className="card-lg">
           <div className="flex items-center gap-3 mb-4">
             <BarChart3 className="text-primary" size={24} />
-            <h3 className="text-lg font-bold text-dark">Productos con Mayor Rentabilidad</h3>
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Productos con Mayor Rentabilidad</h3>
           </div>
           {!statsData.productos_mayor_rentabilidad || statsData.productos_mayor_rentabilidad.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No hay datos de rentabilidad registrados.</p>
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay datos de rentabilidad registrados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                   <tr>
                     <th className="px-4 py-3">Producto</th>
                     <th className="px-4 py-3 text-right">Cantidad</th>
@@ -1709,17 +1785,17 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                     <th className="px-4 py-3 text-right">Ticket Promedio</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {statsData.productos_mayor_rentabilidad
                     .filter(p => p.nombre != null)
                     .map((prod, idx) => (
-                      <tr key={`rent-${prod.id}-${idx}`} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-dark">{prod.nombre || 'Sin nombre'}</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-600">{Number(prod.cantidad_vendida) || 0}</td>
+                      <tr key={`rent-${prod.id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                        <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{prod.nombre || 'Sin nombre'}</td>
+                        <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{Number(prod.cantidad_vendida) || 0}</td>
                         <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                           ${Number(prod.ingresos_generados || 0).toLocaleString('es-CO')}
                         </td>
-                        <td className="px-4 py-3 text-sm text-right font-bold text-gray-700">
+                        <td className="px-4 py-3 text-sm text-right font-bold text-[color:var(--text-secondary)]">
                           ${Number(prod.ticket_promedio || 0).toLocaleString('es-CO')}
                         </td>
                       </tr>
@@ -1738,14 +1814,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <section className="card-lg">
           <div className="flex items-center gap-3 mb-4">
             <TrendingUp className="text-primary" size={24} />
-            <h3 className="text-lg font-bold text-dark">Tendencias de Consumo</h3>
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Tendencias de Consumo</h3>
           </div>
           {!statsData.tendencias_productos || statsData.tendencias_productos.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No hay datos de tendencias registrados.</p>
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay datos de tendencias registrados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-bold">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                   <tr>
                     <th className="px-4 py-3">Producto</th>
                     <th className="px-4 py-3 text-right">Últimos 15 días</th>
@@ -1754,49 +1830,65 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                     <th className="px-4 py-3 text-right">Variación</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {statsData.tendencias_productos
                     .filter(p => p.nombre != null)
                     .map((prod, idx) => (
-                      <tr key={`trend-${prod.id}-${idx}`} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-dark">{prod.nombre || 'Sin nombre'}</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-600">{Number(prod.cantidad_ultimos_15_dias) || 0}</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-600">{Number(prod.cantidad_15_a_30_dias) || 0}</td>
+                      <tr key={`trend-${prod.id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                        <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{prod.nombre || 'Sin nombre'}</td>
+                        <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{Number(prod.cantidad_ultimos_15_dias) || 0}</td>
+                        <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">{Number(prod.cantidad_15_a_30_dias) || 0}</td>
                         <td className="px-4 py-3 text-right">
                           {prod.tendencia === 'crecimiento' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-bold"
+                              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}
+                            >
                               📈 crecimiento
                             </span>
                           )}
                           {prod.tendencia === 'descenso' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-bold"
+                              style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}
+                            >
                               📉 descenso
                             </span>
                           )}
                           {prod.tendencia === 'nuevo' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-bold"
+                              style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)', border: '1px solid var(--info-border)' }}
+                            >
                               ✨ nuevo
                             </span>
                           )}
                           {prod.tendencia === 'estable' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-[color:var(--bg-muted)] text-[color:var(--text-primary)]">
                               ➖ estable
                             </span>
                           )}
                           {!prod.tendencia && (
-                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-[color:var(--bg-muted)] text-[color:var(--text-primary)]">
                               N/A
                             </span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-right font-bold">
                           {prod.variacion === 'N/A' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-[color:var(--bg-muted)] text-[color:var(--text-primary)]">
                               N/A
                             </span>
                           )}
                           {prod.variacion && prod.variacion !== 'N/A' && (
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${String(prod.variacion).startsWith('-') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-bold"
+                              style={{
+                                backgroundColor: String(prod.variacion).startsWith('-') ? 'var(--danger-bg)' : 'var(--success-bg)',
+                                color: String(prod.variacion).startsWith('-') ? 'var(--danger-text)' : 'var(--success-text)',
+                                border: '1px solid ' + (String(prod.variacion).startsWith('-') ? 'var(--danger-border)' : 'var(--success-border)')
+                              }}
+                            >
                               {prod.variacion.endsWith('%') ? prod.variacion : `${prod.variacion}%`}
                             </span>
                           )}
@@ -1817,14 +1909,17 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
 
 function PremiumLockedFeature({ title, description }) {
   return (
-    <section className="card-lg border-2 border-dashed border-gray-300 bg-gray-50/50">
+    <section className="card-lg border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)]/50">
       <div className="flex items-center gap-3 mb-3 opacity-50">
-        <Lock className="text-gray-400" size={24} />
-        <h3 className="text-lg font-bold text-gray-500">{title}</h3>
+        <Lock className="text-[color:var(--text-subtle)]" size={24} />
+        <h3 className="text-lg font-bold text-[color:var(--text-muted)]">{title}</h3>
       </div>
-      <p className="text-sm text-gray-500 mb-4">{description}</p>
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200">
-        <span className="text-yellow-700 text-sm font-bold">⭐ Disponible solo en Plan Premium</span>
+      <p className="text-sm text-[color:var(--text-muted)] mb-4">{description}</p>
+      <div
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
+        style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }}
+      >
+        <span className="text-sm font-bold" style={{ color: 'var(--warning-text)' }}>⭐ Disponible solo en Plan Premium</span>
       </div>
     </section>
   );

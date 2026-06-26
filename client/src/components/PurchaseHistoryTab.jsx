@@ -11,11 +11,11 @@ export default function PurchaseHistoryTab() {
   const [filter, setFilter] = useState('todos');
 
   const statusColors = {
-    'Pendiente': 'bg-yellow-100 text-yellow-700',
-    'Preparando': 'bg-blue-100 text-blue-700',
-    'Listo': 'bg-purple-100 text-purple-700',
-    'Entregado': 'bg-green-100 text-green-700',
-    'Cancelado': 'bg-red-100 text-red-700'
+    'Pendiente':  { backgroundColor: 'var(--warning-bg)',       color: 'var(--warning-text)' },
+    'Preparando': { backgroundColor: 'var(--info-bg)',          color: 'var(--info-text)' },
+    'Listo':      { backgroundColor: 'var(--accent-purple-bg)', color: 'var(--accent-purple-text)' },
+    'Entregado':  { backgroundColor: 'var(--success-bg)',       color: 'var(--success-text)' },
+    'Cancelado':  { backgroundColor: 'var(--danger-bg)',        color: 'var(--danger-text)' }
   };
 
   // Cargar pedidos
@@ -65,7 +65,7 @@ export default function PurchaseHistoryTab() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-dark mb-6 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-6 flex items-center gap-2">
         <ShoppingBag className="text-primary" size={24} />
         Historial de Compras
       </h2>
@@ -143,9 +143,9 @@ export default function PurchaseHistoryTab() {
       {/* Lista de pedidos */}
       <div className="space-y-3">
         {filteredOrders.length === 0 ? (
-          <div className="text-center py-12 bg-light rounded-lg">
-            <ShoppingBag className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-600">
+          <div className="text-center py-12 bg-[color:var(--bg-subtle)] rounded-lg">
+            <ShoppingBag className="w-16 h-16 mx-auto text-[color:var(--text-subtle)] mb-4" />
+            <p className="text-[color:var(--text-secondary)]">
               {orders.length === 0 
                 ? 'Aún no has realizado ningún pedido'
                 : `No hay pedidos con estado "${filter}"`}
@@ -157,15 +157,18 @@ export default function PurchaseHistoryTab() {
               <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-sm font-semibold bg-gray-100 px-3 py-1 rounded">
+                    <span className="text-sm font-semibold bg-[color:var(--bg-subtle)] text-[color:var(--text-secondary)] px-3 py-1 rounded">
                       Pedido #{order.id}
                     </span>
-                    <span className={`text-xs font-semibold px-3 py-1 rounded ${statusColors[order.estado] || 'bg-gray-100 text-gray-700'}`}>
+                    <span
+                      className="text-xs font-semibold px-3 py-1 rounded"
+                      style={statusColors[order.estado] || { backgroundColor: 'var(--bg-muted)', color: 'var(--text-secondary)' }}
+                    >
                       {order.estado}
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-600 mb-1">
+                  <p className="text-sm text-[color:var(--text-secondary)] mb-1">
                     📅 {new Date(order.creado_en).toLocaleDateString('es-CO', {
                       year: 'numeric',
                       month: 'long',
@@ -176,7 +179,7 @@ export default function PurchaseHistoryTab() {
                   </p>
 
                   {order.direccion_entrega && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-[color:var(--text-secondary)]">
                       📍 {order.direccion_entrega}
                     </p>
                   )}

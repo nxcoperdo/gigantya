@@ -4,13 +4,34 @@ import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
 
 /**
+ * Construye un string legible con el rango de fechas para los reportes.
+ * Formato: "DD/MM/YYYY - DD/MM/YYYY (Últimos N días)"
+ */
+function buildDateRange(days) {
+  const n = Math.max(1, Math.min(365, parseInt(days) || 30));
+  const fin = new Date();
+  const inicio = new Date();
+  inicio.setDate(fin.getDate() - (n - 1));
+  const fmt = (d) => d.toLocaleDateString('es-CO');
+  return `${fmt(inicio)} - ${fmt(fin)} (Últimos ${n} días)`;
+}
+
+/**
+ * Construye el título-resumen de los filtros aplicados al reporte de pedidos.
+ */
+function buildOrdersFilterLabel(estado, limit) {
+  const estadoLabel = (!estado || estado === 'todos') ? 'Todos los estados' : `Estado: ${estado}`;
+  const limitN = Math.max(1, parseInt(limit) || 100);
+  return `${estadoLabel} — Top ${limitN}`;
+}
+
+/**
  * Exportar estadísticas a PDF
  */
 export async function exportStatsPDF(req, res) {
   try {
     const { days = 30 } = req.query;
 
-    // Verificar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ error: 'Solo restaurantes pueden exportar estadísticas' });
     }
@@ -20,19 +41,18 @@ export async function exportStatsPDF(req, res) {
       return res.status(404).json({ error: 'Restaurante no encontrado' });
     }
 
-    // Obtener estadísticas
     const estadisticas = req.user.restaurante?.plan === 'premium'
       ? await StatsModel.getPremiumStats(restaurante.id)
       : await StatsModel.getBasicStats(restaurante.id);
 
-    // Generar PDF
+    const dateRange = buildDateRange(days);
+
     const pdfBuffer = await exportService.generateStatsPDF(
       estadisticas,
-      restaurante.nombre,
-      `Últimos ${days} días`
+      restaurante,
+      dateRange
     );
 
-    // Enviar archivo
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="estadisticas_gigantya_${new Date().toISOString().split('T')[0]}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
@@ -64,9 +84,12 @@ export async function exportStatsExcel(req, res) {
       ? await StatsModel.getPremiumStats(restaurante.id)
       : await StatsModel.getBasicStats(restaurante.id);
 
+    const dateRange = buildDateRange(days);
+
     const excelBuffer = await exportService.generateStatsExcel(
       estadisticas,
-      restaurante.nombre
+      restaurante,
+      dateRange
     );
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -96,12 +119,20 @@ export async function exportOrdersPDF(req, res) {
       return res.status(404).json({ error: 'Restaurante no encontrado' });
     }
 
+    const limitN = Math.max(1, parseInt(limit) || 100);
+    const filtros = {
+      estado,
+      limit: limitN,
+      label: buildOrdersFilterLabel(estado, limitN),
+    };
+
     const pedidos = await OrderModel.getOrdersByRestaurant(restaurante.id, estado !== 'todos' ? estado : null);
-    const pedidosFiltrados = pedidos.slice(0, parseInt(limit));
+    const pedidosFiltrados = pedidos.slice(0, limitN);
 
     const pdfBuffer = await exportService.generateOrdersPDF(
       pedidosFiltrados,
-      restaurante.nombre
+      restaurante,
+      filtros
     );
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -131,12 +162,20 @@ export async function exportOrdersExcel(req, res) {
       return res.status(404).json({ error: 'Restaurante no encontrado' });
     }
 
+    const limitN = Math.max(1, parseInt(limit) || 500);
+    const filtros = {
+      estado,
+      limit: limitN,
+      label: buildOrdersFilterLabel(estado, limitN),
+    };
+
     const pedidos = await OrderModel.getOrdersByRestaurant(restaurante.id, estado !== 'todos' ? estado : null);
-    const pedidosFiltrados = pedidos.slice(0, parseInt(limit));
+    const pedidosFiltrados = pedidos.slice(0, limitN);
 
     const excelBuffer = await exportService.generateOrdersExcel(
       pedidosFiltrados,
-      restaurante.nombre
+      restaurante,
+      filtros
     );
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

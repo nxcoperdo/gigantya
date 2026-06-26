@@ -59,7 +59,7 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fadeIn" onClick={(e) => e.target === e.currentTarget && handleClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 animate-scaleIn overflow-hidden">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl max-w-lg w-full mx-4 animate-scaleIn overflow-hidden">
         <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <UserPlus size={20} />
@@ -71,24 +71,24 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm border border-red-200">{error}</div>}
+          {error && <div className="alert alert-error">{error}</div>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Nombre Completo</label>
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Nombre Completo</label>
               <input
                 type="text"
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 value={user.nombre || ''}
                 onChange={(e) => setUser({...user, nombre: e.target.value})}
                 required
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Email</label>
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Email</label>
               <input
                 type="email"
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 value={user.email || ''}
                 onChange={(e) => setUser({...user, email: e.target.value})}
                 required
@@ -96,19 +96,19 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Contraseña</label>
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Contraseña</label>
               <input
                 type="password"
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 value={user.password || ''}
                 onChange={(e) => setUser({...user, password: e.target.value})}
                 required={!isEditing}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Rol / Tipo</label>
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Rol / Tipo</label>
               <select
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 value={user.tipo_usuario || 'cliente'}
                 onChange={(e) => setUser({...user, tipo_usuario: e.target.value})}
                 required
@@ -119,19 +119,19 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Teléfono</label>
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Teléfono</label>
               <input
                 type="text"
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 value={user.telefono || ''}
                 onChange={(e) => setUser({...user, telefono: e.target.value})}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Documento ID</label>
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Documento ID</label>
               <input
                 type="text"
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 value={user.documento_identidad || ''}
                 onChange={(e) => setUser({...user, documento_identidad: e.target.value})}
               />
@@ -142,7 +142,7 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-dark transition-all"
+              className="px-4 py-2 text-sm font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-all"
             >
               Cancelar
             </button>

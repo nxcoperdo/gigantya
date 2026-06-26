@@ -56,27 +56,27 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-light flex items-center justify-center px-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+    <div className="min-h-screen bg-[color:var(--bg-subtle)] flex items-center justify-center px-4">
+      <div className="bg-[color:var(--bg-elevated)] rounded-lg shadow-lg p-8 w-full max-w-md border border-[color:var(--border-subtle)]">
         <div className="text-center mb-8">
-          <Link to="/login" className="inline-flex items-center text-sm text-gray-500 hover:text-primary mb-4">
+          <Link to="/login" className="inline-flex items-center text-sm text-[color:var(--text-muted)] hover:text-primary mb-4">
             <ArrowLeft size={16} className="mr-1" />
             Volver al login
           </Link>
           <h1 className="text-2xl font-bold text-primary mb-2">Nueva Contraseña</h1>
-          <p className="text-gray-600 text-sm">
+          <p className="text-[color:var(--text-secondary)] text-sm">
             Ingresa tu nueva contraseña
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6 text-sm">
+          <div className="alert alert-error mb-6 text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6 text-sm">
+          <div className="alert alert-success mb-6 text-sm">
             {success}
           </div>
         )}

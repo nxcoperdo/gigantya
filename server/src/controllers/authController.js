@@ -1,13 +1,19 @@
 import { generateToken, generateRefreshToken } from '../middleware/authMiddleware.js';
 import * as UserModel from '../models/User.js';
+import * as AddressModel from '../models/Address.js';
+import * as BarrioModel from '../models/Barrio.js';
+import pool from '../config/database.js';
 import { query, queryOne } from '../config/database.js';
 import { sendEmail } from '../services/notificationService.js';
 import crypto from 'crypto';
 
 /**
- * Registro de nuevo usuario
+ * Registro de nuevo usuario.
+ * Ahora también recibe los datos de la primera dirección (direccion, ciudad, barrio_id)
+ * y la crea automáticamente como dirección por defecto.
  */
 export async function register(req, res) {
+  const connection = await pool.getConnection();
   try {
     const nombre = req.body.nombre;
     const email = req.body.email;
@@ -16,49 +22,111 @@ export async function register(req, res) {
     const contrasena_confirmacion = req.body.contrasena_confirmacion;
     const tipo_usuario = 'cliente';
     const documento_identidad = req.body.documento_identidad;
+    const direccion = req.body.direccion;
+    const ciudad = req.body.ciudad || 'Gigante, Huila';
+    const barrio_id = req.body.barrio_id;
+    const notas = req.body.notas || null;
+    // Campos opcionales de Google Maps (Places Autocomplete)
+    const latitud = req.body.latitud ?? null;
+    const longitud = req.body.longitud ?? null;
+    const direccion_formateada = req.body.direccion_formateada ?? null;
+    const place_id = req.body.place_id ?? null;
 
     // Validaciones básicas
     if (!nombre || !email || !telefono || !contrasena || !tipo_usuario) {
-      return res.status(400).json({ 
-        error: 'Campos requeridos faltando: nombre, email, telefono, contrasena, tipo_usuario' 
+      return res.status(400).json({
+        error: 'Campos requeridos faltando: nombre, email, telefono, contrasena, tipo_usuario'
       });
     }
 
+    // La dirección es obligatoria en el registro.
+    if (!direccion || !direccion.trim()) {
+      return res.status(400).json({
+        error: 'La dirección (calle/carrera/número) es obligatoria para el registro'
+      });
+    }
+
+    // `barrio_id` es OPCIONAL: ahora el cliente puede registrarse usando
+    // Places Autocomplete (con latitud/longitud) sin necesidad de elegir
+    // un barrio del catálogo. Si NO viene `barrio_id`, exigimos al menos
+    // las coordenadas de Google Maps para poder calcular envíos luego.
+    if (!barrio_id) {
+      const tieneCoordenadas =
+        latitud !== null && latitud !== undefined && !Number.isNaN(Number(latitud)) &&
+        longitud !== null && longitud !== undefined && !Number.isNaN(Number(longitud));
+      if (!tieneCoordenadas) {
+        return res.status(400).json({
+          error: 'Debes seleccionar un barrio o usar el buscador de Google Maps para precisar tu dirección'
+        });
+      }
+    }
+
     if (contrasena !== contrasena_confirmacion) {
-      return res.status(400).json({ 
-        error: 'Las contraseñas no coinciden' 
+      return res.status(400).json({
+        error: 'Las contraseñas no coinciden'
       });
     }
 
     if (contrasena.length < 6) {
-      return res.status(400).json({ 
-        error: 'La contraseña debe tener al menos 6 caracteres' 
+      return res.status(400).json({
+        error: 'La contraseña debe tener al menos 6 caracteres'
       });
     }
 
     if (req.body.tipo_usuario && req.body.tipo_usuario !== 'cliente') {
-      return res.status(400).json({ 
-        error: 'En esta plataforma solo se permiten registros de clientes. Los restaurantes se gestionan de forma manual con mensualidad.' 
+      return res.status(400).json({
+        error: 'En esta plataforma solo se permiten registros de clientes. Los restaurantes se gestionan de forma manual con mensualidad.'
       });
     }
 
     // Verificar si el email ya existe
     const usuarioExistente = await UserModel.getUserByEmail(email);
     if (usuarioExistente) {
-      return res.status(409).json({ 
-        error: 'El email ya está registrado' 
+      return res.status(409).json({
+        error: 'El email ya está registrado'
       });
     }
 
-    // Crear usuario
-    const userId = await UserModel.createUser({
+    // Verificar que el barrio existe y está activo (si fue enviado)
+    if (barrio_id) {
+      const barrio = await BarrioModel.getBarrioById(Number(barrio_id));
+      if (!barrio) {
+        return res.status(400).json({ error: 'El barrio seleccionado no existe' });
+      }
+      if (!barrio.activo) {
+        return res.status(400).json({ error: 'El barrio seleccionado no está activo' });
+      }
+    }
+
+    // Transacción: crear usuario + dirección por defecto
+    await connection.beginTransaction();
+
+    const userId = await UserModel.createUserWithConnection({
       nombre,
       email,
       telefono,
       contrasena,
       tipo_usuario,
       documento_identidad
-    });
+    }, connection);
+
+    await AddressModel.createAddressWithConnection({
+      usuario_id: userId,
+      tipo: 'residencia',
+      direccion: direccion.trim(),
+      ciudad,
+      telefono,
+      notas,
+      es_default: 1,
+      barrio_id: barrio_id ? Number(barrio_id) : null,
+      // Snapshotted desde Google Maps al registrarse
+      latitud: latitud !== null ? Number(latitud) : null,
+      longitud: longitud !== null ? Number(longitud) : null,
+      direccion_formateada,
+      place_id,
+    }, connection);
+
+    await connection.commit();
 
     const usuario = await UserModel.getUserById(userId);
 
@@ -78,11 +146,14 @@ export async function register(req, res) {
       refreshToken
     });
   } catch (error) {
+    try { await connection.rollback(); } catch (_) { /* ignore */ }
     console.error('Error en registro:', error);
-    res.status(500).json({ 
+    res.status(error.statusCode || 500).json({
       error: 'Error registrando usuario',
-      detalles: error.message 
+      detalles: error.message
     });
+  } finally {
+    connection.release();
   }
 }
 
@@ -103,12 +174,17 @@ export async function login(req, res) {
     // Buscar usuario (sin importar el estado para poder informar si está suspendido)
     const usuario = await UserModel.getUserByEmailIgnoreStatus(email);
     if (!usuario) {
+      console.warn(`⚠️ Login fallido (email no encontrado): ${email}`);
       return res.status(401).json({
         error: 'Credenciales inválidas'
       });
     }
 
-    if (usuario.estado === 'suspendido') {
+    // Log de diagnóstico: ayuda a depurar futuros casos de "login intermitente"
+    // tras suspensiones/reactivaciones del admin.
+    console.log(`🔎 Intento de login: ${email} (id=${usuario.id}, estado=${usuario.estado})`);
+
+    if (['suspendido', 'inactivo'].includes(usuario.estado)) {
       return res.status(403).json({
         error: 'Tu cuenta ha sido suspendida. Por favor, contacta al administrador.'
       });

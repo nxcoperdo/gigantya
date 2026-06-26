@@ -38,6 +38,7 @@ export const PLAN_FEATURES = {
     reportes: true,
     promociones: true,
     etiqueta_destacado: true,
+    redes_sociales: true,
   },
 };
 

@@ -32,13 +32,11 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo de archivo
     if (!file.type.startsWith('image/')) {
       setError('Solo se permiten imágenes (JPG, PNG, WebP)');
       return;
     }
 
-    // Validar tamaño (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('La imagen no puede superar los 5MB');
       return;
@@ -75,36 +73,36 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
       name: 'Contra Entrega',
       description: 'Pagas en efectivo al recibir tu pedido',
       icon: Banknote,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200'
+      color: 'var(--success-text)',
+      bgColor: 'var(--success-bg)',
+      borderColor: 'var(--success-border)'
     },
     {
       id: 'nequi',
       name: 'Nequi',
       description: 'Transfiere y envía el comprobante',
       icon: Smartphone,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200'
+      color: 'var(--accent-purple-text)',
+      bgColor: 'var(--accent-purple-bg)',
+      borderColor: 'var(--border-subtle)'
     },
     {
       id: 'daviplata',
       name: 'Daviplata',
       description: 'Transfiere y envía el comprobante',
       icon: Wallet,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200'
+      color: 'var(--danger-text)',
+      bgColor: 'var(--danger-bg)',
+      borderColor: 'var(--danger-border)'
     },
     {
       id: 'bre_b',
       name: 'BRE-B',
       description: 'Transfiere y envía el comprobante',
       icon: QrCode,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200'
+      color: 'var(--info-text)',
+      bgColor: 'var(--info-bg)',
+      borderColor: 'var(--info-border)'
     }
   ];
 
@@ -113,7 +111,7 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-bold text-dark mb-4">Método de Pago</h3>
+        <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-4">Método de Pago</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {methods.map((method) => {
             const Icon = method.icon;
@@ -123,22 +121,30 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
                 key={method.id}
                 type="button"
                 onClick={() => onMethodChange(method.id)}
-                className={`p-4 rounded-xl border-2 transition-all text-left ${
-                  isSelected
-                    ? `${method.borderColor} ${method.bgColor} shadow-md`
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
+                className="p-4 rounded-xl border-2 transition-all text-left"
+                style={isSelected
+                  ? { borderColor: method.borderColor, backgroundColor: method.bgColor, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
+                  : { borderColor: 'var(--border-default)' }
+                }
+                onMouseEnter={(e) => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.backgroundColor = 'var(--bg-subtle)'; } }}
+                onMouseLeave={(e) => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.backgroundColor = 'transparent'; } }}
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-full ${method.bgColor} flex items-center justify-center`}>
-                    <Icon size={20} className={method.color} />
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: method.bgColor }}
+                  >
+                    <Icon size={20} style={{ color: method.color }} />
                   </div>
-                  <span className="font-bold text-dark">{method.name}</span>
+                  <span className="font-bold text-[color:var(--text-primary)]">{method.name}</span>
                 </div>
-                <p className="text-xs text-gray-600">{method.description}</p>
+                <p className="text-xs text-[color:var(--text-secondary)]">{method.description}</p>
                 {isSelected && (
-                  <div className="mt-2 flex items-center gap-1 text-xs text-green-600 font-semibold">
-                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  <div
+                    className="mt-2 flex items-center gap-1 text-xs font-semibold"
+                    style={{ color: 'var(--success-text)' }}
+                  >
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--success-text)' }}></div>
                     <span>Seleccionado</span>
                   </div>
                 )}
@@ -148,52 +154,50 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
         </div>
       </div>
 
-      {/* Instrucciones según método seleccionado */}
       {selectedMethod && selectedMethod !== 'contra_entrega' && paymentConfig && (
         <div className={`p-6 rounded-xl border-2 ${selectedMethodData?.bgColor} ${selectedMethodData?.borderColor}`}>
           <div className="flex items-center gap-2 mb-4">
             <AlertCircle size={20} className={selectedMethodData?.color} />
-            <h4 className="font-bold text-dark">Instrucciones para pagar con {selectedMethodData?.name}</h4>
+            <h4 className="font-bold text-[color:var(--text-primary)]">Instrucciones para pagar con {selectedMethodData?.name}</h4>
           </div>
 
           <div className="space-y-4">
             {paymentConfig[selectedMethod]?.telefono || paymentConfig[selectedMethod]?.clave ? (
               <div className="space-y-4">
                 {paymentConfig[selectedMethod]?.telefono && (
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-1">Número de {selectedMethod}:</p>
-                    <p className="text-lg font-bold text-dark">{paymentConfig[selectedMethod].telefono}</p>
+                  <div className="bg-[color:var(--bg-elevated)] rounded-lg p-4">
+                    <p className="text-sm font-semibold text-[color:var(--text-secondary)] mb-1">Número de {selectedMethod}:</p>
+                    <p className="text-lg font-bold text-[color:var(--text-primary)]">{paymentConfig[selectedMethod].telefono}</p>
                   </div>
                 )}
 
                 {paymentConfig[selectedMethod]?.clave && (
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-1">Clave BRE-B:</p>
-                    <p className="text-lg font-bold text-dark">{paymentConfig[selectedMethod].clave}</p>
+                  <div className="bg-[color:var(--bg-elevated)] rounded-lg p-4">
+                    <p className="text-sm font-semibold text-[color:var(--text-secondary)] mb-1">Clave BRE-B:</p>
+                    <p className="text-lg font-bold text-[color:var(--text-primary)]">{paymentConfig[selectedMethod].clave}</p>
                   </div>
                 )}
 
                 {paymentConfig[selectedMethod]?.titular && (
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-1">Titular:</p>
-                    <p className="text-lg font-bold text-dark">{paymentConfig[selectedMethod].titular}</p>
+                  <div className="bg-[color:var(--bg-elevated)] rounded-lg p-4">
+                    <p className="text-sm font-semibold text-[color:var(--text-secondary)] mb-1">Titular:</p>
+                    <p className="text-lg font-bold text-[color:var(--text-primary)]">{paymentConfig[selectedMethod].titular}</p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-lg p-4 text-center text-gray-500">
+              <div className="bg-[color:var(--bg-elevated)] rounded-lg p-4 text-center text-[color:var(--text-muted)]">
                 <p>El restaurante no ha configurado este método de pago.</p>
                 <p className="text-sm mt-1">Selecciona otro método o contacta al restaurante.</p>
               </div>
             )}
 
-            {/* Subida de comprobante */}
             {(paymentConfig[selectedMethod]?.telefono || paymentConfig[selectedMethod]?.clave) && (
               <div className="mt-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[color:var(--text-secondary)] mb-2">
                   Subir Comprobante de Pago *
                 </label>
-                <div className="relative w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center overflow-hidden">
+                <div className="relative w-full h-40 rounded-xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] flex items-center justify-center overflow-hidden">
                   {comprobantePreview ? (
                     <>
                       <img
@@ -210,10 +214,10 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
                       </button>
                     </>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition-colors">
-                      <Upload size={32} className="text-gray-400 mb-2" />
-                      <span className="text-xs text-gray-500 font-medium">Click para subir comprobante</span>
-                      <span className="text-[10px] text-gray-400 mt-1">JPG, PNG - Max 5MB</span>
+                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-[color:var(--bg-subtle)] transition-colors">
+                      <Upload size={32} className="text-[color:var(--text-subtle)] mb-2" />
+                      <span className="text-xs text-[color:var(--text-muted)] font-medium">Click para subir comprobante</span>
+                      <span className="text-[10px] text-[color:var(--text-subtle)] mt-1">JPG, PNG - Max 5MB</span>
                       <input
                         type="file"
                         className="hidden"
@@ -224,13 +228,19 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
                   )}
                 </div>
                 {comprobanteFile && (
-                  <div className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  <div
+                    className="text-xs mt-2 flex items-center gap-1"
+                    style={{ color: 'var(--success-text)' }}
+                  >
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--success-text)' }}></div>
                     <span>Archivo seleccionado: {comprobanteFile.name}</span>
                   </div>
                 )}
                 {error && (
-                  <div className="text-xs text-red-600 mt-2 flex items-center gap-1">
+                  <div
+                    className="text-xs mt-2 flex items-center gap-1"
+                    style={{ color: 'var(--danger-text)' }}
+                  >
                     <AlertCircle size={12} />
                     <span>{error}</span>
                   </div>
@@ -242,15 +252,18 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
       )}
 
       {selectedMethod === 'contra_entrega' && (
-        <div className="p-4 rounded-xl bg-green-50 border-2 border-green-200">
+        <div
+          className="p-4 rounded-xl"
+          style={{ backgroundColor: 'var(--success-bg)', border: '2px solid var(--success-border)' }}
+        >
           <div className="flex items-center gap-2 mb-2">
-            <Banknote size={20} className="text-green-600" />
-            <h4 className="font-bold text-dark">Pago Contra Entrega</h4>
+            <Banknote size={20} style={{ color: 'var(--success-text)' }} />
+            <h4 className="font-bold text-[color:var(--text-primary)]">Pago Contra Entrega</h4>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[color:var(--text-secondary)]">
             No necesitas pagar ahora. Prepara el monto exacto o pregunta si el repartidor tiene cambio.
           </p>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-[color:var(--text-muted)] mt-2">
             Tu pedido tendrá el estado "Pendiente de Confirmación" hasta que el restaurante lo acepte.
           </p>
         </div>

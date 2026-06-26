@@ -45,10 +45,13 @@ const FavoriteButton = ({ targetId, tipo }) => {
   return (
     <button
       onClick={toggleFavorite}
-      className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-90 shadow-md
-        ${isFavorite
-          ? 'bg-red-50 text-red-500 ring-2 ring-red-100'
-          : 'bg-white text-gray-400 hover:text-red-400'}`}
+      className="p-3 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-90 shadow-md"
+      style={isFavorite
+        ? { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)', boxShadow: '0 0 0 2px var(--danger-border)' }
+        : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }
+      }
+      onMouseEnter={(e) => { if (!isFavorite) e.currentTarget.style.color = 'var(--danger-text)'; }}
+      onMouseLeave={(e) => { if (!isFavorite) e.currentTarget.style.color = 'var(--text-muted)'; }}
       title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
     >
       <Heart

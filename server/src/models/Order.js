@@ -1,4 +1,7 @@
 import pool, { query, queryOne } from '../config/database.js';
+import * as RestauranteEnvioSector from './RestauranteEnvioSector.js';
+import * as Barrio from './Barrio.js';
+import { resolverSectorPorCoordenadas } from '../utils/geoUtils.js';
 
 /**
  * Estados posibles de un pedido
@@ -64,8 +67,12 @@ export function normalizeOrderItems(items) {
  * @param {Object} coupon - Cupón aplicado (opcional)
  * @param {Object} taxConfig - Configuración de impuestos { activo, porcentaje }
  * @param {Object} shippingConfig - Configuración de envíos { activo, costo_fijo, envio_gratis_activo, envio_gratis_desde }
+ * @param {Object} options - Opciones adicionales { costo_envio_override?: number }
+ *   Si se pasa `costo_envio_override`, se usa ese valor directamente como costo de envío
+ *   (ignora envio_gratis). Esto permite que el frontend pase el costo ya calculado
+ *   cuando conoce el barrio/sector del usuario.
  */
-export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: true, porcentaje: 8 }, shippingConfig = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 }) {
+export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: true, porcentaje: 8 }, shippingConfig = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 }, options = {}) {
   const subtotal = items.reduce(
     (sum, item) => sum + Number(item.precio_unitario) * Number(item.cantidad),
     0
@@ -94,15 +101,26 @@ export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: 
 
   // Calcular envío (solo si está activo)
   let shippingAmount = 0;
+  let envioGratisAplicado = false;
   if (shippingConfig.activo) {
     // Verificar si el envío gratis está ACTIVAMENTE habilitado y supera el umbral
     // (estrictamente mayor y umbral > 0 para tener sentido)
-    if (
+    const envioGratisCorresponde =
       shippingConfig.envio_gratis_activo === true &&
       Number(shippingConfig.envio_gratis_desde) > 0 &&
-      subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
-    ) {
+      subtotalConDescuento > Number(shippingConfig.envio_gratis_desde);
+
+    if (envioGratisCorresponde) {
       shippingAmount = 0;
+      envioGratisAplicado = true;
+    } else if (
+      options &&
+      options.costo_envio_override !== undefined &&
+      options.costo_envio_override !== null &&
+      !Number.isNaN(Number(options.costo_envio_override))
+    ) {
+      // Si el frontend ya calculó el costo específico por sector/barrio, lo respetamos
+      shippingAmount = Math.max(0, Number(options.costo_envio_override));
     } else {
       shippingAmount = Number(shippingConfig.costo_fijo) || 0;
     }
@@ -111,7 +129,14 @@ export function calculateOrderTotal(items, coupon = null, taxConfig = { activo: 
   // Total final
   const total = subtotalConDescuento + taxAmount + shippingAmount;
 
-  return Number(total.toFixed(2));
+  return {
+    total: Number(total.toFixed(2)),
+    subtotal: Number(subtotal.toFixed(2)),
+    descuento: Number(discountAmount.toFixed(2)),
+    impuestos: Number(taxAmount.toFixed(2)),
+    envio: Number(shippingAmount.toFixed(2)),
+    envio_gratis_aplicado: envioGratisAplicado
+  };
 }
 
 /**
@@ -158,6 +183,16 @@ export async function createOrder(orderData) {
 
 /**
  * Crear pedido completo de forma atomica recalculando precios desde la BD.
+ *
+ * Acepta opcionalmente los campos de Google Maps:
+ *   - `latitud`, `longitud`           → pin exacto del cliente
+ *   - `direccion_formateada`           → texto oficial devuelto por Places
+ *   - `place_id`                       → ID único del lugar
+ *
+ * Si vienen `latitud/longitud` y NO se resolvió un sector por `barrio_id`,
+ * se intenta resolver el sector más cercano vía `resolverSectorPorCoordenadas`
+ * (radio configurable, default 5 km). Si encuentra un sector, recalcula
+ * `costo_envio` desde `RestauranteEnvioSector.getCosto`.
  */
 export async function createOrderWithItems(orderData) {
   const {
@@ -170,11 +205,14 @@ export async function createOrderWithItems(orderData) {
     coupon_id = null,
     metodo_pago = 'contra_entrega',
     costo_envio = 0,
+    barrio_id = null,
+    sector_id = null,
+    latitud = null,
+    longitud = null,
+    direccion_formateada = null,
+    place_id = null,
     total: totalFromRequest = null // Total enviado desde el frontend (opcional)
   } = orderData;
-
-  console.log('OrderModel - costo_envio recibido:', costo_envio);
-  console.log('OrderModel - orderData completo:', orderData);
 
   const normalizedItems = normalizeOrderItems(items);
   const productIds = normalizedItems.map(item => item.producto_id);
@@ -244,19 +282,58 @@ export async function createOrderWithItems(orderData) {
       ? JSON.parse(restaurantData.configuracion_envios)
       : { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
 
+    // Resolver sector_id a partir de barrio_id (si viene barrio pero no sector)
+    let resolvedSectorId = sector_id ? Number(sector_id) : null;
+    if (barrio_id && !resolvedSectorId) {
+      const barrio = await Barrio.getBarrioById(Number(barrio_id));
+      if (barrio) resolvedSectorId = Number(barrio.sector_id);
+    }
+
+    // Si NO se resolvió sector por barrio pero el cliente envió lat/lng
+    // desde Google Maps, intentar geocoding: el sector más cercano dentro
+    // de un radio (default 5 km, ver utils/geoUtils.js).
+    let geocodedSector = null;
+    if (!resolvedSectorId && latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
+      try {
+        geocodedSector = await resolverSectorPorCoordenadas(latitud, longitud);
+        if (geocodedSector) {
+          resolvedSectorId = geocodedSector.sector_id;
+        }
+      } catch (geoErr) {
+        // No bloquear la creación del pedido si geocoding falla
+        console.warn('No se pudo resolver sector por coordenadas:', geoErr.message);
+      }
+    }
+
+    // Si tenemos sector, intentar resolver el costo específico para ese sector
+    let resolvedCostoEnvio = Number(costo_envio) || 0;
+    if (resolvedSectorId) {
+      const sectorCosto = await RestauranteEnvioSector.getCosto(Number(restaurante_id), resolvedSectorId);
+      if (sectorCosto !== null && sectorCosto !== undefined) {
+        // Solo usar el costo del sector si el cliente no pasó uno explícito,
+        // o si el que pasó coincide con este (para soportar costo_envio=0 cuando es gratis).
+        if (costo_envio === null || costo_envio === undefined) {
+          resolvedCostoEnvio = sectorCosto;
+        }
+      }
+    }
+
     // Calcular total: SIEMPRE priorizar el total enviado desde el frontend
     // (que ya calculó correctamente con envío e impuestos según la config del restaurante)
     // Solo recalculamos desde la BD como fallback si el frontend no envía total.
-    const total = (totalFromRequest !== null && totalFromRequest !== undefined && Number(totalFromRequest) > 0)
-      ? Number(totalFromRequest)
-      : Number(calculateOrderTotal(pricedItems, coupon, taxConfig, shippingConfig).toFixed(2));
-
-    console.log('OrderModel - total:', total);
-    console.log('OrderModel - totalFromRequest:', totalFromRequest);
-    console.log('OrderModel - costo_envio:', costo_envio);
-    console.log('OrderModel - shippingConfig:', shippingConfig);
-    console.log('OrderModel - taxConfig:', taxConfig);
-    console.log('OrderModel - coupon:', coupon);
+    let total;
+    if (totalFromRequest !== null && totalFromRequest !== undefined && Number(totalFromRequest) > 0) {
+      total = Number(totalFromRequest);
+    } else {
+      const calc = calculateOrderTotal(pricedItems, coupon, taxConfig, shippingConfig, {
+        costo_envio_override: resolvedCostoEnvio
+      });
+      total = calc.total;
+      // Si la recalculación reveló que el envío es gratis, reflejarlo en costo_envio
+      if (calc.envio_gratis_aplicado) {
+        resolvedCostoEnvio = 0;
+      }
+    }
 
     // Determinar estado inicial según método de pago
     const estadoInicial = metodo_pago === 'contra_entrega'
@@ -277,21 +354,33 @@ export async function createOrderWithItems(orderData) {
           notas,
           direccion_entrega,
           telefono_contacto,
+          barrio_id,
+          sector_id,
+          latitud,
+          longitud,
+          direccion_formateada,
+          place_id,
           creado_en
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         usuario_id,
         restaurante_id,
         total,
-        costo_envio,
+        resolvedCostoEnvio,
         estadoInicial,
         metodo_pago,
         metodo_pago === 'contra_entrega' ? 'aprobado' : 'pendiente',
         coupon_id,
         notas,
         direccion_entrega,
-        telefono_contacto
+        telefono_contacto,
+        barrio_id ? Number(barrio_id) : null,
+        resolvedSectorId,
+        latitud !== null && latitud !== undefined ? Number(latitud) : null,
+        longitud !== null && longitud !== undefined ? Number(longitud) : null,
+        direccion_formateada || null,
+        place_id || null,
       ]
     );
 
@@ -357,11 +446,15 @@ export async function getOrderById(id) {
       u.telefono as cliente_telefono,
       c.codigo as cupon_codigo,
       c.descuento as cupon_descuento,
-      c.tipo_descuento as cupon_tipo_descuento
+      c.tipo_descuento as cupon_tipo_descuento,
+      b.nombre as barrio_nombre,
+      s.nombre as sector_nombre
     FROM pedidos p
     LEFT JOIN restaurantes r ON p.restaurante_id = r.id
     LEFT JOIN usuarios u ON p.usuario_id = u.id
     LEFT JOIN cupones c ON p.cupon_id = c.id
+    LEFT JOIN barrios b ON p.barrio_id = b.id
+    LEFT JOIN sectores s ON p.sector_id = s.id
     WHERE p.id = ?
   `;
 
@@ -444,13 +537,18 @@ export async function getOrdersByUser(usuario_id, limit) {
     }
 
     const sql = `
-    SELECT 
+    SELECT
       p.id, p.usuario_id, p.restaurante_id, p.total, p.estado, p.notas,
       p.direccion_entrega, p.telefono_contacto, p.creado_en, p.actualizado_en,
+      p.costo_envio, p.barrio_id, p.sector_id,
       r.nombre as restaurante_nombre,
+      b.nombre as barrio_nombre,
+      s.nombre as sector_nombre,
       (SELECT COUNT(*) FROM items_pedido WHERE pedido_id = p.id) as items_count
     FROM pedidos p
     LEFT JOIN restaurantes r ON p.restaurante_id = r.id
+    LEFT JOIN barrios b ON p.barrio_id = b.id
+    LEFT JOIN sectores s ON p.sector_id = s.id
     WHERE p.usuario_id = ?
     ORDER BY p.creado_en DESC
     LIMIT ?
@@ -464,13 +562,17 @@ export async function getOrdersByUser(usuario_id, limit) {
  */
 export async function getOrdersByRestaurant(restaurante_id, filtro = null) {
   let sql = `
-    SELECT 
+    SELECT
       p.*,
       u.nombre as cliente_nombre,
       u.telefono as cliente_telefono,
+      b.nombre as barrio_nombre,
+      s.nombre as sector_nombre,
       COUNT(ip.id) as items_count
     FROM pedidos p
     LEFT JOIN usuarios u ON p.usuario_id = u.id
+    LEFT JOIN barrios b ON p.barrio_id = b.id
+    LEFT JOIN sectores s ON p.sector_id = s.id
     LEFT JOIN items_pedido ip ON p.id = ip.pedido_id
     WHERE p.restaurante_id = ?
   `;

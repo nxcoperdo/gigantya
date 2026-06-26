@@ -87,7 +87,11 @@ export async function getBasicStats(restaurante_id) {
       SELECT
         metodo_pago,
         COUNT(*) as cantidad,
-        COALESCE(SUM(total), 0) as total_ventas
+        COALESCE(SUM(total), 0) as total_ventas,
+        ROUND(
+          (COUNT(*) * 100.0) / NULLIF(SUM(COUNT(*)) OVER (), 2),
+          1
+        ) as porcentaje
       FROM pedidos
       WHERE restaurante_id = ? AND estado = 'Entregado' AND metodo_pago IS NOT NULL
       GROUP BY metodo_pago
@@ -139,7 +143,9 @@ export async function getBasicStats(restaurante_id) {
           metodo_pago: m.metodo_pago,
           cantidad: Number(m.cantidad) || 0,
           total_ventas: Number(m.total_ventas) || 0,
-          porcentaje: m.porcentaje ? Number(m.porcentaje) : 0,
+          porcentaje: m.porcentaje !== null && m.porcentaje !== undefined
+            ? Number(m.porcentaje)
+            : 0,
         }))
       : [];
 

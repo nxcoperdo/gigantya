@@ -205,7 +205,7 @@ export async function adminCreateUser(req, res) {
           horario_apertura: '09:00',
           horario_cierre: '21:00',
           imagen_url: null,
-          ciudad: 'GigantYA, Huila'
+          ciudad: 'Gigante, Huila'
         }, connection);
         logger.info(`Admin creó restaurante pendiente para usuario ${email}`);
       }
@@ -261,6 +261,19 @@ export async function updateUserStatus(req, res) {
     }
 
     await query('UPDATE usuarios SET estado = ? WHERE id = ?', [estado, id]);
+
+    // Sincronizar `restaurantes.estado` cuando se reactiva un usuario
+    // de tipo restaurante. Esto evita el bug de "login funciona pero el
+    // dashboard ve un restaurante inactivo" tras un reject previo.
+    if (estado === 'activo') {
+      await query(
+        `UPDATE restaurantes
+           SET estado = 'activo'
+         WHERE usuario_id = ?
+           AND EXISTS (SELECT 1 FROM usuarios WHERE id = ? AND tipo_usuario = 'restaurante')`,
+        [id, id]
+      );
+    }
 
     logger.info(`Admin cambió estado del usuario ${id} a ${estado}`);
     res.json({ mensaje: 'Estado actualizado correctamente' });

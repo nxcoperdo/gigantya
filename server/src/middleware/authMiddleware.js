@@ -17,11 +17,15 @@ export async function verifyToken(req, res, next) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Verificar si el usuario sigue activo en la base de datos
+    // Verificar si el usuario sigue activo en la base de datos.
+    // Tratamos `suspendido` e `inactivo` igual: el token ya no es válido.
+    // Devolvemos 401 (no 403) para que el interceptor del frontend limpie
+    // localStorage y redirija a /login de forma consistente.
     const usuario = await UserModel.getUserById(decoded.id);
-    if (!usuario || usuario.estado === 'suspendido') {
-      return res.status(403).json({
-        error: 'Tu sesión ha expirado o tu cuenta ha sido suspendida'
+    if (!usuario || ['suspendido', 'inactivo'].includes(usuario.estado)) {
+      return res.status(401).json({
+        error: 'Tu sesión ha expirado o tu cuenta ha sido suspendida',
+        requiresAuth: true
       });
     }
 

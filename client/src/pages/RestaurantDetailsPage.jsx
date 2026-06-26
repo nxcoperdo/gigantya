@@ -1,8 +1,9 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { Star, MapPin, Clock, Phone, Plus, Minus, User } from 'lucide-react';
+import { Star, MapPin, Clock, Phone, Plus, Minus, User, Facebook, Instagram } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
+import { isRestaurantOpen } from '../utils/scheduleHelper';
 import Loading from '../components/Loading';
 import AddToCartModal from '../components/AddToCartModal';
 import FavoriteButton from '../components/FavoriteButton';
@@ -114,16 +115,18 @@ export default function RestaurantDetailsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Restaurante no encontrado</h1>
+          <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Restaurante no encontrado</h1>
           <a href="/" className="btn btn-primary">Volver al inicio</a>
         </div>
       </div>
     );
   }
 
+   const isRestaurantOpenNow = isRestaurantOpen(restaurante.horario_apertura, restaurante.horario_cierre);
+
    return (
      <div
-       className="min-h-screen bg-light"
+       className="min-h-screen bg-[color:var(--bg-subtle)]"
        style={{
          ...dynamicStyles,
          fontFamily: 'var(--font-family), sans-serif'
@@ -161,7 +164,7 @@ export default function RestaurantDetailsPage() {
 
        {/* Info Section */}
        <div className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 -mt-12 sm:-mt-16 relative z-10">
-         <div className="card-lg bg-white" style={{ borderRadius: 'var(--border-radius)' }}>
+         <div className="card-lg" style={{ borderRadius: 'var(--border-radius)' }}>
            {restaurante.custom_config?.logoUrl && (
              <div className="flex justify-center mb-4 sm:mb-6">
                <img
@@ -173,11 +176,11 @@ export default function RestaurantDetailsPage() {
                />
              </div>
            )}
-           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-dark mb-2 sm:mb-3 px-2" style={{ fontFamily: 'var(--font-family)' }}>
+           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-[color:var(--text-primary)] mb-2 sm:mb-3 px-2" style={{ fontFamily: 'var(--font-family)' }}>
              {restaurante.nombre}
            </h1>
 
-           <p className="text-gray-600 text-sm sm:text-base md:text-lg mb-4 sm:mb-6 max-w-2xl px-2">
+           <p className="text-[color:var(--text-secondary)] text-sm sm:text-base md:text-lg mb-4 sm:mb-6 max-w-2xl px-2">
              {restaurante.descripcion}
            </p>
 
@@ -185,37 +188,73 @@ export default function RestaurantDetailsPage() {
              <div className="flex items-start gap-2 sm:gap-3">
                <Star className="mt-0.5 sm:mt-1 flex-shrink-0" size={18} style={{ color: 'var(--color-primary)' }} />
                <div className="min-w-0">
-                 <p className="text-xs sm:text-sm text-gray-500">Calificación</p>
-                 <p className="text-lg sm:text-xl font-bold text-gray-800">{restaurante.calificacion || '5.0'}</p>
+                 <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">Calificación</p>
+                 <p className="text-lg sm:text-xl font-bold text-[color:var(--text-primary)]">{restaurante.calificacion || '5.0'}</p>
                </div>
              </div>
 
              <div className="flex items-start gap-2 sm:gap-3">
                <Clock className="mt-0.5 sm:mt-1 flex-shrink-0" size={18} style={{ color: 'var(--color-primary)' }} />
                <div className="min-w-0">
-                 <p className="text-xs sm:text-sm text-gray-500">Horario</p>
-                 <p className="text-sm sm:text-lg font-semibold text-gray-800 truncate">
+                 <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">Horario</p>
+                 <p className="text-sm sm:text-lg font-semibold text-[color:var(--text-primary)] truncate">
                    {restaurante.horario_apertura?.slice(0, 5)} - {restaurante.horario_cierre?.slice(0, 5)}
                  </p>
+                 <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase ${
+                   isRestaurantOpenNow ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                 }`}>
+                   <span className={`w-1.5 h-1.5 rounded-full bg-white ${isRestaurantOpenNow ? 'animate-pulse' : ''}`} />
+                   {isRestaurantOpenNow ? 'Abierto ahora' : 'Cerrado'}
+                 </span>
                </div>
              </div>
 
              <div className="flex items-start gap-2 sm:gap-3">
                <Phone className="mt-0.5 sm:mt-1 flex-shrink-0" size={18} style={{ color: 'var(--color-primary)' }} />
                <div className="min-w-0">
-                 <p className="text-xs sm:text-sm text-gray-500">Teléfono</p>
-                 <p className="text-sm sm:text-lg font-semibold text-gray-800">{restaurante.telefono}</p>
+                 <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">Teléfono</p>
+                 <p className="text-sm sm:text-lg font-semibold text-[color:var(--text-primary)]">{restaurante.telefono}</p>
                </div>
              </div>
 
              <div className="flex items-start gap-2 sm:gap-3">
                <MapPin className="mt-0.5 sm:mt-1 flex-shrink-0" size={18} style={{ color: 'var(--color-primary)' }} />
                <div className="min-w-0">
-                 <p className="text-xs sm:text-sm text-gray-500">Ubicación</p>
-                 <p className="text-sm sm:text-lg font-semibold text-gray-800 truncate">{restaurante.ciudad}</p>
+                 <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">Ubicación</p>
+                 <p className="text-sm sm:text-lg font-semibold text-[color:var(--text-primary)] truncate">{restaurante.ciudad}</p>
                </div>
              </div>
            </div>
+
+           {/* Redes Sociales (solo Premium, si tiene URLs configuradas) */}
+           {restaurante.plan === 'premium' && (restaurante.custom_config?.social?.facebook || restaurante.custom_config?.social?.instagram) && (
+             <div className="flex items-center gap-3 pt-4 mt-4 border-t border-[color:var(--border-subtle)] px-2">
+               {restaurante.custom_config.social.facebook && (
+                 <a
+                   href={restaurante.custom_config.social.facebook}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="Facebook"
+                   className="transition-opacity hover:opacity-70"
+                   style={{ color: 'var(--color-primary)' }}
+                 >
+                   <Facebook size={22} />
+                 </a>
+               )}
+               {restaurante.custom_config.social.instagram && (
+                 <a
+                   href={restaurante.custom_config.social.instagram}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="Instagram"
+                   className="transition-opacity hover:opacity-70"
+                   style={{ color: 'var(--color-primary)' }}
+                 >
+                   <Instagram size={22} />
+                 </a>
+               )}
+             </div>
+           )}
          </div>
        </div>
 
@@ -223,24 +262,40 @@ export default function RestaurantDetailsPage() {
        <div className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-6 sm:mb-8 px-2" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>Menú</h2>
 
+         {!isRestaurantOpenNow && (
+           <div
+             className="mx-2 mb-6 p-4 rounded-xl flex items-start gap-3"
+             style={{ backgroundColor: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}
+           >
+             <Clock size={20} className="flex-shrink-0 mt-0.5" />
+             <div>
+               <p className="font-bold">El restaurante está cerrado</p>
+               <p className="text-sm opacity-90">
+                 Volvemos a abrir a las {restaurante.horario_apertura?.slice(0, 5)}.
+                 Puedes explorar el menú, pero no podrás hacer pedidos hasta entonces.
+               </p>
+             </div>
+           </div>
+         )}
+
          {sortedCategories.length > 0 ? (
            <div className="space-y-8 sm:space-y-10 md:space-y-12">
              {sortedCategories.map(([catId, catData]) => (
                <div key={catId} className="space-y-4 sm:space-y-6 px-2">
                  <div className="flex items-center gap-3 sm:gap-4">
-                   <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-dark">{catData.nombre}</h3>
-                   <div className="flex-1 h-px bg-gray-200"></div>
+                   <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--text-primary)]">{catData.nombre}</h3>
+                   <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
                  </div>
 
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                    {catData.productos.map((producto, idx) => (
                      <div key={producto.id} className="card group hover:shadow-lg animate-scaleIn" style={{ borderRadius: 'var(--border-radius)', animationDelay: `${idx * 50}ms` }}>
-                       <div className="relative mb-3 sm:mb-4 overflow-hidden rounded-lg bg-light">
+                       <div className="relative mb-3 sm:mb-4 overflow-hidden rounded-lg bg-[color:var(--bg-subtle)]">
                          {producto.imagen_url ? (
                            <img
                              src={getImageUrl(producto.imagen_url)}
                              alt={producto.nombre}
-                             className="w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                             className={`w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300 ${!isRestaurantOpenNow ? 'grayscale opacity-60' : ''}`}
                              loading="lazy"
                            />
                          ) : (
@@ -248,7 +303,12 @@ export default function RestaurantDetailsPage() {
                              🍽️
                            </div>
                          )}
-                         {!producto.disponible && (
+                         {!isRestaurantOpenNow && (
+                           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                             <span className="badge badge-error">Restaurante cerrado</span>
+                           </div>
+                         )}
+                         {isRestaurantOpenNow && !producto.disponible && (
                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
                              <span className="badge badge-error">No disponible</span>
                            </div>
@@ -256,10 +316,10 @@ export default function RestaurantDetailsPage() {
                        </div>
 
                        <div className="px-1">
-                         <h3 className="text-base sm:text-lg md:text-xl font-bold text-dark mb-1.5 sm:mb-2 line-clamp-2 min-h-[44px]">
+                         <h3 className="text-base sm:text-lg md:text-xl font-bold text-[color:var(--text-primary)] mb-1.5 sm:mb-2 line-clamp-2 min-h-[44px]">
                            {producto.nombre}
                          </h3>
-                         <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 min-h-[36px]">
+                         <p className="text-[color:var(--text-secondary)] text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 min-h-[36px]">
                            {producto.descripcion}
                          </p>
 
@@ -271,12 +331,12 @@ export default function RestaurantDetailsPage() {
 
                          <button
                            onClick={() => handleAddToCart(producto)}
-                           disabled={!producto.disponible}
+                           disabled={!producto.disponible || !isRestaurantOpenNow}
                            className="btn w-full mt-2 sm:mt-4 disabled:opacity-50 text-white min-h-[44px] active:scale-95 touch-feedback"
                            style={{ backgroundColor: 'var(--color-primary)', borderRadius: 'calc(var(--border-radius) / 2)' }}
                          >
                            <Plus size={16} className="inline mr-1.5 sm:mr-2" />
-                           Agregar
+                           {isRestaurantOpenNow ? 'Agregar' : 'No disponible'}
                          </button>
                        </div>
                      </div>
@@ -287,7 +347,7 @@ export default function RestaurantDetailsPage() {
            </div>
          ) : (
            <div className="text-center py-10 sm:py-12 px-4">
-             <p className="text-gray-500 text-sm sm:text-base md:text-lg">No hay productos disponibles en el menú</p>
+             <p className="text-[color:var(--text-muted)] text-sm sm:text-base md:text-lg">No hay productos disponibles en el menú</p>
            </div>
          )}
 
@@ -298,30 +358,30 @@ export default function RestaurantDetailsPage() {
                Calificaciones de Clientes
              </h2>
 
-             <div className="card-lg bg-white px-4 sm:px-6" style={{ borderRadius: 'var(--border-radius)' }}>
+             <div className="card-lg px-4 sm:px-6" style={{ borderRadius: 'var(--border-radius)' }}>
                {/* Resumen */}
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-gray-100">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-[color:var(--border-subtle)]">
                  {/* Promedio */}
                  <div className="text-center md:text-left">
-                   <p className="text-xs sm:text-sm text-gray-500 mb-2">Calificación promedio</p>
+                   <p className="text-xs sm:text-sm text-[color:var(--text-muted)] mb-2">Calificación promedio</p>
                    <div className="flex items-center justify-center md:justify-start gap-2 sm:gap-3 mb-2">
-                     <span className="text-4xl sm:text-5xl font-bold text-dark">{Number(ratings.promedio || 0).toFixed(1)}</span>
+                     <span className="text-4xl sm:text-5xl font-bold text-[color:var(--text-primary)]">{Number(ratings.promedio || 0).toFixed(1)}</span>
                      <div className="flex">
                        {[1, 2, 3, 4, 5].map(star => (
                          <Star
                            key={star}
                            size={18}
-                           className={star <= Math.round(ratings.promedio || 0) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}
+                           className={star <= Math.round(ratings.promedio || 0) ? 'text-yellow-500 fill-yellow-500' : 'text-[color:var(--text-subtle)]'}
                          />
                        ))}
                      </div>
                    </div>
-                   <p className="text-xs sm:text-sm text-gray-600">{ratings.total_calificaciones} calificaciones</p>
+                   <p className="text-xs sm:text-sm text-[color:var(--text-secondary)]">{ratings.total_calificaciones} calificaciones</p>
                  </div>
 
                  {/* Distribución */}
                  <div className="md:col-span-2">
-                   <p className="text-xs sm:text-sm text-gray-500 mb-3">Distribución de calificaciones</p>
+                   <p className="text-xs sm:text-sm text-[color:var(--text-muted)] mb-3">Distribución de calificaciones</p>
                    <div className="space-y-2">
                      {[5, 4, 3, 2, 1].map(stars => {
                        const count = ratings.distribucion[stars] || 0;
@@ -329,16 +389,16 @@ export default function RestaurantDetailsPage() {
                        return (
                          <div key={stars} className="flex items-center gap-2 sm:gap-3">
                            <div className="flex items-center gap-1 w-8">
-                             <span className="text-xs sm:text-sm font-semibold text-gray-700">{stars}</span>
+                             <span className="text-xs sm:text-sm font-semibold text-[color:var(--text-secondary)]">{stars}</span>
                              <Star size={10} className="text-yellow-500 fill-yellow-500" />
                            </div>
-                           <div className="flex-1 h-2.5 sm:h-3 bg-gray-100 rounded-full overflow-hidden">
+                           <div className="flex-1 h-2.5 sm:h-3 bg-[color:var(--bg-muted)] rounded-full overflow-hidden">
                              <div
                                className="h-full bg-yellow-500 rounded-full transition-all duration-500"
                                style={{ width: `${percentage}%` }}
                              />
                            </div>
-                           <span className="text-xs sm:text-sm text-gray-600 w-8 text-right">{count}</span>
+                           <span className="text-xs sm:text-sm text-[color:var(--text-secondary)] w-8 text-right">{count}</span>
                          </div>
                        );
                      })}
@@ -348,17 +408,17 @@ export default function RestaurantDetailsPage() {
 
                {/* Lista de calificaciones recientes */}
                <div>
-                 <h3 className="text-base sm:text-lg font-bold text-dark mb-3 sm:mb-4">Calificaciones recientes</h3>
+                 <h3 className="text-base sm:text-lg font-bold text-[color:var(--text-primary)] mb-3 sm:mb-4">Calificaciones recientes</h3>
                  <div className="space-y-3 sm:space-y-4 max-h-80 sm:max-h-96 overflow-y-auto custom-scrollbar">
                    {ratings.calificaciones?.slice(0, 10).map((rating, idx) => (
-                     <div key={idx} className="border-b border-gray-100 pb-3 sm:pb-4 last:border-0">
+                     <div key={idx} className="border-b border-[color:var(--border-subtle)] pb-3 sm:pb-4 last:border-0">
                        <div className="flex items-start justify-between gap-3">
                          <div className="flex items-center gap-2 sm:gap-3">
                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                              <User size={18} className="text-primary" />
                            </div>
                            <div className="min-w-0">
-                             <p className="font-semibold text-gray-800 text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">
+                             <p className="font-semibold text-[color:var(--text-primary)] text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">
                                {rating.usuario_nombre || 'Cliente'}
                              </p>
                              <div className="flex gap-0.5">
@@ -366,18 +426,18 @@ export default function RestaurantDetailsPage() {
                                  <Star
                                    key={star}
                                    size={12}
-                                   className={star <= (rating.calificacion || rating.puntuacion) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}
+                                   className={star <= (rating.calificacion || rating.puntuacion) ? 'text-yellow-500 fill-yellow-500' : 'text-[color:var(--text-subtle)]'}
                                  />
                                ))}
                              </div>
                            </div>
                          </div>
-                         <span className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">
+                         <span className="text-xs text-[color:var(--text-muted)] flex-shrink-0 whitespace-nowrap">
                            {new Date(rating.creado_en).toLocaleDateString('es-CO')}
                          </span>
                        </div>
                        {rating.comentario && (
-                         <p className="text-gray-600 text-xs sm:text-sm mt-2 ml-10 sm:ml-11 break-words">
+                         <p className="text-[color:var(--text-secondary)] text-xs sm:text-sm mt-2 ml-10 sm:ml-11 break-words">
                            {rating.comentario}
                          </p>
                        )}

@@ -199,19 +199,19 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-slideUp">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-dark">
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-slideUp">
+        <div className="flex items-center justify-between p-4 border-b border-[color:var(--border-subtle)]">
+          <h2 className="text-xl font-bold text-[color:var(--text-primary)]">
             {product ? 'Editar Producto' : 'Nuevo Producto'}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={20} className="text-gray-500" />
+          <button onClick={onClose} className="p-2 hover:bg-[color:var(--bg-muted)] rounded-full transition-colors">
+            <X size={20} className="text-[color:var(--text-muted)]" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
+            <div className="alert alert-error">
               {error}
             </div>
           )}
@@ -220,7 +220,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
             {/* Imagen Upload */}
             <div className="flex flex-col items-center gap-3">
               <div
-                className="relative w-32 h-32 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden group"
+                className="relative w-32 h-32 rounded-2xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] flex items-center justify-center overflow-hidden group"
               >
                 {imagePreview ? (
                   <>
@@ -231,9 +231,9 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                     </label>
                   </>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-100 transition-colors">
-                    <ImageIcon size={32} className="text-gray-400 mb-2" />
-                    <span className="text-xs text-gray-500">Sube una foto</span>
+                  <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-[color:var(--bg-muted)] transition-colors">
+                    <ImageIcon size={32} className="text-[color:var(--text-subtle)] mb-2" />
+                    <span className="text-xs text-[color:var(--text-muted)]">Sube una foto</span>
                     <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                   </label>
                 )}
@@ -242,7 +242,8 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                 <button
                   type="button"
                   onClick={() => { setImageFile(null); setImagePreview(formData.imagen_url ? getImageUrl(formData.imagen_url) : ''); }}
-                  className="text-xs text-red-500 hover:underline flex items-center gap-1"
+                  className="text-xs hover:underline flex items-center gap-1"
+                  style={{ color: 'var(--danger-text)' }}
                 >
                   <Trash2 size={12} /> Eliminar imagen
                 </button>
@@ -251,13 +252,13 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del producto</label>
+                <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Nombre del producto</label>
                 <input
                   type="text"
                   name="nombre"
                   value={formData.nombre}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                   placeholder="Ej. Hamburguesa Especial"
                   required
                 />
@@ -265,25 +266,25 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio ($)</label>
+                  <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Precio ($)</label>
                   <input
                     type="number"
                     name="precio"
                     value={formData.precio}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                    className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                     placeholder="0.00"
                     step="0.01"
                     required
                 />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                  <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Categoría</label>
                   <select
                     name="categoria_id"
                     value={formData.categoria_id}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                    className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                   >
                     <option value="">Seleccione una categoría</option>
                     {categories.map(cat => (
@@ -296,18 +297,18 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Descripción</label>
                 <textarea
                   name="descripcion"
                   value={formData.descripcion}
                   onChange={handleInputChange}
                   rows="3"
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                   placeholder="Describe los ingredientes o detalles..."
                 />
               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-[color:var(--bg-subtle)] border border-[color:var(--border-subtle)]">
                 <input
                   type="checkbox"
                   name="disponible"
@@ -315,20 +316,20 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                   onChange={(e) => setFormData(prev => ({ ...prev, disponible: e.target.checked }))}
                   className="w-4 h-4 text-primary rounded focus:ring-primary"
                 />
-                <span className="text-sm font-medium text-gray-700">Producto disponible para la venta</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">Producto disponible para la venta</span>
               </div>
             </div>
 
             {/* Galería (plan Profesional/Premium) */}
-            <div className="border-t border-gray-100 pt-4">
+            <div className="border-t border-[color:var(--border-subtle)] pt-4">
               {allowGallery ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-dark flex items-center gap-2">
+                    <p className="text-sm font-bold text-[color:var(--text-primary)] flex items-center gap-2">
                       <Sparkles size={16} className="text-amber-500" />
                       Galería de fotos
                     </p>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[color:var(--text-muted)]">
                       {gallery.length} / {galleryLimit}
                     </span>
                   </div>
@@ -354,9 +355,9 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
                   {gallerySlotsRemaining > 0 && (
                     <div>
-                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                        <Upload size={20} className="text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[color:var(--border-default)] rounded-lg cursor-pointer hover:bg-[color:var(--bg-subtle)] transition-colors">
+                        <Upload size={20} className="text-[color:var(--text-subtle)] mb-1" />
+                        <span className="text-xs text-[color:var(--text-muted)]">
                           Subir hasta {gallerySlotsRemaining} imagen(es) más
                         </span>
                         <input
@@ -376,8 +377,8 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                   )}
                 </div>
               ) : (
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-500 flex items-start gap-2">
-                  <Sparkles size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                <div className="p-3 rounded-lg bg-[color:var(--bg-subtle)] border border-[color:var(--border-default)] text-xs text-[color:var(--text-muted)] flex items-start gap-2">
+                  <Sparkles size={14} className="text-[color:var(--text-subtle)] flex-shrink-0 mt-0.5" />
                   <span>La galería de fotos está disponible en los planes Profesional y Premium.</span>
                 </div>
               )}
@@ -388,7 +389,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
             >
               Cancelar
             </button>

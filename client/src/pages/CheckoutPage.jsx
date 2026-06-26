@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import api, { paymentService, couponService } from '../services/api';
-import { addressService } from '../services/api';
+import api, { paymentService, couponService, addressService, zonaService, restaurantService } from '../services/api';
 import { CheckCircle, MapPin, Plus, Tag, X } from 'lucide-react';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import ErrorMessageModal from '../components/ErrorMessageModal';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -24,8 +24,15 @@ export default function CheckoutPage() {
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
   const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
-  const [shippingAmount, setShippingAmount] = useState(0);
   const [configLoaded, setConfigLoaded] = useState(false);
+
+  // Catálogos de zonas
+  const [sectores, setSectores] = useState([]);
+  const [barriosBySector, setBarriosBySector] = useState({});
+  const [sectoresLoading, setSectoresLoading] = useState(false);
+
+  // Información de envío por barrio del restaurante actual
+  const [envioInfo, setEnvioInfo] = useState(null); // { costo, sector_id, sector_nombre, ... }
 
   // Estado para cupones
   const [couponCode, setCouponCode] = useState('');
@@ -40,38 +47,43 @@ export default function CheckoutPage() {
     telefono_contacto: user?.telefono || '',
     direccion_entrega: '',
     notas: '',
+    sector_id: '',
+    barrio_id: '',
+    // Campos opcionales de Google Maps (Places Autocomplete)
+    latitud: null,
+    longitud: null,
+    direccion_formateada: '',
+    place_id: '',
   });
 
+  // Carga inicial: direcciones y sectores
   useEffect(() => {
     const loadAddresses = async () => {
       try {
-        console.log('Loading addresses...');
         const response = await addressService.getAll();
-        console.log('Addresses response:', response);
         const addressList = response.data.addresses || [];
-        console.log('Addresses loaded:', addressList);
         setAddresses(addressList);
-        // Seleccionar la dirección default automáticamente si existe
         const defaultAddress = addressList.find(addr => addr.es_default);
+        const applyAddressToForm = (addr) => {
+          setFormData(prev => ({
+            ...prev,
+            direccion_entrega: addr.direccion,
+            telefono_contacto: addr.telefono || prev.telefono_contacto,
+            sector_id: addr.sector_id ? String(addr.sector_id) : '',
+            barrio_id: addr.barrio_id ? String(addr.barrio_id) : '',
+            latitud: addr.latitud !== null && addr.latitud !== undefined ? Number(addr.latitud) : null,
+            longitud: addr.longitud !== null && addr.longitud !== undefined ? Number(addr.longitud) : null,
+            direccion_formateada: addr.direccion_formateada || '',
+            place_id: addr.place_id || '',
+          }));
+        };
         if (defaultAddress) {
-          console.log('Using default address:', defaultAddress);
           setSelectedAddressId(defaultAddress.id);
-          setFormData(prev => ({
-            ...prev,
-            direccion_entrega: defaultAddress.direccion,
-            telefono_contacto: defaultAddress.telefono || prev.telefono_contacto,
-          }));
+          applyAddressToForm(defaultAddress);
         } else if (addressList.length > 0) {
-          // Si no hay default, seleccionar la primera
-          console.log('Using first address:', addressList[0]);
           setSelectedAddressId(addressList[0].id);
-          setFormData(prev => ({
-            ...prev,
-            direccion_entrega: addressList[0].direccion,
-            telefono_contacto: addressList[0].telefono || prev.telefono_contacto,
-          }));
+          applyAddressToForm(addressList[0]);
         } else {
-          console.log('No addresses found, using new address mode');
           setUseNewAddress(true);
         }
       } catch (error) {
@@ -81,26 +93,56 @@ export default function CheckoutPage() {
         setAddressesLoading(false);
       }
     };
+
+    const loadSectores = async () => {
+      try {
+        setSectoresLoading(true);
+        const res = await zonaService.getSectores();
+        setSectores(res.data.sectores || []);
+      } catch (err) {
+        console.error('Error cargando sectores:', err);
+      } finally {
+        setSectoresLoading(false);
+      }
+    };
+
     loadAddresses();
+    loadSectores();
   }, []);
 
-  // Cargar configuración de impuestos y envíos del restaurante
+  // Cargar barrios del sector seleccionado (para dirección nueva)
+  useEffect(() => {
+    if (!useNewAddress) return;
+    if (!formData.sector_id) return;
+    if (barriosBySector[formData.sector_id]) return;
+
+    const fetchBarrios = async () => {
+      try {
+        const res = await zonaService.getBarrios(formData.sector_id);
+        setBarriosBySector(prev => ({
+          ...prev,
+          [formData.sector_id]: res.data.barrios || []
+        }));
+      } catch (err) {
+        console.error('Error cargando barrios:', err);
+      }
+    };
+    fetchBarrios();
+  }, [formData.sector_id, useNewAddress]);
+
+  // Cargar configuración del restaurante cuando cambia el carrito
   useEffect(() => {
     const loadRestaurantConfig = async () => {
       const restaurante_id = cart[0]?.restaurante_id;
-      console.log('Checkout - Cart:', cart);
-      console.log('Checkout - Restaurante ID:', restaurante_id);
       if (!restaurante_id) return;
 
       try {
-        // Obtener datos del restaurante para obtener su configuración
-        const response = await api.get(`/restaurants/${restaurante_id}`);
+        const response = await restaurantService.getById(restaurante_id);
         const restaurant = response.data.restaurante;
 
         const defaultTax = { activo: true, porcentaje: 8 };
         const defaultShipping = { activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 };
 
-        // Parsear configuración si viene como string JSON
         let tax = defaultTax;
         let shipping = defaultShipping;
 
@@ -116,13 +158,11 @@ export default function CheckoutPage() {
             : restaurant.configuracion_envios;
         }
 
-        console.log('Checkout - Config cargada - shipping:', shipping);
         setTaxConfig(tax);
         setShippingConfig(shipping);
         setConfigLoaded(true);
       } catch (error) {
         console.error('Error cargando configuración del restaurante:', error);
-        // Usar valores por defecto en caso de error
         setTaxConfig({ activo: true, porcentaje: 8 });
         setShippingConfig({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
       }
@@ -131,43 +171,90 @@ export default function CheckoutPage() {
     loadRestaurantConfig();
   }, [cart]);
 
-  // Calcular impuestos y envío directamente (no como estado para evitar race conditions)
+  // Resolver el envío para el barrio seleccionado / dirección seleccionada
+  useEffect(() => {
+    const restaurante_id = cart[0]?.restaurante_id;
+    if (!restaurante_id) {
+      setEnvioInfo(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveEnvio = async () => {
+      let barrioId = null;
+      if (!useNewAddress && selectedAddressId) {
+        const addr = addresses.find(a => a.id === selectedAddressId);
+        if (addr && addr.barrio_id) barrioId = addr.barrio_id;
+      } else if (useNewAddress && formData.barrio_id) {
+        barrioId = formData.barrio_id;
+      }
+
+      try {
+        if (barrioId) {
+          const res = await restaurantService.getById(restaurante_id, { barrio_id: barrioId });
+          if (!cancelled) {
+            setEnvioInfo(res.data.envio_para_barrio || null);
+          }
+        } else {
+          // Sin barrio, no podemos resolver por sector: usamos el costo_fijo global
+          if (!cancelled) setEnvioInfo(null);
+        }
+      } catch (err) {
+        console.error('Error resolviendo envío por barrio:', err);
+        if (!cancelled) setEnvioInfo(null);
+      }
+    };
+
+    resolveEnvio();
+    return () => { cancelled = true; };
+  }, [cart, selectedAddressId, useNewAddress, formData.barrio_id, addresses]);
+
   const subtotal = total;
   const descuento = discountAmount;
   const subtotalConDescuento = subtotal - descuento;
 
-  // Calcular impuestos
   const taxAmount = taxConfig.activo && taxConfig.porcentaje > 0
     ? subtotalConDescuento * (taxConfig.porcentaje / 100)
     : 0;
 
-  // Calcular envío
-  const calculatedShippingAmount = shippingConfig.activo
-    ? (
-        shippingConfig.envio_gratis_activo === true &&
-        Number(shippingConfig.envio_gratis_desde) > 0 &&
-        subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
-          ? 0
-          : (Number(shippingConfig.costo_fijo) || 0)
-      )
-    : 0;
+  // Determinar el costo de envío efectivo:
+  // - Si hay envioInfo (barrio resuelto) → usar su costo
+  // - Si no, fallback al costo_fijo global
+  // - Si envío gratis está activo y el subtotalConDescuento lo supera → 0
+  const envioGratisCorresponde = (
+    shippingConfig.activo &&
+    shippingConfig.envio_gratis_activo === true &&
+    Number(shippingConfig.envio_gratis_desde) > 0 &&
+    subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
+  );
 
-  // Total final
+  const calculatedShippingAmount = envioGratisCorresponde
+    ? 0
+    : (envioInfo && envioInfo.costo !== undefined
+        ? Number(envioInfo.costo) || 0
+        : (shippingConfig.activo ? (Number(shippingConfig.costo_fijo) || 0) : 0));
+
+  const envioSectorTexto = envioInfo
+    ? envioInfo.envio_gratis_aplicado
+      ? 'Gratis'
+      : envioInfo.sector_nombre
+        ? `$${Number(envioInfo.costo || 0).toLocaleString('es-CO')} (${envioInfo.sector_nombre})`
+        : `$${Number(envioInfo.costo || 0).toLocaleString('es-CO')}`
+    : null;
+
   const finalTotal = subtotalConDescuento + taxAmount + calculatedShippingAmount;
-
-  console.log('=== Checkout Render ===');
-  console.log('total (del CartContext):', total);
-  console.log('subtotal:', subtotal);
-  console.log('taxConfig:', taxConfig);
-  console.log('taxAmount:', taxAmount);
-  console.log('shippingConfig:', shippingConfig);
-  console.log('calculatedShippingAmount:', calculatedShippingAmount);
-  console.log('Cálculo: ', subtotalConDescuento, '+', taxAmount, '+', calculatedShippingAmount, '=', finalTotal);
-  console.log('finalTotal:', finalTotal);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      // Si cambia el sector, limpiamos el barrio
+      if (name === 'sector_id') {
+        next.barrio_id = '';
+      }
+      return next;
+    });
   };
 
   const handleSelectAddress = (addressId) => {
@@ -179,6 +266,12 @@ export default function CheckoutPage() {
         ...prev,
         direccion_entrega: selected.direccion,
         telefono_contacto: selected.telefono || prev.telefono_contacto,
+        sector_id: selected.sector_id ? String(selected.sector_id) : '',
+        barrio_id: selected.barrio_id ? String(selected.barrio_id) : '',
+        latitud: selected.latitud !== null && selected.latitud !== undefined ? Number(selected.latitud) : null,
+        longitud: selected.longitud !== null && selected.longitud !== undefined ? Number(selected.longitud) : null,
+        direccion_formateada: selected.direccion_formateada || '',
+        place_id: selected.place_id || '',
       }));
     }
   };
@@ -190,6 +283,12 @@ export default function CheckoutPage() {
       ...prev,
       direccion_entrega: '',
       telefono_contacto: prev.telefono_contacto,
+      sector_id: '',
+      barrio_id: '',
+      latitud: null,
+      longitud: null,
+      direccion_formateada: '',
+      place_id: '',
     }));
   };
 
@@ -214,7 +313,6 @@ export default function CheckoutPage() {
         setAppliedCoupon(cupon);
         setCouponError('');
 
-        // Calcular descuento
         let descuento = 0;
         if (cupon.tipo_descuento === 'porcentaje') {
           descuento = (total * cupon.descuento) / 100;
@@ -233,7 +331,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // Manejar remoción de cupón
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
     setDiscountAmount(0);
@@ -250,7 +347,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Esperar a que la configuración esté cargada
       if (!configLoaded) {
         alert('Cargando configuración del restaurante, por favor espera un momento...');
         return;
@@ -259,14 +355,48 @@ export default function CheckoutPage() {
       const restaurante_id = cart[0].restaurante_id || 1;
       setRestauranteId(restaurante_id);
 
-      // Validar comprobante para pagos electrónicos (Nequi, Daviplata, BRE-B)
       if ((paymentMethod === 'nequi' || paymentMethod === 'daviplata' || paymentMethod === 'bre_b') && !comprobanteFile) {
         alert('Debes subir el comprobante de pago para continuar');
         setLoading(false);
         return;
       }
 
-      // Calcular valores ANTES de enviar (para evitar que cambien cuando se vacíe el carrito)
+      // Determinar barrio_id y coordenadas a enviar al backend
+      let barrioIdEnviar = null;
+      let latitudEnviar = null;
+      let longitudEnviar = null;
+      let direccionFormateadaEnviar = null;
+      let placeIdEnviar = null;
+
+      if (!useNewAddress && selectedAddressId) {
+        const addr = addresses.find(a => a.id === selectedAddressId);
+        if (addr) {
+          if (addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
+          if (addr.latitud !== null && addr.latitud !== undefined) latitudEnviar = Number(addr.latitud);
+          if (addr.longitud !== null && addr.longitud !== undefined) longitudEnviar = Number(addr.longitud);
+          direccionFormateadaEnviar = addr.direccion_formateada || null;
+          placeIdEnviar = addr.place_id || null;
+        }
+      } else if (useNewAddress) {
+        if (formData.barrio_id) barrioIdEnviar = Number(formData.barrio_id);
+        if (formData.latitud !== null && formData.latitud !== undefined) latitudEnviar = Number(formData.latitud);
+        if (formData.longitud !== null && formData.longitud !== undefined) longitudEnviar = Number(formData.longitud);
+        direccionFormateadaEnviar = formData.direccion_formateada || null;
+        placeIdEnviar = formData.place_id || null;
+      }
+
+      // Para que el backend pueda calcular el envío, la dirección debe tener
+      // *al menos* barrio_id (catálogo) o coordenadas de Google Maps (geocoding).
+      const tieneCoordenadas = latitudEnviar !== null && longitudEnviar !== null;
+      if (!barrioIdEnviar && !tieneCoordenadas) {
+        const mensaje = useNewAddress
+          ? 'Para calcular el envío, escribe tu dirección en el buscador y selecciona una opción, o elige un sector y barrio.'
+          : 'La dirección seleccionada no tiene barrio ni coordenadas de Maps. Edítala para precisar la ubicación.';
+        setErrorModal({ isOpen: true, message: mensaje });
+        setLoading(false);
+        return;
+      }
+
       const subtotalOrder = total;
       const descuentoOrder = discountAmount;
       const subtotalConDescuentoOrder = subtotalOrder - descuentoOrder;
@@ -275,23 +405,20 @@ export default function CheckoutPage() {
         ? subtotalConDescuentoOrder * (taxConfig.porcentaje / 100)
         : 0;
 
-      const costoEnvio = shippingConfig.activo
-        ? (
-            shippingConfig.envio_gratis_activo === true &&
-            Number(shippingConfig.envio_gratis_desde) > 0 &&
-            subtotalConDescuentoOrder > Number(shippingConfig.envio_gratis_desde)
-              ? 0
-              : (Number(shippingConfig.costo_fijo) || 0)
-          )
-        : 0;
+      const envioGratisOrder = (
+        shippingConfig.activo &&
+        shippingConfig.envio_gratis_activo === true &&
+        Number(shippingConfig.envio_gratis_desde) > 0 &&
+        subtotalConDescuentoOrder > Number(shippingConfig.envio_gratis_desde)
+      );
+
+      const costoEnvio = envioGratisOrder
+        ? 0
+        : (envioInfo && envioInfo.costo !== undefined
+            ? Number(envioInfo.costo) || 0
+            : (shippingConfig.activo ? (Number(shippingConfig.costo_fijo) || 0) : 0));
 
       const totalOrder = subtotalConDescuentoOrder + taxAmountOrder + costoEnvio;
-
-      console.log('Checkout - Valores antes de enviar:');
-      console.log('  subtotalOrder:', subtotalOrder);
-      console.log('  taxAmountOrder:', taxAmountOrder);
-      console.log('  costoEnvio:', costoEnvio);
-      console.log('  totalOrder:', totalOrder);
 
       const orderData = {
         restaurante_id,
@@ -306,19 +433,23 @@ export default function CheckoutPage() {
         telefono_contacto: formData.telefono_contacto,
         metodo_pago: paymentMethod,
         costo_envio: costoEnvio,
-        total: totalOrder, // Enviar total calculado desde el frontend
+        barrio_id: barrioIdEnviar,
+        // Campos opcionales de Google Maps
+        latitud: latitudEnviar,
+        longitud: longitudEnviar,
+        direccion_formateada: direccionFormateadaEnviar,
+        place_id: placeIdEnviar,
+        total: totalOrder,
       };
 
       const response = await api.post('/orders', orderData);
       const pedido = response.data.pedido;
 
-      // Si hay comprobante, subirlo después de crear el pedido
       if (comprobanteFile && pedido?.id) {
         const proofFormData = new FormData();
         proofFormData.append('comprobante', comprobanteFile);
         proofFormData.append('pedido_id', pedido.id);
         proofFormData.append('metodo_pago', paymentMethod);
-
         await paymentService.uploadProof(proofFormData);
       }
 
@@ -341,9 +472,9 @@ export default function CheckoutPage() {
 
   if (cart.length === 0 && !success) {
     return (
-      <div className="min-h-screen bg-light flex items-center justify-center">
+      <div className="min-h-screen bg-[color:var(--bg-subtle)] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">Carrito vacío</h1>
+          <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-4">Carrito vacío</h1>
           <button onClick={() => navigate('/')} className="btn btn-primary">
             Volver al inicio
           </button>
@@ -354,13 +485,13 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-light flex items-center justify-center">
+      <div className="min-h-screen bg-[color:var(--bg-subtle)] flex items-center justify-center">
         <div className="text-center py-12 animate-scaleIn">
           <CheckCircle size={80} className="text-green-500 mb-6 mx-auto" />
-          <h1 className="text-4xl font-heading font-bold text-dark mb-3">
+          <h1 className="text-4xl font-heading font-bold text-[color:var(--text-primary)] mb-3">
             ¡Pedido Confirmado!
           </h1>
-          <p className="text-gray-600 text-lg mb-8">
+          <p className="text-[color:var(--text-secondary)] text-lg mb-8">
             Tu pedido ha sido recibido correctamente. Te redireccionaremos a tus pedidos...
           </p>
           <div className="animate-pulse">
@@ -371,10 +502,14 @@ export default function CheckoutPage() {
     );
   }
 
+  const barriosDelSectorNuevo = formData.sector_id
+    ? (barriosBySector[formData.sector_id] || [])
+    : [];
+
   return (
-    <div className="min-h-screen bg-light py-6 sm:py-8 md:py-12">
+    <div className="min-h-screen bg-[color:var(--bg-subtle)] py-6 sm:py-8 md:py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-4 md:px-6">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-dark mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-[color:var(--text-primary)] mb-6 sm:mb-8">
           Confirmar Pedido
         </h1>
 
@@ -383,7 +518,7 @@ export default function CheckoutPage() {
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 animate-slideUp">
               <div className="card-lg">
-                <h2 className="text-xl sm:text-2xl font-bold text-dark mb-5 sm:mb-6">Información de Entrega</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-[color:var(--text-primary)] mb-5 sm:mb-6">Información de Entrega</h2>
 
                <div className="space-y-4">
                    <div>
@@ -413,7 +548,7 @@ export default function CheckoutPage() {
                    {/* Seleccionar Dirección Guardada */}
                    {!addressesLoading && addresses.length > 0 && (
                      <div>
-                       <label className="block mb-3 font-semibold text-dark">
+                       <label className="block mb-3 font-semibold text-[color:var(--text-primary)]">
                          Mis Direcciones Guardadas
                        </label>
                        <div className="space-y-2.5 mb-4">
@@ -424,13 +559,14 @@ export default function CheckoutPage() {
                              onClick={() => handleSelectAddress(addr.id)}
                              className={`w-full text-left p-3 sm:p-4 border-2 rounded-xl transition-all active:scale-98 touch-feedback ${
                                selectedAddressId === addr.id && !useNewAddress
-                                 ? 'border-primary bg-red-50'
-                                 : 'border-gray-200 hover:border-gray-300'
+                                 ? 'border-primary'
+                                 : 'border-[color:var(--border-default)] hover:border-[color:var(--border-strong)]'
                              }`}
+                             style={selectedAddressId === addr.id && !useNewAddress ? { backgroundColor: 'var(--bg-subtle)' } : undefined}
                            >
                              <div className="flex items-start justify-between gap-3">
                                <div className="flex-1 min-w-0">
-                                 <p className="font-semibold text-dark flex items-center gap-2 flex-wrap">
+                                 <p className="font-semibold text-[color:var(--text-primary)] flex items-center gap-2 flex-wrap">
                                    <MapPin size={16} className="text-primary flex-shrink-0" />
                                    {addr.tipo.charAt(0).toUpperCase() + addr.tipo.slice(1)}
                                    {addr.es_default && (
@@ -438,16 +574,24 @@ export default function CheckoutPage() {
                                        Por Defecto
                                      </span>
                                    )}
+                                   {addr.sector_nombre && (
+                                     <span
+                                       className="text-xs px-2 py-0.5 rounded-full"
+                                       style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
+                                     >
+                                       {addr.sector_nombre}{addr.barrio_nombre ? ` · ${addr.barrio_nombre}` : ''}
+                                     </span>
+                                   )}
                                  </p>
-                                 <p className="text-sm text-gray-600 mt-1 break-words">{addr.direccion}</p>
+                                 <p className="text-sm text-[color:var(--text-secondary)] mt-1 break-words">{addr.direccion}</p>
                                  {addr.telefono && (
-                                   <p className="text-xs text-gray-500 mt-1">Tel: {addr.telefono}</p>
+                                   <p className="text-xs text-[color:var(--text-muted)] mt-1">Tel: {addr.telefono}</p>
                                  )}
                                </div>
                                <div className={`w-5 h-5 rounded-full border-2 mt-0.5 flex-shrink-0 flex items-center justify-center ${
                                  selectedAddressId === addr.id && !useNewAddress
                                    ? 'border-primary bg-primary'
-                                   : 'border-gray-300'
+                                   : 'border-[color:var(--border-strong)]'
                                }`}>
                                  {selectedAddressId === addr.id && !useNewAddress && (
                                    <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -462,13 +606,56 @@ export default function CheckoutPage() {
                          onClick={handleNewAddress}
                          className={`w-full p-3 sm:p-4 border-2 border-dashed rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 touch-feedback ${
                            useNewAddress
-                             ? 'border-primary bg-red-50'
-                             : 'border-gray-300 hover:border-primary text-gray-600'
+                             ? 'border-primary'
+                             : 'border-[color:var(--border-strong)] hover:border-primary text-[color:var(--text-secondary)]'
                          }`}
+                         style={useNewAddress ? { backgroundColor: 'var(--bg-subtle)' } : undefined}
                        >
                          <Plus size={18} />
                          Usar Nueva Dirección
                        </button>
+                     </div>
+                   )}
+
+                   {/* Selector de sector + barrio para dirección nueva */}
+                   {useNewAddress && (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div>
+                         <label className="block text-sm font-semibold mb-1.5">Sector *</label>
+                         <select
+                           name="sector_id"
+                           value={formData.sector_id}
+                           onChange={handleChange}
+                           className="input min-h-[44px]"
+                           required
+                           disabled={sectoresLoading}
+                         >
+                           <option value="">
+                             {sectoresLoading ? 'Cargando sectores…' : 'Selecciona un sector'}
+                           </option>
+                           {sectores.map(s => (
+                             <option key={s.id} value={s.id}>{s.nombre}</option>
+                           ))}
+                         </select>
+                       </div>
+                       <div>
+                         <label className="block text-sm font-semibold mb-1.5">Barrio *</label>
+                         <select
+                           name="barrio_id"
+                           value={formData.barrio_id}
+                           onChange={handleChange}
+                           className="input min-h-[44px]"
+                           required
+                           disabled={!formData.sector_id}
+                         >
+                           <option value="">
+                             {formData.sector_id ? 'Selecciona un barrio' : 'Primero selecciona un sector'}
+                           </option>
+                           {barriosDelSectorNuevo.map(b => (
+                             <option key={b.id} value={b.id}>{b.nombre}</option>
+                           ))}
+                         </select>
+                       </div>
                      </div>
                    )}
 
@@ -487,15 +674,24 @@ export default function CheckoutPage() {
 
                    {(useNewAddress || addresses.length === 0) && (
                      <div>
-                       <label className="block text-sm font-semibold mb-1.5">Dirección de Entrega *</label>
-                       <input
-                         type="text"
+                       <label className="block text-sm font-semibold mb-1.5">Dirección de Entrega (calle/carrera/número) *</label>
+                       <AddressAutocomplete
+                         id="direccion-entrega-input"
                          name="direccion_entrega"
                          value={formData.direccion_entrega}
-                         onChange={handleChange}
+                         onChange={(e) => setFormData(prev => ({ ...prev, direccion_entrega: e.target.value }))}
+                         onPlaceSelected={(place) => {
+                           setFormData(prev => ({
+                             ...prev,
+                             direccion_entrega: place.direccion,
+                             direccion_formateada: place.direccion_formateada,
+                             latitud: place.latitud,
+                             longitud: place.longitud,
+                             place_id: place.place_id,
+                           }));
+                         }}
+                         placeholder="Calle 5 #12-45, Apto 301"
                          required
-                         placeholder="Calle, número, apto/casa"
-                         className="input min-h-[44px]"
                        />
                      </div>
                    )}
@@ -528,7 +724,7 @@ export default function CheckoutPage() {
 
               {/* Método de Pago */}
               <div className="card-lg">
-                <h2 className="text-xl sm:text-2xl font-bold text-dark mb-5 sm:mb-6">Método de Pago</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-[color:var(--text-primary)] mb-5 sm:mb-6">Método de Pago</h2>
                 <PaymentMethodSelector
                   selectedMethod={paymentMethod}
                   onMethodChange={setPaymentMethod}
@@ -556,16 +752,14 @@ export default function CheckoutPage() {
 
           {/* Resumen */}
           <div className="lg:col-span-1">
-            <div className="card-lg bg-white sticky top-20 animate-slideUp">
-              <h2 className="text-xl sm:text-2xl font-heading font-bold text-dark mb-4 sm:mb-6">
+            <div className="card-lg sticky top-20 animate-slideUp">
+              <h2 className="text-xl sm:text-2xl font-heading font-bold text-[color:var(--text-primary)] mb-4 sm:mb-6">
                 Resumen
               </h2>
 
-              <div className="space-y-2 sm:space-y-3 mb-4 pb-4 border-b border-gray-200 max-h-48 sm:max-h-64 overflow-y-auto custom-scrollbar">
+              <div className="space-y-2 sm:space-y-3 mb-4 pb-4 border-b border-[color:var(--border-default)] max-h-48 sm:max-h-64 overflow-y-auto custom-scrollbar">
                 {cart.map(item => (
-                  <div key={item.id} className="flex justify-between text-sm text-gray-600">
-
-
+                  <div key={item.id} className="flex justify-between text-sm text-[color:var(--text-secondary)]">
                     <span className="truncate pr-2">{item.nombre} x {item.cantidad}</span>
                     <span className="flex-shrink-0">${(item.precio * item.cantidad).toLocaleString('es-CO')}</span>
                   </div>
@@ -573,15 +767,15 @@ export default function CheckoutPage() {
               </div>
 
               {/* Cupón */}
-              <div className="mb-4 pb-4 border-b border-gray-200">
+              <div className="mb-4 pb-4 border-b border-[color:var(--border-default)]">
                 {!appliedCoupon ? (
                   <div>
-                    <label className="block text-sm font-semibold text-dark mb-2">
+                    <label className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
                       ¿Tienes un cupón?
                     </label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]" size={18} />
                         <input
                           type="text"
                           value={couponCode}
@@ -605,18 +799,21 @@ export default function CheckoutPage() {
                       </button>
                     </div>
                     {couponError && (
-                      <p className="text-red-600 text-xs mt-2">{couponError}</p>
+                      <p className="text-xs mt-2" style={{ color: 'var(--danger-text)' }}>{couponError}</p>
                     )}
                   </div>
                 ) : (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                  <div
+                    className="rounded-xl p-3"
+                    style={{ backgroundColor: 'var(--success-bg)', border: '1px solid var(--success-border)' }}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-bold text-green-800 flex items-center gap-2">
+                        <p className="font-bold flex items-center gap-2" style={{ color: 'var(--success-text)' }}>
                           <Tag size={16} />
                           <span className="truncate">{appliedCoupon.codigo}</span>
                         </p>
-                        <p className="text-sm text-green-700 mt-1">
+                        <p className="text-sm mt-1" style={{ color: 'var(--success-text)' }}>
                           {appliedCoupon.tipo_descuento === 'porcentaje'
                             ? `${appliedCoupon.descuento}% de descuento`
                             : `$${appliedCoupon.descuento.toLocaleString('es-CO')} de descuento`}
@@ -625,7 +822,8 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={handleRemoveCoupon}
-                        className="text-red-500 hover:text-red-700 flex-shrink-0 active:scale-95 touch-feedback"
+                        className="flex-shrink-0 active:scale-95 touch-feedback"
+                        style={{ color: 'var(--danger-text)' }}
                         title="Remover cupón"
                       >
                         <X size={18} />
@@ -635,18 +833,18 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-gray-200">
-                <div className="flex justify-between text-gray-600 text-sm sm:text-base">
+              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-[color:var(--border-default)]">
+                <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
                   <span>Subtotal:</span>
                   <span>${total.toLocaleString('es-CO')}</span>
                 </div>
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-green-600 font-semibold text-sm sm:text-base">
+                  <div className="flex justify-between font-semibold text-sm sm:text-base" style={{ color: 'var(--success-text)' }}>
                     <span>Descuento:</span>
                     <span>-${discountAmount.toLocaleString('es-CO')}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600 text-sm sm:text-base">
+                <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
                   <span>Impuestos{taxConfig.activo ? ` (${taxConfig.porcentaje}%)` : ''}:</span>
                   <span>
                     {taxConfig.activo && taxConfig.porcentaje > 0
@@ -654,24 +852,34 @@ export default function CheckoutPage() {
                       : '$0'}
                   </span>
                 </div>
-                <div className="flex justify-between text-gray-600 text-sm sm:text-base">
-                  <span>Envío:</span>
-                  <span className={calculatedShippingAmount === 0 ? 'text-green-600 font-semibold' : ''}>
-                    {calculatedShippingAmount === 0
+                <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
+                  <span>Envío{envioInfo && envioInfo.sector_nombre ? ` (${envioInfo.sector_nombre})` : ''}:</span>
+                  <span
+                    className={calculatedShippingAmount === 0 ? 'font-semibold' : ''}
+                    style={calculatedShippingAmount === 0 ? { color: 'var(--success-text)' } : undefined}
+                  >
+                    {envioGratisCorresponde
                       ? 'Gratis'
-                      : `$${calculatedShippingAmount.toLocaleString('es-CO')}`}
+                      : calculatedShippingAmount === 0
+                        ? 'Gratis'
+                        : envioSectorTexto || `$${calculatedShippingAmount.toLocaleString('es-CO')}`}
                   </span>
                 </div>
+                {shippingConfig.envio_gratis_activo && Number(shippingConfig.envio_gratis_desde) > 0 && subtotalConDescuento <= Number(shippingConfig.envio_gratis_desde) && (
+                  <p className="text-xs text-[color:var(--text-muted)] italic">
+                    ¡Envío gratis si tu pedido supera ${Number(shippingConfig.envio_gratis_desde).toLocaleString('es-CO')}!
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <span className="text-base sm:text-lg font-bold text-dark">Total:</span>
+                <span className="text-base sm:text-lg font-bold text-[color:var(--text-primary)]">Total:</span>
                 <span className="text-2xl sm:text-3xl font-heading font-bold text-primary">
                   ${finalTotal.toLocaleString('es-CO')}
                 </span>
               </div>
 
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-[color:var(--text-muted)] text-center">
                 Subtotal: ${subtotal.toLocaleString('es-CO')} + Impuestos: ${taxAmount.toLocaleString('es-CO')} + Envío: ${calculatedShippingAmount.toLocaleString('es-CO')} = ${finalTotal.toLocaleString('es-CO')}
               </p>
             </div>
@@ -686,4 +894,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+ import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
 
 async function createTestCredentials() {
@@ -41,10 +41,10 @@ async function createTestCredentials() {
       [
         restauranteUserId,
         'El Sabor Giganteno',
-        'Deliciosa comida tradicional de GigantYA con los mejores ingredientes locales',
-        'Calle Principal 123, GigantYA',
+        'Deliciosa comida tradicional de Gigante con los mejores ingredientes locales',
+        'Calle Principal 123, Gigante',
         '3009876543',
-        'GigantYA, Huila',
+        'Gigante, Huila',
         '10:00:00',
         '22:00:00',
         'activo',
