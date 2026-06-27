@@ -9,6 +9,7 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
     tipo_descuento: 'porcentaje',
     fecha_expiracion: '',
     min_compra: '',
+    max_compra: '',
     usos_maximos: '',
   });
   const [error, setError] = useState('');
@@ -22,6 +23,7 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         tipo_descuento: coupon.tipo_descuento || 'porcentaje',
         fecha_expiracion: coupon.fecha_expiracion ? coupon.fecha_expiracion.split('T')[0] : '',
         min_compra: coupon.min_compra || '',
+        max_compra: coupon.max_compra || '',
         usos_maximos: coupon.usos_maximos || '',
       });
     } else {
@@ -31,6 +33,7 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         tipo_descuento: 'porcentaje',
         fecha_expiracion: '',
         min_compra: '',
+        max_compra: '',
         usos_maximos: '',
       });
     }
@@ -46,8 +49,17 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         ...formData,
         descuento: parseFloat(formData.descuento),
         min_compra: formData.min_compra ? parseFloat(formData.min_compra) : null,
+        max_compra: formData.max_compra ? parseFloat(formData.max_compra) : null,
         usos_maximos: formData.usos_maximos ? parseInt(formData.usos_maximos, 10) : null,
       };
+
+      // Validación de UI: coherencia min/max antes de enviar al server
+      if (payload.min_compra !== null && payload.max_compra !== null
+          && payload.max_compra < payload.min_compra) {
+        setError('El monto máximo debe ser mayor o igual al monto mínimo');
+        setLoading(false);
+        return;
+      }
 
       if (coupon) {
         await couponService.update(coupon.id, payload);
@@ -133,7 +145,7 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-[color:var(--text-secondary)] mb-1">Mín. Compra</label>
                 <input
@@ -144,6 +156,18 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
                   onChange={(e) => setFormData({ ...formData, min_compra: e.target.value })}
                   className="w-full px-3 py-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                   placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[color:var(--text-secondary)] mb-1">Máx. Compra</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.max_compra}
+                  onChange={(e) => setFormData({ ...formData, max_compra: e.target.value })}
+                  className="w-full px-3 py-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="Sin tope"
                 />
               </div>
               <div>
@@ -228,6 +252,12 @@ function CouponCard({ coupon, onEdit, onDelete }) {
               <div className="flex items-center gap-1">
                 <DollarSign size={14} />
                 <span>Mín: ${Number(coupon.min_compra).toLocaleString('es-CO')}</span>
+              </div>
+            )}
+            {coupon.max_compra && (
+              <div className="flex items-center gap-1">
+                <DollarSign size={14} />
+                <span>Máx: ${Number(coupon.max_compra).toLocaleString('es-CO')}</span>
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 import express from 'express';
 import * as paymentController from '../controllers/paymentController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
-import { upload } from '../middleware/uploadMiddleware.js';
+import { createUploader } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -24,7 +24,13 @@ router.put('/config', verifyToken, paymentController.updatePaymentConfig);
  * @desc    Subir comprobante de pago (Nequi/Daviplata)
  * @access  Private - Client
  */
-router.post('/proof', verifyToken, upload.single('comprobante'), paymentController.uploadPaymentProof);
+// Comprobantes van a uploads/payment-proofs/ para mantener backups separados.
+const uploadPaymentProof = createUploader({
+  subdir: 'payment-proofs',
+  allowedTypes: /jpeg|jpg|png|webp|svg/,
+  maxSize: 5 * 1024 * 1024,
+});
+router.post('/proof', verifyToken, uploadPaymentProof.single('comprobante'), paymentController.uploadPaymentProof);
 
 /**
  * @route   GET /api/payments/proof/:pedido_id

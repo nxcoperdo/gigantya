@@ -29,7 +29,17 @@ export async function verifyToken(req, res, next) {
       });
     }
 
-    req.user = decoded;
+    // Mezclar datos frescos del usuario (estado, rol) en `req.user` para que
+    // cualquier middleware/controller posterior vea cambios de rol/suspensión
+    // sin esperar a que el JWT expire (default 7 días). Mantenemos `iat`/`exp`
+    // del JWT original porque son la fuente de verdad sobre la sesión.
+    req.user = {
+      ...decoded,
+      estado: usuario.estado,
+      // Si el admin cambió el rol del usuario, respetamos el rol fresco de la DB
+      // salvo si viene undefined (defensa por si la query devolvió algo raro).
+      tipo_usuario: usuario.tipo_usuario || decoded.tipo_usuario,
+    };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

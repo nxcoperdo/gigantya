@@ -6,7 +6,7 @@ import * as RestaurantModel from '../models/Restaurant.js';
  */
 export async function createCoupon(req, res) {
   try {
-    const { codigo, descuento, tipo_descuento, fecha_expiracion, min_compra, usos_maximos } = req.body;
+    const { codigo, descuento, tipo_descuento, fecha_expiracion, min_compra, max_compra, usos_maximos } = req.body;
 
     // Verificar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
@@ -29,6 +29,15 @@ export async function createCoupon(req, res) {
       return res.status(400).json({ error: 'Campos requeridos: codigo, descuento, tipo_descuento' });
     }
 
+    // Validar rango min/max coherente: si ambos vienen, max debe ser >= min.
+    if (min_compra !== undefined && min_compra !== null
+        && max_compra !== undefined && max_compra !== null
+        && Number(max_compra) < Number(min_compra)) {
+      return res.status(400).json({
+        error: 'El monto máximo debe ser mayor o igual al monto mínimo'
+      });
+    }
+
     const couponId = await CouponModel.createCoupon({
       restaurante_id: restaurante.id,
       codigo,
@@ -38,7 +47,8 @@ export async function createCoupon(req, res) {
       // undefined a la query. Ahora la fecha de expiración se guarda
       // correctamente y el cupón puede ser limitado en el tiempo.
       fecha_expiracion,
-      min_compra,
+      min_compra: min_compra ?? null,
+      max_compra: max_compra ?? null,
       usos_maximos
     });
 

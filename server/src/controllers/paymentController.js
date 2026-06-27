@@ -3,18 +3,9 @@ import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
 import * as NotificationModel from '../models/Notification.js';
 import notificationService from '../services/notificationService.js';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const UPLOADS_DIR = path.resolve(__dirname, '../../uploads/payment-proofs');
-
-// Asegurar que la carpeta exista
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+// Nota: la carpeta `uploads/payment-proofs/` se crea automáticamente al
+// inicializar `createUploader({ subdir: 'payment-proofs' })` en paymentRoutes.js.
 
 /**
  * Obtener configuración de pagos del restaurante (Nequi/Daviplata)
@@ -130,7 +121,7 @@ export async function uploadPaymentProof(req, res) {
       return res.status(400).json({ error: 'Debe subir un comprobante de pago' });
     }
 
-    const url_imagen = `/uploads/${req.file.filename}`;
+    const url_imagen = `/uploads/payment-proofs/${req.file.filename}`;
 
     // Verificar si ya existe un comprobante para este pedido
     const existingProof = await PaymentProofModel.getProofByOrderId(pedido_id);

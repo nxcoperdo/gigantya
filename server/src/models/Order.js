@@ -492,8 +492,11 @@ export async function getOrderById(id) {
         : restaurantData.configuracion_impuestos)
     : { activo: true, porcentaje: 8 };
 
-  // Si hay cupón, considerar el descuento
+  // Si hay cupón, considerar el descuento del cupón como fuente de verdad.
+  // Si NO hay cupón, calcular el descuento como delta contra el total guardado
+  // (cubre descuentos manuales o redondeos aplicados al crear el pedido).
   let descuento = 0;
+  let descuentoDesdeCupon = false;
   if (pedido.cupon_id) {
     const [couponData] = await query(
       'SELECT descuento, tipo_descuento FROM cupones WHERE id = ?',
@@ -506,15 +509,20 @@ export async function getOrderById(id) {
         descuento = Number(couponData.descuento);
       }
       descuento = Math.min(descuento, subtotal);
+      descuentoDesdeCupon = true;
     }
   }
 
   const subtotalConDescuento = subtotal - descuento;
   const impuestoPorcentaje = (taxConfig.activo && taxConfig.porcentaje > 0) ? Number(taxConfig.porcentaje) : 0;
   const impuestos = subtotalConDescuento * (impuestoPorcentaje / 100);
-  // descuento efectivo: si el total guardado es menor a subtotal + impuestos + envío
-  const totalEsperadoSinDescuento = subtotal + impuestos + costoEnvio;
-  descuento = Math.max(0, totalEsperadoSinDescuento - totalConImpuestos);
+
+  // Solo recalcular el descuento por delta si NO viene del cupón, para no
+  // pisar el valor del cupón (que es la fuente de verdad cuando está aplicado).
+  if (!descuentoDesdeCupon) {
+    const totalEsperadoSinDescuento = subtotal + impuestos + costoEnvio;
+    descuento = Math.max(0, totalEsperadoSinDescuento - totalConImpuestos);
+  }
 
   // Agregar descuento al objeto pedido
   pedido.subtotal = subtotal;
