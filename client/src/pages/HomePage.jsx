@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, Clock } from 'lucide-react';
+import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, Clock, Truck } from 'lucide-react';
 import { restaurantService, preferenceService, categoryService, productService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, IMAGE_DEFAULT_ATTRS } from '../utils/imageHelper';
@@ -12,6 +12,10 @@ import RecentSearches from '../components/RecentSearches';
 // Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
 const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
   const isOpen = isRestaurantOpen(restaurant.horario_apertura, restaurant.horario_cierre);
+  // Detección robusta: la API puede devolver 1/0, true/false o undefined.
+  const ofreceDomicilio = restaurant.ofrece_domicilio === undefined
+    ? true
+    : Boolean(Number(restaurant.ofrece_domicilio));
   return (
     <Link
       to={`/restaurant/${restaurant.id}`}
@@ -70,6 +74,21 @@ const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
             <div className="flex items-center gap-1 flex-shrink-0">
               <span className="text-xs">🕐</span>
               <span>{restaurant.horario_apertura?.slice(0, 5)} - {restaurant.horario_cierre?.slice(0, 5)}</span>
+            </div>
+          )}
+          {/* Pill "Solo recoge en local" — solo aparece si el restaurante
+              desactivó domicilios desde su dashboard. */}
+          {!ofreceDomicilio && (
+            <div
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold flex-shrink-0"
+              style={{
+                backgroundColor: 'var(--bg-muted)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              <Store size={11} />
+              Solo recoge en local
             </div>
           )}
         </div>
@@ -210,7 +229,10 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [filtering, setFiltering] = useState(false);
   const [viewMode, setViewMode] = useState('restaurants'); // 'restaurants' | 'products'
-
+  // Filtro de modalidad de servicio en la sección "Restaurantes Destacados":
+  //   'con_domicilio'   → muestra solo restaurantes con ofrece_domicilio = 1 (default)
+  //   'sin_domicilio'   → muestra solo restaurantes con ofrece_domicilio = 0
+  const [domicilioFilter, setDomicilioFilter] = useState('con_domicilio');
   useEffect(() => {
     // Redirigir restaurantes al dashboard
     if (isAuthenticated && user?.tipo_usuario === 'restaurante') {
@@ -228,9 +250,9 @@ export default function HomePage() {
     loadSearchHistory();
   }, [isAuthenticated, user, navigate]);
 
-  // Cuando cambia la categoría o el modo de vista, recargamos la lista
-  // correspondiente. El backend ya devuelve los datos ordenados
-  // premium → profesional → basico, así que no re-ordenamos en cliente.
+  // Cuando cambia la categoría, el modo de vista o el filtro de modalidad,
+  // recargamos la lista correspondiente. El backend ya devuelve los datos
+  // ordenados premium → profesional → basico, así que no re-ordenamos en cliente.
   useEffect(() => {
     if (viewMode === 'restaurants') {
       loadRestaurants();
@@ -238,7 +260,7 @@ export default function HomePage() {
       loadProductos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, viewMode]);
+  }, [selectedCategory, viewMode, domicilioFilter]);
 
   const loadRestaurants = useCallback(async ({ preserveSpinner = false } = {}) => {
     try {
@@ -247,9 +269,13 @@ export default function HomePage() {
       } else {
         setLoading(true);
       }
-      const response = await restaurantService.getAll({
-        ...(selectedCategory ? { categoria: selectedCategory } : {})
-      });
+      // Mapeamos el toggle de la UI al filtro que espera la API.
+      const params = {};
+      if (selectedCategory) params.categoria = selectedCategory;
+      if (domicilioFilter === 'con_domicilio') params.ofrece_domicilio = true;
+      else if (domicilioFilter === 'sin_domicilio') params.ofrece_domicilio = false;
+
+      const response = await restaurantService.getAll(params);
       setRestaurants(response.data.restaurantes || []);
       setError(null);
     } catch (err) {
@@ -259,7 +285,7 @@ export default function HomePage() {
       setLoading(false);
       setFiltering(false);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, domicilioFilter]);
 
   const loadProductos = useCallback(async ({ preserveSpinner = false } = {}) => {
     try {
@@ -366,6 +392,10 @@ export default function HomePage() {
     if (mode !== viewMode) setViewMode(mode);
   }, [viewMode]);
 
+  const handleChangeDomicilioFilter = useCallback((value) => {
+    if (value !== domicilioFilter) setDomicilioFilter(value);
+  }, [domicilioFilter]);
+
   const clearHistory = useCallback(async () => {
     try {
       await preferenceService.clearSearchHistory();
@@ -432,12 +462,46 @@ export default function HomePage() {
         {/* Section Header */}
         <div className="mb-8 sm:mb-10 md:mb-12">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-[color:var(--text-primary)] mb-2 sm:mb-3">
-            Restaurantes Destacados
+            {domicilioFilter === 'sin_domicilio'
+              ? 'Recoge en Local'
+              : 'Restaurantes Destacados'}
           </h2>
           <div className="w-16 sm:w-20 h-1 bg-gradient-primary rounded-full"></div>
           <p className="mt-3 sm:mt-4 text-[color:var(--text-secondary)] text-sm sm:text-base md:text-lg">
-            Ordena con confianza desde los mejores restaurantes del pueblo
+            {domicilioFilter === 'sin_domicilio'
+              ? 'Restaurantes que solo reciben pedidos para recoger directamente en su local.'
+              : 'Ordena con confianza desde los mejores restaurantes del pueblo'}
           </p>
+        </div>
+
+        {/* Toggle: Con domicilios | Solo recoge en local */}
+        <div className="mb-6 sm:mb-8 inline-flex bg-[color:var(--bg-muted)] rounded-full p-1 self-start">
+          <button
+            type="button"
+            onClick={() => handleChangeDomicilioFilter('con_domicilio')}
+            aria-pressed={domicilioFilter === 'con_domicilio'}
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-sm sm:text-base font-semibold transition-all duration-300 ${
+              domicilioFilter === 'con_domicilio'
+                ? 'bg-[color:var(--bg-elevated)] text-primary shadow'
+                : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
+            }`}
+          >
+            <Truck size={16} />
+            Con domicilios
+          </button>
+          <button
+            type="button"
+            onClick={() => handleChangeDomicilioFilter('sin_domicilio')}
+            aria-pressed={domicilioFilter === 'sin_domicilio'}
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-sm sm:text-base font-semibold transition-all duration-300 ${
+              domicilioFilter === 'sin_domicilio'
+                ? 'bg-[color:var(--bg-elevated)] text-primary shadow'
+                : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
+            }`}
+          >
+            <Store size={16} />
+            Solo recoge en local
+          </button>
         </div>
 
         {error && (
@@ -458,6 +522,60 @@ export default function HomePage() {
               {featuredBanners.map((res) => (
                 <FeaturedBanner key={`banner-2-${res.id}`} restaurant={res} keyPrefix="banner-2" />
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Banner contextual: aparece solo cuando el filtro es "Solo recoge en local"
+            para reforzar visualmente la modalidad, igual que el banner de premium.
+            Lo mostramos aunque NO haya resultados — el banner explica por qué. */}
+        {domicilioFilter === 'sin_domicilio' && (
+          <div
+            className="mb-8 sm:mb-10 md:mb-12 rounded-2xl overflow-hidden border-2 border-dashed animate-fadeIn"
+            style={{
+              backgroundColor: 'var(--bg-muted)',
+              borderColor: 'var(--border-default)',
+            }}
+          >
+            <div className="px-5 sm:px-8 py-5 sm:py-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+              <div
+                className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center"
+                style={{
+                  backgroundColor: 'var(--bg-elevated)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <Store size={28} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h3 className="text-base sm:text-lg md:text-xl font-heading font-bold text-[color:var(--text-primary)]">
+                    Restaurantes solo para recoger en local
+                  </h3>
+                  <span
+                    className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full uppercase"
+                    style={{
+                      backgroundColor: 'var(--bg-elevated)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  >
+                    {filteredRestaurants.length} {filteredRestaurants.length === 1 ? 'restaurante' : 'restaurantes'}
+                  </span>
+                </div>
+                <p className="text-[color:var(--text-secondary)] text-sm sm:text-base">
+                  Estos restaurantes ofrecen una experiencia 100% pickup: mira su menu y pidelo directamente en el local. No se procesan pedidos a domicilio.
+                </p>
+              </div>
+              {/* Botón para volver al filtro de domicilios — atajo visual */}
+              <button
+                type="button"
+                onClick={() => handleChangeDomicilioFilter('con_domicilio')}
+                className="btn btn-primary self-stretch sm:self-auto inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-semibold whitespace-nowrap"
+              >
+                <Truck size={16} />
+                Ver con domicilios
+              </button>
             </div>
           </div>
         )}
@@ -562,15 +680,29 @@ export default function HomePage() {
                   ? 'No se encontraron restaurantes'
                   : selectedCategory
                     ? `No hay restaurantes con ${selectedCategory}`
-                    : 'No hay restaurantes disponibles'}
+                    : domicilioFilter === 'sin_domicilio'
+                      ? 'Aún no hay restaurantes con modalidad solo recoge en local'
+                      : 'No hay restaurantes disponibles'}
               </h3>
               <p className="text-[color:var(--text-secondary)] text-sm sm:text-base">
                 {searchTerm
                   ? 'Intenta con otros términos de búsqueda'
                   : selectedCategory
                     ? 'Prueba con otra categoría'
-                    : 'Vuelve pronto para más opciones'}
+                    : domicilioFilter === 'sin_domicilio'
+                      ? 'Vuelve pronto, o explora los restaurantes con domicilios.'
+                      : 'Vuelve pronto para más opciones'}
               </p>
+              {domicilioFilter === 'sin_domicilio' && !searchTerm && !selectedCategory && (
+                <button
+                  type="button"
+                  onClick={() => handleChangeDomicilioFilter('con_domicilio')}
+                  className="mt-4 btn btn-primary inline-flex items-center gap-1.5"
+                >
+                  <Truck size={16} />
+                  Ver restaurantes con domicilios
+                </button>
+              )}
               {selectedCategory && !searchTerm && (
                 <button
                   type="button"

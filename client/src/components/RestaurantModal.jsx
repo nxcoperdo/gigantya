@@ -11,6 +11,9 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
     horario_apertura: '',
     horario_cierre: '',
     imagen_url: '',
+    // Modalidad de servicio: true → ofrece domicilios, false → solo recoge en local.
+    // Default true para mantener compatibilidad con restaurantes existentes.
+    ofrece_domicilio: true,
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
@@ -31,6 +34,10 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         horario_cierre: restaurant.horario_cierre || '',
         imagen_url: restaurant.imagen_url || '',
         banner_url: restaurant.banner_url || '',
+        // Normalizamos 1/0/true/false a boolean (la API puede devolver 0/1).
+        ofrece_domicilio: restaurant.ofrece_domicilio === undefined
+          ? true
+          : Boolean(Number(restaurant.ofrece_domicilio)),
       });
       setImagePreview(restaurant.imagen_url || '');
       setBannerPreview(restaurant.banner_url || '');
@@ -46,6 +53,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         horario_cierre: '',
         imagen_url: '',
         banner_url: '',
+        ofrece_domicilio: true,
       });
       setImagePreview('');
       setBannerPreview('');
@@ -261,6 +269,37 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                   className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 />
               </div>
+            </div>
+
+            {/* Modalidad de servicio: switch accesible para ofrecer o no domicilios. */}
+            <div className="p-3 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-subtle)]/40">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={formData.ofrece_domicilio}
+                  onClick={() => setFormData(prev => ({ ...prev, ofrece_domicilio: !prev.ofrece_domicilio }))}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors mt-0.5 ${
+                    formData.ofrece_domicilio ? 'bg-primary' : 'bg-[color:var(--border-default)]'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.ofrece_domicilio ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-[color:var(--text-primary)]">
+                    Ofrece servicio a domicilio
+                  </span>
+                  <span className="block text-xs text-[color:var(--text-muted)] mt-0.5">
+                    {formData.ofrece_domicilio
+                      ? 'Los clientes pueden pedir y recibir su pedido en su domicilio.'
+                      : 'Los clientes solo pueden recoger su pedido directamente en tu local.'}
+                  </span>
+                </div>
+              </label>
             </div>
 
             {restaurant?.plan === 'premium' && (

@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { zonaService } from '../services/api';
 import { MapPin, AlertCircle, ChevronDown } from 'lucide-react';
-import AddressAutocomplete from '../components/AddressAutocomplete';
+// Sin AddressAutocomplete ni AddressMapPicker: el usuario escribe la dirección
+// como texto libre. El restaurante la geocodifica en el iframe de embed si no
+// hay coordenadas (AddressMapPreview.jsx hace fallback por texto).
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -19,11 +21,6 @@ export default function RegisterPage() {
     sector_id: '',
     barrio_id: '',
     notas: '',
-    // Campos opcionales de Google Maps
-    latitud: null,
-    longitud: null,
-    direccion_formateada: '',
-    place_id: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -107,13 +104,10 @@ export default function RegisterPage() {
       return;
     }
 
-    // `barrio_id` ahora es OPCIONAL: si el cliente usó Google Maps (con lat/lng),
-    // el backend puede geocodificar el sector. Si no, exigimos barrio.
-    const tieneCoordenadas =
-      formData.latitud !== null && formData.latitud !== undefined &&
-      formData.longitud !== null && formData.longitud !== undefined;
-    if (!formData.barrio_id && !tieneCoordenadas) {
-      setError('Selecciona un barrio del menú o usa el buscador de Google Maps para fijar tu dirección');
+    // Barrio es obligatorio para poder calcular el envío (la API de zonas
+    // necesita un barrio_id válido).
+    if (!formData.barrio_id) {
+      setError('Selecciona un barrio del menú para fijar tu dirección');
       setLoading(false);
       return;
     }
@@ -132,11 +126,14 @@ export default function RegisterPage() {
         ciudad: formData.ciudad.trim() || 'Gigante, Huila',
         barrio_id: formData.barrio_id ? Number(formData.barrio_id) : null,
         notas: formData.notas?.trim() || null,
-        // Campos opcionales de Maps
-        latitud: tieneCoordenadas ? Number(formData.latitud) : null,
-        longitud: tieneCoordenadas ? Number(formData.longitud) : null,
-        direccion_formateada: formData.direccion_formateada || null,
-        place_id: formData.place_id || null,
+        // Sin autocompletado de mapa: el cliente tipea la dirección como texto
+        // libre. El restaurante la ve en el detalle del pedido y la geocodifica
+        // automáticamente en el iframe de embed de Google Maps
+        // (AddressMapPreview.jsx hace fallback por texto).
+        latitud: null,
+        longitud: null,
+        direccion_formateada: null,
+        place_id: null,
       };
       await register(payload);
       navigate('/');
@@ -260,28 +257,16 @@ export default function RegisterPage() {
             <label className="block text-sm font-semibold mb-1.5">
               Dirección (calle/carrera/número)
             </label>
-            <AddressAutocomplete
-              id="direccion-input"
+            <input
+              type="text"
               name="direccion"
               value={formData.direccion}
-              onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
-              onPlaceSelected={(place) => {
-                setFormData(prev => ({
-                  ...prev,
-                  direccion: place.direccion,
-                  direccion_formateada: place.direccion_formateada,
-                  latitud: place.latitud,
-                  longitud: place.longitud,
-                  place_id: place.place_id,
-                  ciudad: place.ciudad || prev.ciudad,
-                }));
-              }}
+              onChange={handleChange}
+              className="input"
               placeholder="Calle 5 #12-45, Gigante, Huila"
+              autoComplete="street-address"
               required
             />
-            <p className="text-xs text-[color:var(--text-muted)] mt-1">
-              Escribe tu dirección y agrega <strong className="text-[color:var(--text-secondary)]">Gigante, Huila</strong> al final para fijar el pin exacto (recomendado). También puedes escribir manualmente y elegir sector/barrio abajo.
-            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

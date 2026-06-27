@@ -168,7 +168,7 @@ export async function adminCreateUser(req, res) {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
 
-    const { nombre, email, password, tipo_usuario, telefono, documento_identidad } = req.body;
+    const { nombre, email, password, tipo_usuario, telefono, documento_identidad, ofrece_domicilio } = req.body;
 
     if (!nombre || !email || !password || !tipo_usuario) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -196,6 +196,12 @@ export async function adminCreateUser(req, res) {
 
       // Si es restaurante, crear también la entrada en la tabla restaurantes
       if (tipo_usuario === 'restaurante') {
+        // Default `true` para mantener compatibilidad con la migración previa.
+        // El admin puede haber elegido `false` desde el modal si quiere crear
+        // un local que solo ofrece recogida en local desde el inicio.
+        const ofreceDomicilioInicial = ofrece_domicilio === undefined
+          ? true
+          : Boolean(ofrece_domicilio);
         await RestaurantModel.createRestaurantWithConnection({
           usuario_id: userId,
           nombre: nombre,
@@ -205,9 +211,10 @@ export async function adminCreateUser(req, res) {
           horario_apertura: '09:00',
           horario_cierre: '21:00',
           imagen_url: null,
-          ciudad: 'Gigante, Huila'
+          ciudad: 'Gigante, Huila',
+          ofrece_domicilio: ofreceDomicilioInicial,
         }, connection);
-        logger.info(`Admin creó restaurante pendiente para usuario ${email}`);
+        logger.info(`Admin creó restaurante pendiente para usuario ${email} (ofrece_domicilio=${ofreceDomicilioInicial})`);
       }
 
       await connection.commit();
@@ -635,6 +642,48 @@ export async function updateRestaurantConfig(req, res) {
 }
 
 /**
+ * Cambiar la modalidad de un restaurante entre "ofrece domicilio" y "solo
+ * recoge en local". Endpoint dedicado (en vez de un genérico PUT) para
+ * mantener consistencia con /plan y /config y para registrar el cambio en
+ * logs.
+ */
+export async function updateRestaurantDomicilio(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar la modalidad' });
+    }
+
+    const { id } = req.params;
+    const { ofrece_domicilio } = req.body;
+
+    if (ofrece_domicilio === undefined || ofrece_domicilio === null) {
+      return res.status(400).json({ error: 'El campo "ofrece_domicilio" es requerido' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Restaurante no encontrado' });
+    }
+
+    // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
+    const nuevoValor = Boolean(ofrece_domicilio);
+
+    await RestaurantModel.updateRestaurant(id, { ofrece_domicilio: nuevoValor });
+
+    logger.info(`Admin ${req.user.id} cambió modalidad del restaurante ${id} a ofrece_domicilio=${nuevoValor}`);
+
+    res.json({
+      mensaje: 'Modalidad de servicio actualizada',
+      restaurante_id: id,
+      ofrece_domicilio: nuevoValor,
+    });
+  } catch (error) {
+    console.error('Error actualizando modalidad:', error);
+    res.status(500).json({ error: 'Error actualizando modalidad', detalles: error.message });
+  }
+}
+
+/**
  * Historial de suscripciones de un restaurante.
  */
 export async function getRestaurantSubscriptionHistory(req, res) {
@@ -668,4 +717,5 @@ export default {
   updateRestaurantPlan,
   getRestaurantSubscriptionHistory,
   updateRestaurantConfig,
+  updateRestaurantDomicilio,
 };

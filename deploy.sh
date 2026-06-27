@@ -51,6 +51,16 @@ cd "$APP_DIR/server"
 npm install --production
 echo -e "${GREEN}   ✅ Dependencias backend instaladas${NC}"
 
+# 3b. Aplicar migraciones de base de datos (Knex)
+# Si no hay migraciones nuevas, knex migrate:latest termina con código 0 y sin cambios.
+echo -e "${YELLOW}🗄️  [3b/7] Aplicando migraciones de base de datos...${NC}"
+if [ -d "$APP_DIR/server/migrations" ] && [ -n "$(ls -A "$APP_DIR/server/migrations"/*.js 2>/dev/null)" ]; then
+    npx knex migrate:latest --knexfile knexfile.js
+    echo -e "${GREEN}   ✅ Migraciones aplicadas${NC}"
+else
+    echo -e "${YELLOW}   ⚠️  No hay migraciones Knex, saltando${NC}"
+fi
+
 # 4. Restaurar .env si se respaldó
 if [ -f "$BACKUP_DIR/env_backup_$TIMESTAMP" ]; then
     cp "$BACKUP_DIR/env_backup_$TIMESTAMP" "$APP_DIR/server/.env"

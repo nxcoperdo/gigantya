@@ -52,6 +52,21 @@ export async function createOrder(req, res) {
       });
     }
 
+    // Bloqueo de seguridad: si el restaurante está marcado como "solo recoge
+    // en local", no aceptamos pedidos. La home pública ya filtra este caso y
+    // el frontend deshabilita el botón "Agregar", pero dejamos esta guarda
+    // para que un cliente con carrito viejo o un script externo no pueda
+    // saltarse la restricción. El `Number(...)` cubre tanto 1/0 (tinyint de
+    // MySQL) como boolean nativo.
+    const ofreceDomicilio = restaurante.ofrece_domicilio === undefined
+      ? true
+      : Boolean(Number(restaurante.ofrece_domicilio));
+    if (!ofreceDomicilio) {
+      return res.status(400).json({
+        error: 'Este restaurante solo ofrece recogida en local. No procesa pedidos a domicilio.'
+      });
+    }
+
     // Validar método de pago
     const validPaymentMethods = ['contra_entrega', 'nequi', 'daviplata', 'bre_b'];
     const paymentMethod = metodo_pago || 'contra_entrega';

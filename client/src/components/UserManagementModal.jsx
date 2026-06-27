@@ -9,7 +9,10 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
     password: '',
     tipo_usuario: 'cliente',
     telefono: '',
-    documento_identidad: ''
+    documento_identidad: '',
+    // Modalidad de servicio (solo aplica cuando tipo_usuario === 'restaurante').
+    // El backend lo normaliza a boolean y lo guarda en `restaurantes.ofrece_domicilio`.
+    ofrece_domicilio: true,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,10 +22,24 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
     if (isOpen) {
       if (userToEdit) {
         setIsEditing(true);
-        setUser({ ...userToEdit });
+        // Normalizar `ofrece_domicilio` que viene del backend (puede ser 1/0/true/false).
+        setUser({
+          ...userToEdit,
+          ofrece_domicilio: userToEdit.ofrece_domicilio === undefined
+            ? true
+            : Boolean(Number(userToEdit.ofrece_domicilio)),
+        });
       } else {
         setIsEditing(false);
-        setUser({ nombre: '', email: '', password: '', tipo_usuario: 'cliente', telefono: '', documento_identidad: '' });
+        setUser({
+          nombre: '',
+          email: '',
+          password: '',
+          tipo_usuario: 'cliente',
+          telefono: '',
+          documento_identidad: '',
+          ofrece_domicilio: true,
+        });
       }
     }
   }, [userToEdit, isOpen]);
@@ -31,7 +48,15 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
 
   const handleClose = () => {
     setIsEditing(false);
-    setUser({ nombre: '', email: '', password: '', tipo_usuario: 'cliente', telefono: '', documento_identidad: '' });
+    setUser({
+      nombre: '',
+      email: '',
+      password: '',
+      tipo_usuario: 'cliente',
+      telefono: '',
+      documento_identidad: '',
+      ofrece_domicilio: true,
+    });
     setError('');
     onClose();
   };
@@ -137,6 +162,39 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
               />
             </div>
           </div>
+
+          {/* Modalidad de servicio: solo aplica cuando el rol es restaurante. */}
+          {user.tipo_usuario === 'restaurante' && (
+            <div className="p-3 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-subtle)]/40">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={Boolean(user.ofrece_domicilio)}
+                  onClick={() => setUser(prev => ({ ...prev, ofrece_domicilio: !prev.ofrece_domicilio }))}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors mt-0.5 ${
+                    user.ofrece_domicilio ? 'bg-primary' : 'bg-[color:var(--border-default)]'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      user.ofrece_domicilio ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-[color:var(--text-primary)]">
+                    Ofrece servicio a domicilio
+                  </span>
+                  <span className="block text-xs text-[color:var(--text-muted)] mt-0.5">
+                    {user.ofrece_domicilio
+                      ? 'El restaurante podrá recibir pedidos a domicilio.'
+                      : 'El restaurante solo podrá ofrecer recogida en local (menú visible, sin carrito).'}
+                  </span>
+                </div>
+              </label>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <button

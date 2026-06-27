@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // `host: true` permite acceder desde otras IPs de la red local
+    // (ej. http://192.168.x.x:5173 desde un celular en la misma WiFi).
+    // Útil para probar Places/Maps en dispositivos móviles sin desplegar.
+    host: true,
     open: true
   },
   build: {

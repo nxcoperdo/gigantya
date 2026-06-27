@@ -35,6 +35,8 @@ export default function AdminDashboardPage() {
   // Modal para configurar impuestos y envíos
   const [isTaxShippingModalOpen, setIsTaxShippingModalOpen] = useState(false);
   const [restaurantToConfig, setRestaurantToConfig] = useState(null);
+  // ID del restaurante cuyo toggle de modalidad se está actualizando (para spinner inline)
+  const [updatingDomicilioId, setUpdatingDomicilioId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -120,6 +122,26 @@ export default function AdminDashboardPage() {
       }
     } else {
       setPlanModal({ isOpen: true, restaurantId, plan: newPlan });
+    }
+  };
+
+  // Cambia en línea si un restaurante ofrece domicilio o solo recoge en local.
+  // Refleja el cambio optimista en el state local y, si la API falla, revierte.
+  const handleToggleDomicilio = async (restaurantId, currentValue) => {
+    const nuevoValor = !currentValue;
+    const snapshot = restaurants;
+    // Optimista: actualizamos la fila al instante para que la UI no parpadee.
+    setRestaurants(prev => prev.map(r => r.id === restaurantId ? { ...r, ofrece_domicilio: nuevoValor ? 1 : 0 } : r));
+    setUpdatingDomicilioId(restaurantId);
+    try {
+      setError('');
+      await adminService.updateRestaurantDomicilio(restaurantId, nuevoValor);
+    } catch (err) {
+      // Revertir si falló.
+      setRestaurants(snapshot);
+      setError(err.response?.data?.error || 'Error al cambiar la modalidad');
+    } finally {
+      setUpdatingDomicilioId(null);
     }
   };
 
@@ -430,6 +452,7 @@ export default function AdminDashboardPage() {
                       <th className="px-6 py-3">Restaurante</th>
                       <th className="px-6 py-3">Estado</th>
                       <th className="px-6 py-3">Aprobación</th>
+                      <th className="px-6 py-3">Modalidad</th>
                       <th className="px-6 py-3">Plan</th>
                       <th className="px-6 py-3">Vence</th>
                       <th className="px-6 py-3 text-right">Acciones</th>
@@ -437,75 +460,116 @@ export default function AdminDashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {restaurants.length === 0 ? (
-                      <tr><td colSpan="6" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay restaurantes registrados.</td></tr>
+                      <tr><td colSpan="7" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay restaurantes registrados.</td></tr>
                     ) : (
-                      restaurants.map(res => (
-                        <tr key={res.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-[color:var(--text-primary)]">{res.nombre}</p>
-                            <p className="text-xs text-[color:var(--text-muted)]">{res.email || 'Sin email'}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                            className="text-xs font-bold px-2 py-1 rounded-full"
-                            style={res.estado === 'activo'
-                              ? { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
-                              : { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
-                            }
-                          >
-                            {res.estado}
-                          </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                            className="text-xs font-bold px-2 py-1 rounded-full"
-                            style={res.aprobado === 1
-                              ? { backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }
-                              : { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
-                            }
-                          >
-                            {res.aprobado === 1 ? 'Aprobado' : 'Pendiente'}
-                          </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <select
-                              value={res.plan || 'basico'}
-                              onChange={(e) => handleUpdatePlan(res.id, e.target.value)}
-                              className="text-xs p-1 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded outline-none"
+                      restaurants.map(res => {
+                        // Normalizar `ofrece_domicilio` que llega como 1/0/true/false.
+                        const ofreceDomicilio = res.ofrece_domicilio === undefined
+                          ? true
+                          : Boolean(Number(res.ofrece_domicilio));
+                        const isUpdatingDomicilio = updatingDomicilioId === res.id;
+                        return (
+                          <tr key={res.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="font-semibold text-[color:var(--text-primary)]">{res.nombre}</p>
+                              <p className="text-xs text-[color:var(--text-muted)]">{res.email || 'Sin email'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                              className="text-xs font-bold px-2 py-1 rounded-full"
+                              style={res.estado === 'activo'
+                                ? { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
+                                : { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
+                              }
                             >
-                              <option value="basico">🥉 Básico</option>
-                              <option value="profesional">🥈 Profesional</option>
-                              <option value="premium">🥇 Premium</option>
-                            </select>
-                          </td>
-                          <td className="px-6 py-4 text-xs text-[color:var(--text-secondary)]">
-                            {res.fecha_vencimiento_plan
-                              ? new Date(res.fecha_vencimiento_plan).toLocaleDateString('es-CO')
-                              : <span className="text-[color:var(--text-subtle)]">—</span>}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => {
-                                  setRestaurantToConfig(res);
-                                  setIsTaxShippingModalOpen(true);
-                                }}
-                                className="p-2 text-primary hover:bg-primary/10 rounded-lg"
-                                title="Configurar impuestos y envíos"
+                              {res.estado}
+                            </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                              className="text-xs font-bold px-2 py-1 rounded-full"
+                              style={res.aprobado === 1
+                                ? { backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }
+                                : { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
+                              }
+                            >
+                              {res.aprobado === 1 ? 'Aprobado' : 'Pendiente'}
+                            </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {/* Toggle inline: cambia la modalidad del restaurante sin recargar.
+                                  ON = domicilios, OFF = solo recoge en local. */}
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={ofreceDomicilio}
+                                  disabled={isUpdatingDomicilio}
+                                  onClick={() => handleToggleDomicilio(res.id, ofreceDomicilio)}
+                                  title={ofreceDomicilio ? 'Ofrece servicio a domicilio' : 'Solo recoge en local'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                    ofreceDomicilio ? 'bg-primary' : 'bg-[color:var(--border-default)]'
+                                  } ${isUpdatingDomicilio ? 'opacity-50 cursor-wait' : ''}`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      ofreceDomicilio ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-semibold text-[color:var(--text-secondary)] whitespace-nowrap">
+                                  {ofreceDomicilio ? (
+                                    <span className="inline-flex items-center gap-1 text-primary">
+                                      <Truck size={12} /> Domicilios
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                                      <Store size={12} /> Solo local
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <select
+                                value={res.plan || 'basico'}
+                                onChange={(e) => handleUpdatePlan(res.id, e.target.value)}
+                                className="text-xs p-1 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded outline-none"
                               >
-                                <Percent size={18} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteUser(res.usuario_id)}
-                                className="p-2 rounded-lg"
-                                style={{ color: 'var(--danger-text)' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                              ><Trash2 size={18} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                                <option value="basico">🥉 Básico</option>
+                                <option value="profesional">🥈 Profesional</option>
+                                <option value="premium">🥇 Premium</option>
+                              </select>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-[color:var(--text-secondary)]">
+                              {res.fecha_vencimiento_plan
+                                ? new Date(res.fecha_vencimiento_plan).toLocaleDateString('es-CO')
+                                : <span className="text-[color:var(--text-subtle)]">—</span>}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setRestaurantToConfig(res);
+                                    setIsTaxShippingModalOpen(true);
+                                  }}
+                                  className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+                                  title="Configurar impuestos y envíos"
+                                >
+                                  <Percent size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(res.usuario_id)}
+                                  className="p-2 rounded-lg"
+                                  style={{ color: 'var(--danger-text)' }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                ><Trash2 size={18} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

@@ -27,6 +27,12 @@ module.exports = {
       // Número de instancias
       // En VPS pequeños (1-2GB RAM) usar 1
       // En VPS medianos (4GB+) usar 'max' para cluster
+      // IMPORTANTE: cluster mode rompería Socket.IO porque las notificaciones
+      // en tiempo real (pedidos nuevos, cambios de estado) viven en memoria
+      // del proceso y con 2 instancias un evento emitido desde el proceso A
+      // nunca llega a un cliente conectado al proceso B. Para activar cluster
+      // hay que sumar @socket.io/redis-adapter y mantener Redis en el VPS.
+      // Con el volumen actual de GigantYA, fork + 1 instancia sobra.
       instances: 1,
       // Auto-restart en caso de crash
       autorestart: true,

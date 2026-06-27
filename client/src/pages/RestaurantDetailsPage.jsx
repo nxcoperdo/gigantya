@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { Star, MapPin, Clock, Phone, Plus, Minus, User, Facebook, Instagram } from 'lucide-react';
+import { Star, MapPin, Clock, Phone, Plus, Minus, User, Facebook, Instagram, Store } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { isRestaurantOpen } from '../utils/scheduleHelper';
@@ -79,17 +79,31 @@ export default function RestaurantDetailsPage() {
     .sort(([, a], [, b]) => a.orden - b.orden);
 
    const handleAddToCart = (producto) => {
+     // Bloqueo de modalidad: si el restaurante solo recoge en local,
+     // NO permitimos agregar al carrito. El menú sigue siendo visible
+     // (el cliente ve precios y descripciones), pero no se puede procesar
+     // el pedido a domicilio.
+     const ofreceDomicilio = restaurante?.ofrece_domicilio === undefined
+       ? true
+       : Boolean(Number(restaurante.ofrece_domicilio));
+     if (!ofreceDomicilio) {
+       // No mostramos alert — el banner de arriba del menú ya explica
+       // la restricción. Devolvemos silenciosamente.
+       return { success: false, error: 'Este restaurante solo ofrece recogida en local.' };
+     }
+
      const result = addToCart(producto);
 
      if (!result.success) {
        alert(result.error);
-       return;
+       return result;
      }
 
      const nuevaCantidad = (cantidades[producto.id] || 0) + 1;
      setCantidades(prev => ({ ...prev, [producto.id]: nuevaCantidad }));
      setProductAdded({ ...producto, cantidad: nuevaCantidad });
      setShowModal(true);
+     return result;
    };
 
   const radiusMap = {
@@ -123,6 +137,12 @@ export default function RestaurantDetailsPage() {
   }
 
    const isRestaurantOpenNow = isRestaurantOpen(restaurante.horario_apertura, restaurante.horario_cierre);
+
+   // Modalidad de servicio (default true para compatibilidad con restaurantes
+   // que aún no tienen el campo persistido).
+   const ofreceDomicilio = restaurante?.ofrece_domicilio === undefined
+     ? true
+     : Boolean(Number(restaurante.ofrece_domicilio));
 
    return (
      <div
@@ -278,6 +298,29 @@ export default function RestaurantDetailsPage() {
            </div>
          )}
 
+         {/* Banner informativo: restaurante solo recoge en local.
+             El menú sigue siendo visible, pero los botones de "Agregar" están
+             deshabilitados. Esto cubre el caso del toggle en el dashboard. */}
+         {!ofreceDomicilio && (
+           <div
+             className="mx-2 mb-6 p-4 rounded-xl flex items-start gap-3"
+             style={{
+               backgroundColor: 'var(--warning-bg)',
+               border: '1px solid var(--warning-border)',
+               color: 'var(--warning-text)',
+             }}
+           >
+             <Store size={20} className="flex-shrink-0 mt-0.5" />
+             <div>
+               <p className="font-bold">Este restaurante solo ofrece recogida en local</p>
+               <p className="text-sm opacity-90">
+                 Puedes ver el menú y los precios, pero no procesamos pedidos a domicilio para este restaurante.
+                 Si quieres pedir, acércate directamente al local.
+               </p>
+             </div>
+           </div>
+         )}
+
          {sortedCategories.length > 0 ? (
            <div className="space-y-8 sm:space-y-10 md:space-y-12">
              {sortedCategories.map(([catId, catData]) => (
@@ -331,12 +374,22 @@ export default function RestaurantDetailsPage() {
 
                          <button
                            onClick={() => handleAddToCart(producto)}
-                           disabled={!producto.disponible || !isRestaurantOpenNow}
+                           disabled={!producto.disponible || !isRestaurantOpenNow || !ofreceDomicilio}
+                           title={!ofreceDomicilio ? 'Este restaurante solo ofrece recogida en local' : undefined}
                            className="btn w-full mt-2 sm:mt-4 disabled:opacity-50 text-white min-h-[44px] active:scale-95 touch-feedback"
                            style={{ backgroundColor: 'var(--color-primary)', borderRadius: 'calc(var(--border-radius) / 2)' }}
                          >
-                           <Plus size={16} className="inline mr-1.5 sm:mr-2" />
-                           {isRestaurantOpenNow ? 'Agregar' : 'No disponible'}
+                           {!ofreceDomicilio ? (
+                             <>
+                               <Store size={16} className="inline mr-1.5 sm:mr-2" />
+                               Solo recoger en local
+                             </>
+                           ) : (
+                             <>
+                               <Plus size={16} className="inline mr-1.5 sm:mr-2" />
+                               {isRestaurantOpenNow ? 'Agregar' : 'No disponible'}
+                             </>
+                           )}
                          </button>
                        </div>
                      </div>

@@ -49,7 +49,7 @@ function calcularEnvioParaBarrio(restaurante, barrioId) {
  */
 export async function listRestaurants(req, res) {
   try {
-    const { ciudad, nombre, categoria, q } = req.query;
+    const { ciudad, nombre, categoria, q, ofrece_domicilio } = req.query;
     const filtros = {};
 
     if (ciudad) filtros.ciudad = ciudad;
@@ -58,6 +58,15 @@ export async function listRestaurants(req, res) {
     // para no romper consumidores existentes del query param).
     if (q) filtros.nombre = q;
     if (categoria) filtros.categoria = categoria;
+
+    // Filtro de modalidad de servicio (toggle en la home pública).
+    // Aceptamos: 'true' | 'false' | '1' | '0'.
+    // Ausente o cualquier otro valor → no filtra (compatibilidad).
+    if (ofrece_domicilio !== undefined && ofrece_domicilio !== null && ofrece_domicilio !== '') {
+      const v = String(ofrece_domicilio).toLowerCase();
+      if (v === 'true' || v === '1') filtros.ofrece_domicilio = true;
+      else if (v === 'false' || v === '0') filtros.ofrece_domicilio = false;
+    }
 
     const restaurantes = await RestaurantModel.getRestaurants(filtros);
 

@@ -141,34 +141,35 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                     Dirección de Entrega
                   </h3>
 
-                  {/* Si hay coordenadas de Google Maps, mostramos dirección formateada + mapa + botón */}
-                  {displayOrder.latitud !== null && displayOrder.latitud !== undefined && displayOrder.longitud !== null && displayOrder.longitud !== undefined ? (
-                    <div className="space-y-3">
-                      <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
-                        <p className="text-[color:var(--text-primary)] font-semibold">
-                          {displayOrder.direccion_formateada || displayOrder.direccion_entrega || displayOrder.direccion}
-                        </p>
-                        {displayOrder.direccion_formateada && displayOrder.direccion_entrega && displayOrder.direccion_formateada !== displayOrder.direccion_entrega && (
-                          <p className="text-xs text-[color:var(--text-muted)] mt-1">
-                            Referencia cliente: {displayOrder.direccion_entrega}
-                          </p>
-                        )}
-                      </div>
-                      <AddressMapPreview
-                        latitud={displayOrder.latitud}
-                        longitud={displayOrder.longitud}
-                        direccion={displayOrder.direccion_formateada || displayOrder.direccion_entrega}
-                      />
-                    </div>
-                  ) : (
-                    /* Fallback: dirección como texto plano (pedidos viejos sin Maps) */
+                  <div className="space-y-3">
                     <div className="bg-[color:var(--bg-elevated)] rounded-lg p-3 border border-[color:var(--border-default)]">
-                      <p className="text-[color:var(--text-primary)]">{displayOrder.direccion_entrega || displayOrder.direccion}</p>
-                      <p className="text-xs text-[color:var(--text-muted)] mt-1 italic">
-                        Esta dirección no tiene coordenadas de Google Maps. Pídele al cliente que actualice su dirección usando el buscador.
+                      <p className="text-[color:var(--text-primary)] font-semibold">
+                        {displayOrder.direccion_formateada || displayOrder.direccion_entrega || displayOrder.direccion}
                       </p>
+                      {displayOrder.direccion_formateada && displayOrder.direccion_entrega && displayOrder.direccion_formateada !== displayOrder.direccion_entrega && (
+                        <p className="text-xs text-[color:var(--text-muted)] mt-1">
+                          Referencia cliente: {displayOrder.direccion_entrega}
+                        </p>
+                      )}
                     </div>
-                  )}
+
+                    {/*
+                      AddressMapPreview muestra el mapa con coordenadas si
+                      existen; si no, geocodifica el texto de la dirección
+                      (siempre anclado a "Gigante, Huila, Colombia"). Así el
+                      restaurante siempre ve el mapita, incluso para pedidos
+                      hechos con fallback manual sin coordenadas.
+                    */}
+                    <AddressMapPreview
+                      latitud={displayOrder.latitud}
+                      longitud={displayOrder.longitud}
+                      direccion={
+                        displayOrder.direccion_formateada ||
+                        displayOrder.direccion_entrega ||
+                        displayOrder.direccion
+                      }
+                    />
+                  </div>
                 </section>
               )}
 

@@ -4,9 +4,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // NO fijar Content-Type aquí: cuando mandamos FormData el navegador necesita
+  // generar `multipart/form-data; boundary=...` por su cuenta, y un Content-Type
+  // global aplicado en axios.create bloquea ese comportamiento (resultado: multer 400).
+  // Axios añade `application/json` automáticamente cuando enviamos un objeto plano,
+  // y omite el header cuando enviamos FormData.
 });
 
 // Interceptor para agregar token a requests
@@ -61,12 +63,13 @@ export const restaurantService = {
   getById: (id, params = {}) => api.get(`/restaurants/${id}`, { params }),
   create: (data) => api.post('/restaurants', data),
   update: (id, data) => {
-    const isFormData = data instanceof FormData;
-    return api.put(`/restaurants/${id}`, data, {
-      headers: {
-        ...(isFormData ? { 'Content-Type': 'multipart/form-data' } : {}),
-      },
-    });
+    // Si `data` es FormData, NO fijar Content-Type manualmente:
+    // el navegador/XHR debe generar `multipart/form-data; boundary=...` por su cuenta,
+    // y un Content-Type "multipart/form-data" sin boundary hace que multer falle con 400.
+    if (data instanceof FormData) {
+      return api.put(`/restaurants/${id}`, data);
+    }
+    return api.put(`/restaurants/${id}`, data);
   },
   getStats: () => api.get('/restaurants/me/stats'),
 };
@@ -85,15 +88,11 @@ export const productService = {
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
   toggle: (id) => api.patch(`/products/${id}/toggle`),
-  uploadImage: (formData) => api.post('/products/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  uploadImage: (formData) => api.post('/products/upload', formData),
   search: (restaurante_id, query) =>
     api.get(`/products/search/${restaurante_id}`, { params: { q: query } }),
   // Galería de fotos (plan Profesional/Premium)
-  uploadGallery: (producto_id, formData) => api.post(`/products/gallery`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  uploadGallery: (producto_id, formData) => api.post(`/products/gallery`, formData),
   getGallery: (producto_id) => api.get(`/products/gallery/${producto_id}`),
   deleteGalleryImage: (producto_id, imagen_id) => api.delete(`/products/gallery/${producto_id}/${imagen_id}`),
 };
@@ -156,6 +155,8 @@ export const adminService = {
   deleteCategory: (id) => api.delete(`/admin/categorias/${id}`),
   // Restaurant management
   updateRestaurantPlan: (id, payload) => api.put(`/admin/restaurants/${id}/plan`, payload),
+  updateRestaurantDomicilio: (id, ofrece_domicilio) =>
+    api.put(`/admin/restaurants/${id}/ofrece-domicilio`, { ofrece_domicilio }),
   getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
   updateRestaurantConfig: (id, payload) => api.put(`/admin/restaurants/${id}/config`, payload),
 };
@@ -218,9 +219,7 @@ export const subscriptionService = {
 export const paymentService = {
   getPaymentConfig: (restaurante_id) => api.get(`/payments/config/${restaurante_id}`),
   updatePaymentConfig: (data) => api.put('/payments/config', data),
-  uploadProof: (formData) => api.post('/payments/proof', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  uploadProof: (formData) => api.post('/payments/proof', formData),
   getProof: (pedido_id) => api.get(`/payments/proof/${pedido_id}`),
   getPendingProofs: () => api.get('/payments/pending'),
   getProofsHistory: (estado) => api.get('/payments/history', { params: { estado } }),

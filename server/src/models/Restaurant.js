@@ -15,7 +15,8 @@ export async function createRestaurant(restaurantData) {
     imagen_url,
     // FIX: la migración inicial define la ciudad con tilde ('Gigante, Huila').
     // Unificamos para evitar inconsistencias al filtrar por ciudad.
-    ciudad = 'Gigante, Huila'
+    ciudad = 'Gigante, Huila',
+    ofrece_domicilio = true,
   } = restaurantData;
 
   const sql = `
@@ -31,8 +32,9 @@ export async function createRestaurant(restaurantData) {
       ciudad,
       estado,
       aprobado,
+      ofrece_domicilio,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, NOW())
   `;
 
   try {
@@ -45,7 +47,8 @@ export async function createRestaurant(restaurantData) {
       horario_apertura,
       horario_cierre,
       imagen_url,
-      ciudad
+      ciudad,
+      ofrece_domicilio ? 1 : 0
     ]);
     return result.insertId;
   } catch (error) {
@@ -66,7 +69,11 @@ export async function createRestaurantWithConnection(restaurantData, connection)
     horario_apertura,
     horario_cierre,
     imagen_url,
-    ciudad = 'Gigante, Huila'
+    ciudad = 'Gigante, Huila',
+    // Default `true` para mantener compatibilidad con la migración previa
+    // (los restaurantes existentes en BD quedan con `ofrece_domicilio = 1`).
+    // Al crear uno nuevo desde el admin se respeta lo que el admin haya elegido.
+    ofrece_domicilio = true,
   } = restaurantData;
 
   const sql = `
@@ -82,8 +89,9 @@ export async function createRestaurantWithConnection(restaurantData, connection)
       ciudad,
       estado,
       aprobado,
+      ofrece_domicilio,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, NOW())
   `;
 
   try {
@@ -96,7 +104,10 @@ export async function createRestaurantWithConnection(restaurantData, connection)
       horario_apertura,
       horario_cierre,
       imagen_url,
-      ciudad
+      ciudad,
+      // MySQL TINYINT(1): pasamos 1/0 directamente. Boolean() ya nos da un
+      // boolean nativo; la coerción a 1/0 la hace el driver en el INSERT.
+      ofrece_domicilio ? 1 : 0
     ]);
     return result.insertId;
   } catch (error) {
@@ -151,6 +162,18 @@ export async function getRestaurants(filtros = {}) {
         AND c.nombre = ?
     )`;
     params.push(filtros.categoria);
+  }
+
+  // Filtro por modalidad de servicio:
+  //   - true  → solo restaurantes con `ofrece_domicilio = 1` (Con domicilios)
+  //   - false → solo restaurantes con `ofrece_domicilio = 0` (Solo recoge en local)
+  //   - undefined/null → no se filtra (compatibilidad con llamadas existentes).
+  // Como la columna tiene DEFAULT 1, MySQL la rellena automáticamente para
+  // filas anteriores a esta migración, así que el filtro siempre es seguro.
+  if (filtros.ofrece_domicilio === true) {
+    sql += ' AND r.ofrece_domicilio = 1';
+  } else if (filtros.ofrece_domicilio === false) {
+    sql += ' AND r.ofrece_domicilio = 0';
   }
 
   sql += ' GROUP BY r.id ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
@@ -285,6 +308,10 @@ export async function updateRestaurant(id, updateData) {
     'configuracion_impuestos',
     'configuracion_envios',
     'fecha_vencimiento_plan',
+    // Modalidad de servicio (toggle en el dashboard del restaurante).
+    // - true  → "Ofrece servicio a domicilio"
+    // - false → "Solo recoge en local"
+    'ofrece_domicilio',
   ];
 
   if (!updateData || typeof updateData !== 'object') {
@@ -300,6 +327,11 @@ export async function updateRestaurant(id, updateData) {
   let sql = 'UPDATE restaurantes SET ';
   const values = [];
 
+  // Campos booleanos que la columna MySQL guarda como INT/TINYINT (0/1).
+  // El frontend los manda como boolean JS → al serializar a JSON se vuelven 'true'/'false',
+  // lo que MySQL rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD. Normalizamos a 0/1 antes de bind.
+  const booleanIntFields = new Set(['ofrece_domicilio']);
+
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';
     sql += `${field} = ?`;
@@ -308,6 +340,10 @@ export async function updateRestaurant(id, updateData) {
     // Stringify objects for JSON columns
     if ((field === 'custom_config' || field === 'configuracion_pagos' || field === 'configuracion_impuestos' || field === 'configuracion_envios') && typeof value === 'object' && value !== null) {
       value = JSON.stringify(value);
+    }
+    // Normalizar booleanos a 0/1 para columnas INT.
+    if (booleanIntFields.has(field)) {
+      value = value === true || value === 1 || value === '1' || value === 'true' ? 1 : 0;
     }
     values.push(value);
   });

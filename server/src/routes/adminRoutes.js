@@ -116,6 +116,7 @@ router.put('/restaurants/:id/reject', verifyToken, requireAdmin, adminController
 router.put('/restaurants/:id/plan', verifyToken, requireAdmin, adminController.updateRestaurantPlan);
 router.get('/restaurants/:id/subscriptions', verifyToken, requireAdmin, adminController.getRestaurantSubscriptionHistory);
 router.put('/restaurants/:id/config', verifyToken, requireAdmin, adminController.updateRestaurantConfig);
+router.put('/restaurants/:id/ofrece-domicilio', verifyToken, requireAdmin, adminController.updateRestaurantDomicilio);
 
 /**
  * Rutas de Costos de Envío por Sector (por restaurante)

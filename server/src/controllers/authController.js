@@ -46,17 +46,18 @@ export async function register(req, res) {
       });
     }
 
-    // `barrio_id` es OPCIONAL: ahora el cliente puede registrarse usando
-    // Places Autocomplete (con latitud/longitud) sin necesidad de elegir
-    // un barrio del catálogo. Si NO viene `barrio_id`, exigimos al menos
-    // las coordenadas de Google Maps para poder calcular envíos luego.
+    // `barrio_id` es obligatorio en el flujo actual del cliente: el formulario
+    // de registro siempre pide elegir un sector y un barrio del catálogo
+    // (ver `client/src/pages/RegisterPage.jsx`). Si en algún momento vuelve a
+    // haber un flujo alternativo (texto libre sin coordenadas), exigir acá
+    // las coordenadas válidas como respaldo.
     if (!barrio_id) {
       const tieneCoordenadas =
         latitud !== null && latitud !== undefined && !Number.isNaN(Number(latitud)) &&
         longitud !== null && longitud !== undefined && !Number.isNaN(Number(longitud));
       if (!tieneCoordenadas) {
         return res.status(400).json({
-          error: 'Debes seleccionar un barrio o usar el buscador de Google Maps para precisar tu dirección'
+          error: 'Debes seleccionar un sector y un barrio válidos para fijar tu dirección'
         });
       }
     }

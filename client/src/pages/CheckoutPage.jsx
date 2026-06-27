@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api, { paymentService, couponService, addressService, zonaService, restaurantService } from '../services/api';
-import { CheckCircle, MapPin, Plus, Tag, X } from 'lucide-react';
+import { CheckCircle, MapPin, Plus, Tag, X, Store } from 'lucide-react';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import ErrorMessageModal from '../components/ErrorMessageModal';
-import AddressAutocomplete from '../components/AddressAutocomplete';
+// Sin AddressAutocomplete: el usuario escribe la dirección como texto libre.
+// El restaurante la geocodifica en el iframe de embed de Google Maps
+// (AddressMapPreview.jsx hace fallback por texto).
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -21,6 +23,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('contra_entrega');
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [restauranteId, setRestauranteId] = useState(null);
+  // Objeto restaurante completo (necesario para leer ofrece_domicilio
+  // y bloquear el submit si el local solo recoge en local).
+  const [restaurante, setRestaurante] = useState(null);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
   const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
@@ -49,11 +54,6 @@ export default function CheckoutPage() {
     notas: '',
     sector_id: '',
     barrio_id: '',
-    // Campos opcionales de Google Maps (Places Autocomplete)
-    latitud: null,
-    longitud: null,
-    direccion_formateada: '',
-    place_id: '',
   });
 
   // Carga inicial: direcciones y sectores
@@ -71,10 +71,6 @@ export default function CheckoutPage() {
             telefono_contacto: addr.telefono || prev.telefono_contacto,
             sector_id: addr.sector_id ? String(addr.sector_id) : '',
             barrio_id: addr.barrio_id ? String(addr.barrio_id) : '',
-            latitud: addr.latitud !== null && addr.latitud !== undefined ? Number(addr.latitud) : null,
-            longitud: addr.longitud !== null && addr.longitud !== undefined ? Number(addr.longitud) : null,
-            direccion_formateada: addr.direccion_formateada || '',
-            place_id: addr.place_id || '',
           }));
         };
         if (defaultAddress) {
@@ -160,11 +156,14 @@ export default function CheckoutPage() {
 
         setTaxConfig(tax);
         setShippingConfig(shipping);
+        setRestaurante(restaurant);
         setConfigLoaded(true);
       } catch (error) {
         console.error('Error cargando configuración del restaurante:', error);
         setTaxConfig({ activo: true, porcentaje: 8 });
         setShippingConfig({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
+        setRestaurante(null);
+        setConfigLoaded(false);
       }
     };
 
@@ -268,10 +267,6 @@ export default function CheckoutPage() {
         telefono_contacto: selected.telefono || prev.telefono_contacto,
         sector_id: selected.sector_id ? String(selected.sector_id) : '',
         barrio_id: selected.barrio_id ? String(selected.barrio_id) : '',
-        latitud: selected.latitud !== null && selected.latitud !== undefined ? Number(selected.latitud) : null,
-        longitud: selected.longitud !== null && selected.longitud !== undefined ? Number(selected.longitud) : null,
-        direccion_formateada: selected.direccion_formateada || '',
-        place_id: selected.place_id || '',
       }));
     }
   };
@@ -285,10 +280,6 @@ export default function CheckoutPage() {
       telefono_contacto: prev.telefono_contacto,
       sector_id: '',
       barrio_id: '',
-      latitud: null,
-      longitud: null,
-      direccion_formateada: '',
-      place_id: '',
     }));
   };
 
@@ -344,11 +335,32 @@ export default function CheckoutPage() {
     try {
       if (cart.length === 0) {
         alert('El carrito está vacío');
+        setLoading(false);
         return;
       }
 
       if (!configLoaded) {
         alert('Cargando configuración del restaurante, por favor espera un momento...');
+        setLoading(false);
+        return;
+      }
+
+      // Si el usuario eligió una dirección guardada, listo. Si está tipeando
+      // una nueva, basta con que el campo de dirección no esté vacío.
+
+      // Bloqueo por modalidad de servicio: si el restaurante solo recoge en
+      // local, no dejamos avanzar al cliente. Esta es la red de seguridad
+      // por si el carrito quedó con items antes de que el restaurante
+      // desactivara los domicilios, o si entró al checkout por un deep-link.
+      const ofreceDomicilioCheckout = restaurante?.ofrece_domicilio === undefined
+        ? true
+        : Boolean(Number(restaurante.ofrece_domicilio));
+      if (!ofreceDomicilioCheckout) {
+        setErrorModal({
+          isOpen: true,
+          message: 'Este restaurante solo ofrece recogida en local. No podemos procesar tu pedido a domicilio. Vuelve al inicio y elige otro restaurante.',
+        });
+        setLoading(false);
         return;
       }
 
@@ -361,37 +373,24 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Determinar barrio_id y coordenadas a enviar al backend
+      // Determinar barrio_id a enviar al backend. Sin autocompletado de mapa:
+      // las coordenadas las genera el restaurante al ver el pedido
+      // (AddressMapPreview.jsx geocodifica el texto).
       let barrioIdEnviar = null;
-      let latitudEnviar = null;
-      let longitudEnviar = null;
-      let direccionFormateadaEnviar = null;
-      let placeIdEnviar = null;
 
       if (!useNewAddress && selectedAddressId) {
         const addr = addresses.find(a => a.id === selectedAddressId);
-        if (addr) {
-          if (addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
-          if (addr.latitud !== null && addr.latitud !== undefined) latitudEnviar = Number(addr.latitud);
-          if (addr.longitud !== null && addr.longitud !== undefined) longitudEnviar = Number(addr.longitud);
-          direccionFormateadaEnviar = addr.direccion_formateada || null;
-          placeIdEnviar = addr.place_id || null;
-        }
+        if (addr && addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
       } else if (useNewAddress) {
         if (formData.barrio_id) barrioIdEnviar = Number(formData.barrio_id);
-        if (formData.latitud !== null && formData.latitud !== undefined) latitudEnviar = Number(formData.latitud);
-        if (formData.longitud !== null && formData.longitud !== undefined) longitudEnviar = Number(formData.longitud);
-        direccionFormateadaEnviar = formData.direccion_formateada || null;
-        placeIdEnviar = formData.place_id || null;
       }
 
       // Para que el backend pueda calcular el envío, la dirección debe tener
-      // *al menos* barrio_id (catálogo) o coordenadas de Google Maps (geocoding).
-      const tieneCoordenadas = latitudEnviar !== null && longitudEnviar !== null;
-      if (!barrioIdEnviar && !tieneCoordenadas) {
+      // barrio_id (catálogo de zonas).
+      if (!barrioIdEnviar) {
         const mensaje = useNewAddress
-          ? 'Para calcular el envío, escribe tu dirección en el buscador y selecciona una opción, o elige un sector y barrio.'
-          : 'La dirección seleccionada no tiene barrio ni coordenadas de Maps. Edítala para precisar la ubicación.';
+          ? 'Para calcular el envío, elegí un sector y barrio de la lista.'
+          : 'La dirección seleccionada no tiene barrio. Edítala para precisar la ubicación.';
         setErrorModal({ isOpen: true, message: mensaje });
         setLoading(false);
         return;
@@ -434,11 +433,13 @@ export default function CheckoutPage() {
         metodo_pago: paymentMethod,
         costo_envio: costoEnvio,
         barrio_id: barrioIdEnviar,
-        // Campos opcionales de Google Maps
-        latitud: latitudEnviar,
-        longitud: longitudEnviar,
-        direccion_formateada: direccionFormateadaEnviar,
-        place_id: placeIdEnviar,
+        // Sin autocompletado de mapa en el cliente: latitud/longitud las
+        // genera el restaurante al ver el pedido (AddressMapPreview.jsx
+        // geocodifica el texto en el iframe de embed).
+        latitud: null,
+        longitud: null,
+        direccion_formateada: null,
+        place_id: null,
         total: totalOrder,
       };
 
@@ -512,6 +513,34 @@ export default function CheckoutPage() {
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-[color:var(--text-primary)] mb-6 sm:mb-8">
           Confirmar Pedido
         </h1>
+
+        {/* Aviso de modalidad: si el restaurante desactivó domicilios después de
+            que el cliente agregó items al carrito, mostramos este aviso arriba
+            y deshabilitamos el botón "Confirmar Pedido" más abajo. */}
+        {restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)) && (
+          <div
+            className="mb-6 p-4 rounded-xl flex items-start gap-3"
+            style={{
+              backgroundColor: 'var(--warning-bg)',
+              border: '1px solid var(--warning-border)',
+              color: 'var(--warning-text)',
+            }}
+          >
+            <Store size={20} className="flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-bold">Este restaurante solo ofrece recogida en local</p>
+              <p className="text-sm opacity-90">
+                No podemos procesar tu pedido a domicilio. Limpia el carrito o elige otro restaurante.
+              </p>
+              <Link
+                to="/"
+                className="inline-block mt-2 text-sm font-semibold underline hover:opacity-80"
+              >
+                Ver otros restaurantes
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Formulario */}
@@ -675,22 +704,14 @@ export default function CheckoutPage() {
                    {(useNewAddress || addresses.length === 0) && (
                      <div>
                        <label className="block text-sm font-semibold mb-1.5">Dirección de Entrega (calle/carrera/número) *</label>
-                       <AddressAutocomplete
-                         id="direccion-entrega-input"
+                       <input
+                         type="text"
                          name="direccion_entrega"
                          value={formData.direccion_entrega}
-                         onChange={(e) => setFormData(prev => ({ ...prev, direccion_entrega: e.target.value }))}
-                         onPlaceSelected={(place) => {
-                           setFormData(prev => ({
-                             ...prev,
-                             direccion_entrega: place.direccion,
-                             direccion_formateada: place.direccion_formateada,
-                             latitud: place.latitud,
-                             longitud: place.longitud,
-                             place_id: place.place_id,
-                           }));
-                         }}
+                         onChange={handleChange}
                          placeholder="Calle 5 #12-45, Apto 301"
+                         className="input min-h-[44px]"
+                         autoComplete="street-address"
                          required
                        />
                      </div>
@@ -735,7 +756,10 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={
+                  loading ||
+                  (restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)))
+                }
                 className="btn btn-primary btn-lg btn-block min-h-[48px] w-full"
               >
                 {loading ? (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingCart, Store } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { useCart } from '../context/CartContext';
@@ -11,6 +11,9 @@ export default function CartPage() {
   const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
   const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
   const [configLoaded, setConfigLoaded] = useState(false);
+  // Estado del restaurante actual del carrito (necesario para detectar
+  // si cambió a "solo recoge en local" después de agregar items).
+  const [restaurante, setRestaurante] = useState(null);
 
   // Cargar configuración de impuestos y envíos del restaurante
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function CartPage() {
 
         setTaxConfig(taxConfigLoaded);
         setShippingConfig(shippingConfigLoaded);
+        setRestaurante(restaurant);
         setConfigLoaded(true);
       } catch (error) {
         console.error('Error cargando configuración del restaurante:', error);
@@ -229,9 +233,37 @@ export default function CartPage() {
                 </span>
               </div>
 
-              <Link to="/checkout" className="btn btn-primary btn-lg btn-block min-h-[48px]">
-                Proceder al Pago
-              </Link>
+              {/* Aviso de modalidad: si el restaurante desactivó domicilios,
+                  bloqueamos el paso al checkout y dejamos un camino claro al
+                  usuario: vaciar el carrito o elegir otro restaurante. */}
+              {restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)) ? (
+                <>
+                  <div
+                    className="mb-4 p-3 rounded-xl flex items-start gap-2 text-sm"
+                    style={{
+                      backgroundColor: 'var(--warning-bg)',
+                      border: '1px solid var(--warning-border)',
+                      color: 'var(--warning-text)',
+                    }}
+                  >
+                    <Store size={16} className="flex-shrink-0 mt-0.5" />
+                    <span>
+                      Este restaurante solo ofrece recogida en local. No podemos procesar tu pedido a domicilio.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    className="btn btn-primary btn-lg btn-block min-h-[48px] disabled:opacity-50"
+                  >
+                    Proceder al Pago
+                  </button>
+                </>
+              ) : (
+                <Link to="/checkout" className="btn btn-primary btn-lg btn-block min-h-[48px]">
+                  Proceder al Pago
+                </Link>
+              )}
 
               <p className="text-xs text-[color:var(--text-muted)] text-center mt-4">
                 {shippingConfig.envio_gratis_activo && Number(shippingConfig.envio_gratis_desde) > 0

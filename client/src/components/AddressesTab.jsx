@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Plus, Trash2, CheckCircle, Edit2, ExternalLink } from 'lucide-react';
 import { addressService, zonaService } from '../services/api';
-import AddressAutocomplete from './AddressAutocomplete';
+// Sin AddressAutocomplete: el usuario escribe la dirección como texto libre.
+// El restaurante la geocodifica en el iframe de embed de Google Maps
+// (AddressMapPreview.jsx hace fallback por texto cuando no hay coords).
 
 export default function AddressesTab() {
   const [addresses, setAddresses] = useState([]);
@@ -23,10 +25,6 @@ export default function AddressesTab() {
     es_default: false,
     sector_id: '',
     barrio_id: '',
-    latitud: null,
-    longitud: null,
-    direccion_formateada: '',
-    place_id: '',
   });
 
   // Cargar direcciones y sectores al montar
@@ -106,10 +104,6 @@ export default function AddressesTab() {
       const payload = {
         ...formData,
         barrio_id: formData.barrio_id ? Number(formData.barrio_id) : null,
-        latitud: formData.latitud ?? null,
-        longitud: formData.longitud ?? null,
-        direccion_formateada: formData.direccion_formateada || null,
-        place_id: formData.place_id || null,
       };
 
       if (editingId) {
@@ -129,10 +123,6 @@ export default function AddressesTab() {
         es_default: false,
         sector_id: '',
         barrio_id: '',
-        latitud: null,
-        longitud: null,
-        direccion_formateada: '',
-        place_id: '',
       });
       setShowForm(false);
       setEditingId(null);
@@ -157,10 +147,6 @@ export default function AddressesTab() {
       es_default: address.es_default === 1,
       sector_id: address.sector_id ? String(address.sector_id) : '',
       barrio_id: address.barrio_id ? String(address.barrio_id) : '',
-      latitud: address.latitud !== null && address.latitud !== undefined ? Number(address.latitud) : null,
-      longitud: address.longitud !== null && address.longitud !== undefined ? Number(address.longitud) : null,
-      direccion_formateada: address.direccion_formateada || '',
-      place_id: address.place_id || '',
     });
     setEditingId(address.id);
     setShowForm(true);
@@ -283,23 +269,14 @@ export default function AddressesTab() {
 
             <div>
               <label className="block text-sm font-semibold mb-2">Dirección (calle/carrera/número) *</label>
-              <AddressAutocomplete
-                id="direccion-input"
+              <input
+                type="text"
                 name="direccion"
                 value={formData.direccion}
-                onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
-                onPlaceSelected={(place) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    direccion: place.direccion,
-                    direccion_formateada: place.direccion_formateada,
-                    latitud: place.latitud,
-                    longitud: place.longitud,
-                    place_id: place.place_id,
-                    ciudad: place.ciudad || prev.ciudad,
-                  }));
-                }}
+                onChange={handleChange}
                 placeholder="Calle 5 #12-45"
+                className="input"
+                autoComplete="street-address"
                 required
               />
             </div>
@@ -400,10 +377,6 @@ export default function AddressesTab() {
                     es_default: false,
                     sector_id: '',
                     barrio_id: '',
-                    latitud: null,
-                    longitud: null,
-                    direccion_formateada: '',
-                    place_id: '',
                   });
                 }}
                 className="btn btn-outline"
