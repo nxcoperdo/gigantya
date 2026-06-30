@@ -10,6 +10,13 @@ import { getCategoryIcon } from '../utils/categoryIcons';
 import Loading from '../components/Loading';
 import RecentSearches from '../components/RecentSearches';
 
+// Rota el banner del hero día por medio: día par -> banner2.mp4, día impar -> banner.mp4.
+// Determinístico por día del mes; sin backend, sin Math.random.
+const pickDailyBanner = () => {
+  const day = new Date().getDate(); // 1..31
+  return day % 2 === 0 ? '/banner2.mp4' : '/banner.mp4';
+};
+
 // Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
 const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
   const isOpen = isRestaurantOpen(restaurant.horario_apertura, restaurant.horario_cierre);
@@ -536,15 +543,16 @@ export default function HomePage() {
     <div className="bg-[color:var(--bg-base)]">
       {/* Hero Section */}
       <section className="text-white py-12 sm:py-16 md:py-28 px-4 sm:px-6 relative overflow-hidden">
-        {/* Video Background */}
+        {/* Video Background — rota entre banner.mp4 y banner2.mp4 según el día del mes */}
         <video
+          key={new Date().toDateString()}
           className="absolute inset-0 w-full h-full object-cover"
           autoPlay
           loop
           muted
           playsInline
         >
-          <source src="/banner.mp4" type="video/mp4" />
+          <source src={pickDailyBanner()} type="video/mp4" />
         </video>
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
@@ -635,7 +643,7 @@ export default function HomePage() {
           <div className="px-4 sm:px-0">
             <div className="inline-flex bg-[color:var(--bg-muted)] rounded-full p-1 gap-1 max-w-full overflow-x-auto scrollbar-thin sm:flex-wrap">
           <button
-            key={`tipo-${tipoNegocioFilter === 'todos' ? 'active' : 'inactive'}`}
+            key="tipo-todos"
             type="button"
             onClick={() => handleChangeTipoNegocio('todos')}
             aria-pressed={tipoNegocioFilter === 'todos'}
@@ -649,7 +657,7 @@ export default function HomePage() {
             Todos
           </button>
           <button
-            key={`tipo-${tipoNegocioFilter === 'restaurante' ? 'active' : 'inactive'}`}
+            key="tipo-restaurante"
             type="button"
             onClick={() => handleChangeTipoNegocio('restaurante')}
             aria-pressed={tipoNegocioFilter === 'restaurante'}
@@ -665,7 +673,7 @@ export default function HomePage() {
             <span className="hidden sm:inline">Restaurantes</span>
           </button>
           <button
-            key={`tipo-${tipoNegocioFilter === 'comida_rapida' ? 'active' : 'inactive'}`}
+            key="tipo-comida-rapida"
             type="button"
             onClick={() => handleChangeTipoNegocio('comida_rapida')}
             aria-pressed={tipoNegocioFilter === 'comida_rapida'}
@@ -681,7 +689,7 @@ export default function HomePage() {
             <span className="hidden sm:inline">Comida rápida</span>
           </button>
           <button
-            key={`tipo-${tipoNegocioFilter === 'mercado' ? 'active' : 'inactive'}`}
+            key="tipo-mercado"
             type="button"
             onClick={() => handleChangeTipoNegocio('mercado')}
             aria-pressed={tipoNegocioFilter === 'mercado'}

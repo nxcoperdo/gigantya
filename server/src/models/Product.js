@@ -31,6 +31,12 @@ export async function createProduct(productData) {
     disponible = true
   } = productData;
 
+  // Defensa: si el front manda categoria_id como string vacío, la columna INT
+  // (nullable) lo rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD. Mapeamos
+  // '' → null para guardar "sin categoría" en vez de crashear el INSERT.
+  // Misma lógica aplicada en updateProduct más abajo.
+  const safeCategoriaId = categoria_id === '' ? null : categoria_id;
+
   const sql = `
     INSERT INTO productos (
       restaurante_id,
@@ -48,7 +54,7 @@ export async function createProduct(productData) {
   try {
     const result = await query(sql, [
       restaurante_id,
-      categoria_id,
+      safeCategoriaId,
       nombre,
       descripcion,
       precio,
@@ -188,8 +194,13 @@ export async function updateProduct(id, updateData) {
     if (index > 0) sql += ', ';
     sql += `${field} = ?`;
 
-    // Convertir boolean a 0/1 para los flags
-    if (field === 'disponible' || field === 'destacado') {
+    // Defensa en profundidad: si el front manda categoria_id como string vacío,
+    // la columna INT lo rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD.
+    // Mapeamos '' → null para que el UPDATE no rompa (la columna acepta NULL).
+    if (field === 'categoria_id' && updateData[field] === '') {
+      values.push(null);
+    } else if (field === 'disponible' || field === 'destacado') {
+      // Convertir boolean a 0/1 para los flags
       values.push(updateData[field] ? 1 : 0);
     } else {
       values.push(updateData[field]);

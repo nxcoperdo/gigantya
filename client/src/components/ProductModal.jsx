@@ -178,6 +178,10 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
       const dataToSave = {
         ...formData,
+        // El <select> devuelve '' cuando el usuario no eligió categoría.
+        // La columna categoria_id en DB es INT, no acepta string vacío.
+        // Mapeamos a null para que el server guarde "sin categoría" en vez de crashear.
+        categoria_id: formData.categoria_id === '' ? null : formData.categoria_id,
         precio: parseFloat(formData.precio),
         imagen_url: finalImageUrl,
         disponible: formData.disponible,
@@ -211,10 +215,21 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
   if (!isOpen) return null;
 
+  // Cerrar al hacer click en el backdrop (no en el modal en sí)
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-slideUp">
-        <div className="flex items-center justify-between p-4 border-b border-[color:var(--border-subtle)]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
+      <div
+        className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-slideUp"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-[color:var(--border-subtle)] flex-shrink-0">
           <h2 className="text-xl font-bold text-[color:var(--text-primary)]">
             {product ? 'Editar Producto' : 'Nuevo Producto'}
           </h2>
@@ -223,7 +238,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {error && (
             <div className="alert alert-error">
               {error}

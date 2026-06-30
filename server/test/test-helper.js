@@ -11,7 +11,7 @@ export async function clearDatabase() {
     'orders',
     'ratings',
     'notifications',
-    'favorites',
+    'favoritos',
     'addresses',
     'search_history',
     'preferences',

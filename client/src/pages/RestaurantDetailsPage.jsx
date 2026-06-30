@@ -1,13 +1,14 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { Star, MapPin, Clock, Phone, Plus, Minus, User, Facebook, Instagram, Store } from 'lucide-react';
+import { Star, MapPin, Clock, Phone, Plus, Minus, User, Facebook, Instagram, Store, Maximize2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { isRestaurantOpen } from '../utils/scheduleHelper';
 import Loading from '../components/Loading';
 import AddToCartModal from '../components/AddToCartModal';
 import FavoriteButton from '../components/FavoriteButton';
-import api from '../services/api';
+import ProductGalleryModal from '../components/ProductGalleryModal';
+import api, { productService } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { ratingService } from '../services/api';
 
@@ -21,6 +22,12 @@ export default function RestaurantDetailsPage() {
   const [showModal, setShowModal] = useState(false);
   const [productAdded, setProductAdded] = useState(null);
   const [ratings, setRatings] = useState(null);
+  const [galleryModal, setGalleryModal] = useState({
+    isOpen: false,
+    images: [],
+    name: '',
+    productoId: null,
+  });
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -37,6 +44,45 @@ export default function RestaurantDetailsPage() {
       console.error('Error fetching ratings:', error);
     }
   };
+
+  // Abre la galería del producto. La imagen principal se pasa como [0] y
+  // la galería del server se concatena después (lazy, cuando el modal se abre).
+  const openProductGallery = (producto) => {
+    if (!producto.imagen_url) return;
+    const mainUrl = getImageUrl(producto.imagen_url);
+    setGalleryModal({
+      isOpen: true,
+      images: [mainUrl],
+      name: producto.nombre,
+      productoId: producto.id,
+    });
+  };
+
+  // Fetch lazy de la galería del server. Solo para planes que tienen el feature.
+  // Si falla, el lightbox sigue mostrando la imagen principal sola.
+  useEffect(() => {
+    if (!galleryModal.isOpen || !galleryModal.productoId) return;
+    const plan = restaurante?.plan;
+    if (plan !== 'profesional' && plan !== 'premium') return;
+    let cancelled = false;
+    productService.getGallery(galleryModal.productoId)
+      .then((res) => {
+        if (cancelled) return;
+        const galleryUrls = (res.data?.imagenes || [])
+          .map((img) => getImageUrl(img.imagen_url))
+          .filter(Boolean);
+        if (galleryUrls.length === 0) return;
+        setGalleryModal((prev) => {
+          // No pisar si el modal ya se cerró
+          if (!prev.isOpen) return prev;
+          // Mantener la principal en [0] y concatenar la galería
+          const main = prev.images[0];
+          return { ...prev, images: [main, ...galleryUrls] };
+        });
+      })
+      .catch(() => { /* silencioso: si falla, queda solo la principal */ });
+    return () => { cancelled = true; };
+  }, [galleryModal.isOpen, galleryModal.productoId, restaurante?.plan]);
 
    const fetchRestaurant = async () => {
      try {
@@ -158,6 +204,14 @@ export default function RestaurantDetailsPage() {
          onClose={() => setShowModal(false)}
          producto={productAdded}
          cantidad={productAdded?.cantidad || 1}
+       />
+
+       {/* Lightbox de galería del producto (swipeable en mobile, flechas en desktop) */}
+       <ProductGalleryModal
+         isOpen={galleryModal.isOpen}
+         onClose={() => setGalleryModal({ isOpen: false, images: [], name: '', productoId: null })}
+         images={galleryModal.images}
+         productName={galleryModal.name}
        />
 
        {/* Hero Section */}
@@ -333,17 +387,28 @@ export default function RestaurantDetailsPage() {
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                    {catData.productos.map((producto, idx) => (
                      <div key={producto.id} className="card group hover:shadow-lg animate-scaleIn" style={{ borderRadius: 'var(--border-radius)', animationDelay: `${idx * 50}ms` }}>
-                       <div className="relative mb-3 sm:mb-4 overflow-hidden rounded-lg bg-[color:var(--bg-subtle)]">
+                       <button
+                         type="button"
+                         onClick={() => openProductGallery(producto)}
+                         disabled={!producto.imagen_url}
+                         aria-label={`Ver fotos de ${producto.nombre}`}
+                         className="relative mb-3 sm:mb-4 overflow-hidden rounded-lg bg-[color:var(--bg-subtle)] block w-full text-left group/img disabled:cursor-default"
+                       >
                          {producto.imagen_url ? (
                            <img
                              src={getImageUrl(producto.imagen_url)}
                              alt={producto.nombre}
-                             className={`w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300 ${!isRestaurantOpenNow ? 'grayscale opacity-60' : ''}`}
+                             className={`w-full h-40 sm:h-48 object-cover group-hover/img:scale-105 transition-transform duration-300 ${!isRestaurantOpenNow ? 'grayscale opacity-60' : ''}`}
                              loading="lazy"
                            />
                          ) : (
                            <div className="w-full h-40 sm:h-48 flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent text-3xl sm:text-4xl">
                              🍽️
+                           </div>
+                         )}
+                         {producto.imagen_url && (
+                           <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
+                             <Maximize2 className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" size={28} />
                            </div>
                          )}
                          {!isRestaurantOpenNow && (
@@ -356,7 +421,7 @@ export default function RestaurantDetailsPage() {
                              <span className="badge badge-error">No disponible</span>
                            </div>
                          )}
-                       </div>
+                       </button>
 
                        <div className="px-1">
                          <h3 className="text-base sm:text-lg md:text-xl font-bold text-[color:var(--text-primary)] mb-1.5 sm:mb-2 line-clamp-2 min-h-[44px]">
