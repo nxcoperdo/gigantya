@@ -24,7 +24,9 @@ async function setupTestDb() {
     await connection.query('USE restaurante_pedidos_test');
     console.log('✅ Base de datos de prueba seleccionada: restaurante_pedidos_test');
 
-    const schemaPath = path.resolve('..', 'database', 'schema.sql');
+    // El schema vive en <repo-root>/database/schema.sql, pero este script
+    // se ejecuta desde <repo-root>/server, así que subimos dos niveles.
+    const schemaPath = path.resolve('..', '..', 'database', 'schema.sql');
     let schema = await fs.readFile(schemaPath, 'utf8');
 
     // Eliminar líneas de CREATE DATABASE y USE para evitar interferir con nuestra DB de test

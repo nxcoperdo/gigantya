@@ -9,6 +9,26 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: restaurante_pedidos_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: restaurante_pedidos_test
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -26,13 +46,16 @@ jobs:
       - name: Run Backend Tests
         run: |
           cd server
+          # Esperar a que MySQL acepte conexiones (el healthcheck tarda unos segundos)
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; then
+              echo "MySQL listo"
+              break
+            fi
+            echo "Esperando MySQL... intento $i"
+            sleep 2
+          done
           npm test
-        env:
-          NODE_ENV: test
-          DB_HOST: localhost
-          DB_USER: root
-          DB_PASSWORD: root
-          DB_NAME: restaurante_pedidos_test
 
   frontend-tests:
     runs-on: ubuntu-latest
