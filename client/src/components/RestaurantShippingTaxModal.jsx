@@ -382,7 +382,7 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                                 border: '1px solid var(--border-subtle)'
                               }}
                             >
-                              {autorNombre} ({autorEsAdmin ? 'admin' : autorEsRestaurante ? 'restaurante' : autorTipo || 'sistema'})
+                              {autorNombre} ({autorEsAdmin ? 'admin' : autorEsRestaurante ? 'local' : autorTipo || 'sistema'})
                             </span>
                           )}
                           {autorFecha && (

@@ -159,9 +159,9 @@ export default function RegisterPage() {
         </div>
 
         <div className="mb-5 sm:mb-6 alert alert-info text-xs sm:text-sm">
-          <p className="font-semibold mb-1">Importante para restaurantes</p>
+          <p className="font-semibold mb-1">Importante para locales</p>
           <p>
-            Los restaurantes no se registran desde esta pantalla. Para ingresar a la plataforma,
+            Los locales no se registran desde esta pantalla. Para ingresar a la plataforma,
             deben contactarse <strong>coderepairtech@gmail.com</strong> y ser habilitados por el equipo administrativo.
           </p>
         </div>

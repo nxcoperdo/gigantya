@@ -20,7 +20,7 @@ export function CartProvider({ children }) {
       if (producto.restaurante_id && firstItemRestaurantId !== producto.restaurante_id) {
         return {
           success: false,
-          error: 'Solo puedes agregar productos de un mismo restaurante por pedido.'
+          error: 'Solo puedes agregar productos de un mismo local por pedido.'
         };
       }
     }

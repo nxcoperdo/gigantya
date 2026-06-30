@@ -139,7 +139,7 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
                 required
               >
                 <option value="cliente">Cliente</option>
-                <option value="restaurante">Restaurante</option>
+                <option value="restaurante">Local</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
@@ -188,8 +188,8 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
                   </span>
                   <span className="block text-xs text-[color:var(--text-muted)] mt-0.5">
                     {user.ofrece_domicilio
-                      ? 'El restaurante podrá recibir pedidos a domicilio.'
-                      : 'El restaurante solo podrá ofrecer recogida en local (menú visible, sin carrito).'}
+                      ? 'El local podrá recibir pedidos a domicilio.'
+                      : 'El local solo podrá ofrecer retiro en local (menú visible, sin carrito).'}
                   </span>
                 </div>
               </label>

@@ -126,17 +126,18 @@
   --shadow-color: 0 0 0;
 }
 
-/* Transición global: solo en elementos no-form (evita parpadeo en inputs iOS) */
+/* Transición global: solo en elementos no-form (evita parpadeo en inputs iOS).
+   Curvas y duraciones afinadas para que el feel sea "snappy" pero no abrupto. */
 *:not(input):not(select):not(textarea):not(button) {
-  transition-property: color, background-color, border-color, fill, stroke;
-  transition-duration: 200ms;
-  transition-timing-function: ease-in-out;
+  transition-property: color, background-color, border-color, fill, stroke, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button, a {
-  transition-property: color, background-color, border-color, fill, stroke, opacity, transform, box-shadow;
-  transition-duration: 200ms;
-  transition-timing-function: ease-in-out;
+  transition-property: color, background-color, border-color, fill, stroke, opacity, transform, box-shadow, filter;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html {
@@ -144,18 +145,22 @@ html {
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Scrollbar más delgada a nivel de página */
+  scrollbar-gutter: stable;
 }
 
 body {
   @apply font-sans text-[color:var(--text-primary)] bg-[color:var(--bg-base)];
   font-weight: 400;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.005em;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: none;
   color-scheme: light;
+  /* Mejora sutil de legibilidad de párrafos largos */
+  text-rendering: optimizeLegibility;
 }
 .dark body, .dark {
   color-scheme: dark;
@@ -171,91 +176,178 @@ body {
 /* Tipografía */
 h1, h2, h3, h4, h5, h6 {
   @apply font-heading font-bold;
-  letter-spacing: -0.5px;
+  /* Tracking más negativo en headings grandes = más sensación de marca premium.
+     -0.025em es el sweet spot para Inter/Jakarta a 32-48px. */
+  letter-spacing: -0.02em;
+  /* Color más sólido en headings: contraste reforzado contra bg-base */
+  color: var(--text-primary);
+  line-height: 1.15;
 }
 
 h1 {
   @apply text-4xl md:text-5xl;
   font-family: 'Playfair Display', serif;
   font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 h2 {
   @apply text-3xl md:text-4xl;
   font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.18;
 }
 
 h3 {
   @apply text-2xl md:text-3xl;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 1.22;
+}
+
+h4 {
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+
+h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.008em;
+  line-height: 1.4;
 }
 
 p {
-  @apply text-base leading-relaxed;
+  @apply text-base;
   color: var(--text-secondary);
+  line-height: 1.65;
+  /* El text-base trae su propio line-height en Tailwind, sobreescribimos
+     para tener ritmo consistente en párrafos copy */
 }
 
-/* Botones personalizados */
+/* Pequeño texto: tracking positivo ligero para legibilidad en small caps */
+small, .text-xs {
+  letter-spacing: 0.01em;
+}
+
+/* Botones personalizados.
+   Anatomía:
+   - Resting: bg sólido, sombra sutil "lift" (shadow-sm)
+   - Hover:  -translate-y-0.5 + sombra más pronunciada (shadow-md) — sensación de "lift"
+   - Active: scale(0.97) + sombra vuelve a resting — feedback táctil claro
+   Curva "springy" (cubic-bezier con overshoot) para sentirse "snap". */
 .btn {
-  @apply px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 cursor-pointer active:scale-95;
+  @apply px-4 py-2.5 rounded-xl font-semibold cursor-pointer;
   border: none;
   font-size: 0.95rem;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.01em;
   touch-action: manipulation;
+  /* Estado base */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transform: translateY(0) scale(1);
+  transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, box-shadow;
 }
 
 .btn:hover {
-  @apply transform -translate-y-0.5 shadow-medium;
+  transform: translateY(-2px) scale(1);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.12),
+              0 4px 8px -2px rgba(0, 0, 0, 0.06);
 }
 
 .btn:active {
-  @apply transform translate-y-0;
-  transform: scale(0.97);
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition-duration: 80ms;
+}
+
+/* Focus visible accesible: anillo naranja con offset, no aparece en click */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.25),
+              0 8px 16px -4px rgba(0, 0, 0, 0.12),
+              0 4px 8px -2px rgba(0, 0, 0, 0.06);
 }
 
 .btn-primary {
-  @apply bg-primary text-white;
+  background-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .btn-primary:hover {
-  @apply bg-primaryDark shadow-lg;
+  background-color: var(--color-primary-dark);
+  box-shadow: 0 8px 20px -4px rgba(255, 107, 0, 0.45),
+              0 4px 8px -2px rgba(255, 107, 0, 0.25);
 }
 
-.btn-primary:disabled {
+.btn-primary:active {
+  background-color: var(--color-primary-dark);
+}
+
+.btn-primary:disabled,
+.btn-primary[disabled] {
   background-color: var(--bg-muted);
   color: var(--text-muted);
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-primary:disabled:hover,
+.btn-primary[disabled]:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: var(--bg-muted);
 }
 
 .btn-secondary {
-  @apply bg-secondary text-white;
+  background-color: var(--color-secondary);
+  color: #ffffff;
 }
 
 .btn-secondary:hover {
-  @apply bg-primaryDark;
+  background-color: var(--color-primary-dark);
+  box-shadow: 0 8px 16px -4px rgba(128, 54, 0, 0.35);
 }
 
 .btn-outline {
-  @apply border-2 border-primary text-primary bg-[color:var(--bg-elevated)] hover:border-primaryDark;
+  background-color: var(--bg-elevated);
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+  /* En outline quitamos sombra default para que se sienta "ligero" */
+  box-shadow: none;
 }
 
 .btn-outline:hover {
-  @apply bg-primary text-white;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 14px -3px rgba(255, 107, 0, 0.35);
+}
+
+.btn-outline:active {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
 }
 
 .btn-ghost {
-  @apply bg-transparent text-primary hover:bg-light;
+  background-color: transparent;
+  color: var(--color-primary);
+  box-shadow: none;
 }
 
-.btn-primary:disabled {
-  background-color: var(--bg-muted);
-  color: var(--text-muted);
-  cursor: not-allowed;
-  opacity: 0.6;
+.btn-ghost:hover {
+  background-color: var(--color-light);
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-small {
-  @apply px-3 py-1.5 text-sm rounded-lg;
+  @apply px-3.5 py-1.5 text-sm rounded-lg;
+  letter-spacing: 0;
 }
 
 .btn-lg {
@@ -294,24 +386,38 @@ p {
   }
 }
 
-/* Tarjetas */
+/* Tarjetas.
+   Anatomía:
+   - Resting: bg-elevated + 1px border sutil + sombra de 2 capas (key+ambient) muy baja.
+   - Hover:  -translate-y-1 + sombra más pronunciada.
+   El borde sutil es importante en dark mode — sin él, las cards se "funden" con el bg. */
 .card {
-  @apply rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300;
+  @apply rounded-2xl;
   @apply p-5 md:p-6;
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04),
+              0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  transition: transform 220ms cubic-bezier(0.34, 1.2, 0.64, 1),
+              box-shadow 220ms cubic-bezier(0.34, 1.2, 0.64, 1),
+              border-color 220ms ease;
 }
 
 .card:hover {
-  @apply transform translate-y-1;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.10),
+              0 3px 6px -1px rgba(0, 0, 0, 0.06);
+  border-color: var(--border-default);
 }
 
 .card-lg {
-  @apply card p-8;
+  @apply card p-7 md:p-8 rounded-2xl;
 }
 
 .card-elevated {
-  @apply card shadow-lg-soft;
+  @apply card;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.10),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* Mobile cards */
@@ -321,28 +427,40 @@ p {
   }
 
   .card-lg {
-    @apply p-5;
+    @apply p-5 rounded-xl;
   }
 }
 
-/* Inputs */
+/* Inputs.
+   Anatomía:
+   - Resting: border gris sólido 1px, sin sombra.
+   - Hover:   border un tono más fuerte.
+   - Focus:   border primary + ring primario de 3px con alpha bajo.
+   Esto da feedback continuo: nada → contorno → focus claro. */
 .input {
   @apply w-full px-4 py-3 rounded-xl;
-  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
-  @apply transition-all duration-200;
   font-size: 1rem;
+  letter-spacing: -0.005em;
   background-color: var(--bg-elevated);
   color: var(--text-primary);
   border: 1px solid var(--border-default);
+  outline: none;
+  transition: border-color 150ms ease,
+              box-shadow 200ms cubic-bezier(0.34, 1.2, 0.64, 1),
+              background-color 150ms ease;
 }
 
 .input::placeholder {
   color: var(--text-subtle);
 }
 
+.input:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
 .input:focus {
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-color: rgba(255, 107, 0, 0.5);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
 }
 
 .input:disabled {
@@ -361,8 +479,8 @@ p {
   @apply input cursor-pointer appearance-none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23FF6B00' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
+  background-position: right 14px center;
+  padding-right: 40px;
 }
 
 /* Mobile inputs */
@@ -375,8 +493,16 @@ p {
 /* Labels */
 label {
   @apply block text-sm font-semibold mb-2;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.005em;
   color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* Asterisco de requerido */
+.required-mark {
+  color: var(--danger-text);
+  margin-left: 2px;
+  font-weight: 700;
 }
 
 /* Formatos de texto */
@@ -398,17 +524,17 @@ label {
   overflow: hidden;
 }
 
-/* Loading spinner */
+/* Loading spinner — anillo con borde parcial que rota */
 .spinner {
-  border: 4px solid rgba(255, 107, 0, 0.15);
-  border-top: 4px solid #FF6B00;
+  border: 3px solid rgba(255, 107, 0, 0.18);
+  border-top-color: #FF6B00;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 .spinner-sm {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-width: 2px;
 }
 
@@ -419,8 +545,8 @@ label {
 }
 
 .spinner-lg {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-width: 4px;
 }
 
@@ -440,11 +566,14 @@ label {
 
 /* Badges */
 .badge {
-  @apply inline-block px-3 py-1 rounded-full font-semibold text-xs;
+  @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs;
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 
 .badge-primary {
-  @apply bg-primary text-white;
+  background-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .badge-success {
@@ -473,15 +602,16 @@ label {
 
 /* Alerts */
 .alert {
-  @apply p-4 rounded-lg mb-4 flex items-start gap-3;
-  font-size: 0.875rem;
-  line-height: 1.4;
+  @apply p-4 rounded-xl mb-4 flex items-start gap-3;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
 }
 
 /* En móvil los alerts tienen padding menor */
 @media (max-width: 640px) {
   .alert {
-    @apply p-3 text-sm;
+    @apply p-3 text-sm rounded-lg;
   }
 }
 
@@ -532,23 +662,23 @@ label {
 
 /* Animations */
 .animate-fadeIn {
-  animation: fadeIn 0.5s ease-in-out;
+  animation: fadeIn 0.4s ease-out;
 }
 
 .animate-slideUp {
-  animation: slideUp 0.5s ease-out;
+  animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-slideDown {
-  animation: slideDown 0.3s ease-out;
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-scaleIn {
-  animation: scaleIn 0.3s ease-out;
+  animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .animate-scaleUp {
-  animation: scaleUp 0.3s ease-out;
+  animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .animate-bounce-subtle {
@@ -560,11 +690,128 @@ label {
 }
 
 .animate-marquee {
-  animation: marquee 25s linear infinite;
+  animation: marquee 35s linear infinite;
 }
 
 .pause-marquee:hover .animate-marquee {
   animation-play-state: paused;
+}
+
+/* ============ Filter transitions ============
+   El toggleo entre filtros (tipo de local, modalidad, categoría, etc.)
+   debe sentirse como una transición de contenido, no como un parpadeo.
+   Estrategia:
+     - .filter-fade: wrapper de la sección que aparece al cambiar filtro.
+       Combina fade + sutil translateY. 220ms ease-out (entrada).
+     - .filter-grid > *: cada card de la grid usa stagger CSS (no JS).
+       12 slots con delays incrementales de 45ms — profesional, sin lag.
+     - .filter-header y .filter-banner: crossfade suave para los
+       encabezados y banners contextuales que cambian junto al filtro.
+   Total: la nueva sección está visible y "asentada" en ~220-400ms,
+   dentro del rango 150-300ms de micro-interacciones (UI/UX Pro Max). */
+.filter-fade {
+  animation: filterFade 0.22s ease-out both;
+}
+
+.filter-header {
+  animation: filterHeader 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.filter-banner {
+  animation: filterBanner 0.32s cubic-bezier(0.34, 1.16, 0.64, 1) both;
+}
+
+/* Stagger CSS-only: los hijos directos de .filter-grid se animan
+   en cascada con delay incremental. Hasta 12 hijos sin necesidad
+   de computar nada en JS. Después de los primeros 12, todos
+   comparten el último delay (sigue siendo instantáneo). */
+.filter-grid > * {
+  animation: filterFade 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.filter-grid > *:nth-child(1)  { animation-delay: 0ms; }
+.filter-grid > *:nth-child(2)  { animation-delay: 35ms; }
+.filter-grid > *:nth-child(3)  { animation-delay: 70ms; }
+.filter-grid > *:nth-child(4)  { animation-delay: 105ms; }
+.filter-grid > *:nth-child(5)  { animation-delay: 140ms; }
+.filter-grid > *:nth-child(6)  { animation-delay: 175ms; }
+.filter-grid > *:nth-child(7)  { animation-delay: 210ms; }
+.filter-grid > *:nth-child(8)  { animation-delay: 240ms; }
+.filter-grid > *:nth-child(9)  { animation-delay: 260ms; }
+.filter-grid > *:nth-child(10) { animation-delay: 280ms; }
+.filter-grid > *:nth-child(11) { animation-delay: 300ms; }
+.filter-grid > *:nth-child(12) { animation-delay: 320ms; }
+.filter-grid > *:nth-child(n+13) { animation-delay: 340ms; }
+
+@keyframes filterFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes filterHeader {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes filterBanner {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Filtros toggle pill: micro-animación al cambiar de estado activo.
+   El botón que pasa a "activo" obtiene un glow naranja breve,
+   señalando qué filtro quedó prendido. */
+.filter-pill-active {
+  animation: filterPill 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes filterPill {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 0, 0);
+  }
+  40% {
+    box-shadow: 0 0 0 6px rgba(255, 107, 0, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 0, 0);
+  }
+}
+
+/* Sliding indicator — alternativa para tabs tipo iOS / Material slider:
+   requiere position absolute sobre un contenedor, se anima via
+   transform translateX, no via width/left (performante, sin reflow). */
+.filter-track {
+  position: relative;
+  isolation: isolate;
+}
+.filter-track > .filter-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 9999px;
+  background-color: var(--bg-elevated);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 8px -2px rgba(0, 0, 0, 0.08);
+  z-index: -1;
+  transition: transform 280ms cubic-bezier(0.34, 1.2, 0.64, 1),
+              width 280ms cubic-bezier(0.34, 1.2, 0.64, 1);
+  will-change: transform, width;
 }
 
 /* Shimmer loading effect */
@@ -592,7 +839,7 @@ label {
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -603,7 +850,7 @@ label {
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-12px);
   }
   to {
     opacity: 1;
@@ -614,7 +861,7 @@ label {
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.92);
   }
   to {
     opacity: 1;
@@ -625,7 +872,7 @@ label {
 @keyframes scaleUp {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -635,13 +882,28 @@ label {
 
 @keyframes bounceSubtle {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  50% { transform: translateY(-4px); }
 }
 
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+/* Stagger helper para grids: cada hijo se anima con un delay incremental
+   Compatible con CSS-only stagger usando :nth-child sin necesidad de JS. */
+.stagger-children > * {
+  animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 280ms; }
+.stagger-children > *:nth-child(n+9) { animation-delay: 320ms; }
 
 /* Safe area insets for mobile devices */
 .safe-top {
@@ -673,7 +935,7 @@ label {
 /* Custom scrollbar */
 .scrollbar-custom {
   scrollbar-width: thin;
-  scrollbar-color: #FF6B00 var(--scrollbar-track);
+  scrollbar-color: rgba(255, 107, 0, 0.5) var(--scrollbar-track);
 }
 
 .scrollbar-custom::-webkit-scrollbar {
@@ -687,12 +949,36 @@ label {
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb {
-  background: #FF6B00;
+  background: rgba(255, 107, 0, 0.45);
   border-radius: 4px;
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
   background: #B34B00;
+}
+
+/* Scrollbar delgada para chips/filtros — más discreta */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 163, 175, 0.4) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(155, 163, 175, 0.35);
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 163, 175, 0.55);
 }
 
 /* Skeleton loading */
@@ -708,9 +994,10 @@ label {
   border-radius: 8px;
 }
 
-/* Touch feedback */
+/* Touch feedback. Curva "snappy" para sentir respuesta inmediata. */
 .touch-feedback {
-  transition: transform 0.1s ease-in-out;
+  transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .touch-feedback:active {
@@ -725,7 +1012,7 @@ label {
 
 /* Smooth image loading */
 .image-load {
-  transition: opacity 0.3s ease-in-out;
+  transition: opacity 0.35s ease;
   opacity: 0;
 }
 
@@ -733,32 +1020,69 @@ label {
   opacity: 1;
 }
 
-/* Floating animations for decorative elements */
+/* Floating animations for decorative elements. Easing sin — sin
+   sensación de "salto" entre keyframes. */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes floatDelayed {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }
 }
 
+@keyframes floatDelayed {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
 .animate-float {
-  animation: float 3s ease-in-out infinite;
+  animation: float 3.2s ease-in-out infinite;
 }
 
 .animate-float-delayed {
-  animation: floatDelayed 4s ease-in-out infinite;
-  animation-delay: 1s;
+  animation: floatDelayed 4.2s ease-in-out infinite;
+  animation-delay: 1.2s;
 }
 
-/* Improved focus states for accessibility */
+/* Shimmer / skeleton para placeholders. Curva linear sin pausas para
+   sensación de carga constante. */
+.animate-shimmer {
+  animation: shimmer 1.6s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-from) 0%,
+    var(--shimmer-mid) 50%,
+    var(--shimmer-from) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Pulse ring — usado para el badge de notificaciones y similares */
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulseRing 1.5s ease-out infinite;
+}
+
+/* Improved focus states for accessibility. Anillo con offset y alpha bajo
+   para que se vea limpio sin gritar "OUTLINE!" */
 .focus-visible-ring:focus-visible {
-  @apply outline-none ring-2 ring-primary ring-offset-2;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.25);
 }
 
-/* Better tap targets for mobile */
+/* Better tap targets for mobile (44pt guideline Apple HIG) */
 .mobile-tap-target {
   min-width: 44px;
   min-height: 44px;
@@ -795,6 +1119,33 @@ label {
   object-fit: cover;
 }
 
+/* Glass effect para cards que se posicionan sobre imágenes.
+   Sutil — sólo añade blur y border semitransparente. */
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.dark .glass-card {
+  background-color: rgba(26, 29, 35, 0.65);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Visually-hidden label (accesibilidad sin afectar layout) */
+.sr-only-focusable:not(:focus):not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Custom scrollbar for webkit browsers */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -807,7 +1158,7 @@ label {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #FF6B00;
+  background: rgba(255, 107, 0, 0.55);
   border-radius: 10px;
 }
 
@@ -815,14 +1166,152 @@ label {
   background: #B34B00;
 }
 
-/* Active state for navigation items */
+/* Active state for navigation items. El link activo no es solo otro color
+   — gana un underline animado que crece desde la izquierda. */
 .nav-active {
-  @apply text-primary font-semibold;
+  color: var(--color-primary);
+  font-weight: 600;
+  position: relative;
 }
 
-/* Smooth transitions for theme changes */
-.theme-transition {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+.nav-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background-color: var(--color-primary);
+  border-radius: 2px;
+  animation: navUnderline 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes navUnderline {
+  from { transform: scaleX(0); transform-origin: left; }
+  to { transform: scaleX(1); transform-origin: left; }
+}
+
+/* Section spacing consistente. Aplica a <section class="section"> dentro
+   de páginas, igualando el padding vertical según breakpoint. */
+.section {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+@media (min-width: 640px) {
+  .section {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+}
+@media (min-width: 768px) {
+  .section {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+}
+@media (min-width: 1024px) {
+  .section {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+
+.section-sm {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+@media (min-width: 640px) {
+  .section-sm {
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+}
+@media (min-width: 768px) {
+  .section-sm {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+  }
+}
+
+.section-lg {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+@media (min-width: 640px) {
+  .section-lg {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+}
+@media (min-width: 768px) {
+  .section-lg {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+@media (min-width: 1024px) {
+  .section-lg {
+    padding-top: 8rem;
+    padding-bottom: 8rem;
+  }
+}
+
+/* Stack vertical con ritmo consistente de 16px (mobile) / 24px (desktop) */
+.stack > * + * {
+  margin-top: 1rem;
+}
+
+.stack-sm > * + * {
+  margin-top: 0.5rem;
+}
+
+.stack-lg > * + * {
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .stack > * + * {
+    margin-top: 1.5rem;
+  }
+  .stack-lg > * + * {
+    margin-top: 2rem;
+  }
+}
+
+/* Smooth transitions for theme changes. Aplicar al root para que TODOS
+   los elementos que consumen vars semánticas hagan cross-fade. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 240ms ease,
+              color 240ms ease,
+              border-color 240ms ease,
+              fill 240ms ease,
+              stroke 240ms ease !important;
+}
+
+/* Dark mode: las sombras deben ser más pronunciadas porque el fondo
+   ya es oscuro. Por defecto queda igual, pero cuando el theme es dark
+   añadimos profundidad extra a las cards elevadas. */
+.dark .card-elevated {
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.5),
+              0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark .card:hover {
+  box-shadow: 0 8px 18px -2px rgba(0, 0, 0, 0.55),
+              0 3px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark .btn:hover {
+  box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.55),
+              0 4px 8px -2px rgba(0, 0, 0, 0.3);
+}
+
+.dark .btn-primary:hover {
+  box-shadow: 0 10px 22px -4px rgba(255, 107, 0, 0.35),
+              0 4px 10px -2px rgba(255, 107, 0, 0.2);
 }
 
 /* Print styles */

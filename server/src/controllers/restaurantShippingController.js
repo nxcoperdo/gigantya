@@ -10,7 +10,7 @@ import * as RestaurantModel from '../models/Restaurant.js';
 async function loadRestauranteOrFail(req, res, restauranteId) {
   const restaurante = await RestaurantModel.getRestaurantById(restauranteId);
   if (!restaurante) {
-    res.status(404).json({ error: 'Restaurante no encontrado' });
+    res.status(404).json({ error: 'Local no encontrado' });
     return { restaurante: null };
   }
 

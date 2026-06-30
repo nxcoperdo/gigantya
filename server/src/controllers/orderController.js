@@ -48,11 +48,11 @@ export async function createOrder(req, res) {
     const restaurante = await RestaurantModel.getRestaurantById(restaurante_id);
     if (!restaurante) {
       return res.status(404).json({
-        error: 'Restaurante no encontrado'
+        error: 'Local no encontrado'
       });
     }
 
-    // Bloqueo de seguridad: si el restaurante está marcado como "solo recoge
+    // Bloqueo de seguridad: si el restaurante está marcado como "solo retiro
     // en local", no aceptamos pedidos. La home pública ya filtra este caso y
     // el frontend deshabilita el botón "Agregar", pero dejamos esta guarda
     // para que un cliente con carrito viejo o un script externo no pueda
@@ -63,7 +63,7 @@ export async function createOrder(req, res) {
       : Boolean(Number(restaurante.ofrece_domicilio));
     if (!ofreceDomicilio) {
       return res.status(400).json({
-        error: 'Este restaurante solo ofrece recogida en local. No procesa pedidos a domicilio.'
+        error: 'Este local solo ofrece retiro en local. No procesa pedidos a domicilio.'
       });
     }
 
@@ -265,15 +265,15 @@ export async function getRestaurantOrders(req, res) {
   try {
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ 
-        error: 'Solo restaurantes pueden ver sus pedidos' 
+        error: 'Solo locales pueden ver sus pedidos'
       });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
 
     if (!restaurante) {
-      return res.status(404).json({ 
-        error: 'No tienes un restaurante asociado' 
+      return res.status(404).json({
+        error: 'No tienes un local asociado'
       });
     }
 

@@ -74,18 +74,18 @@ export async function approveRestaurant(req, res) {
 
     if (!restaurante) {
       return res.status(404).json({
-        error: 'Restaurante no encontrado'
+        error: 'Local no encontrado'
       });
     }
 
     await RestaurantModel.approveRestaurant(id);
 
     res.json({
-      mensaje: 'Restaurante aprobado exitosamente'
+      mensaje: 'Local aprobado exitosamente'
     });
   } catch (error) {
     res.status(500).json({
-      error: 'Error aprobando restaurante',
+      error: 'Error aprobando local',
       detalles: error.message
     });
   }
@@ -109,18 +109,18 @@ export async function rejectRestaurant(req, res) {
 
     if (!restaurante) {
       return res.status(404).json({
-        error: 'Restaurante no encontrado'
+        error: 'Local no encontrado'
       });
     }
 
     await RestaurantModel.rejectRestaurant(id);
 
     res.json({
-      mensaje: 'Restaurante rechazado'
+      mensaje: 'Local rechazado'
     });
   } catch (error) {
     res.status(500).json({
-      error: 'Error rechazando restaurante',
+      error: 'Error rechazando local',
       detalles: error.message
     });
   }
@@ -198,14 +198,14 @@ export async function adminCreateUser(req, res) {
       if (tipo_usuario === 'restaurante') {
         // Default `true` para mantener compatibilidad con la migración previa.
         // El admin puede haber elegido `false` desde el modal si quiere crear
-        // un local que solo ofrece recogida en local desde el inicio.
+        // un local que solo ofrece retiro en local desde el inicio.
         const ofreceDomicilioInicial = ofrece_domicilio === undefined
           ? true
           : Boolean(ofrece_domicilio);
         await RestaurantModel.createRestaurantWithConnection({
           usuario_id: userId,
           nombre: nombre,
-          descripcion: 'Restaurante en configuración',
+          descripcion: 'Local en configuración',
           direccion: 'Pendiente de configuración',
           telefono: telefono || '',
           horario_apertura: '09:00',
@@ -222,7 +222,7 @@ export async function adminCreateUser(req, res) {
 
       res.status(201).json({
         mensaje: tipo_usuario === 'restaurante'
-          ? 'Usuario y restaurante pendientes creados exitosamente'
+          ? 'Usuario y local pendientes creados exitosamente'
           : 'Usuario creado exitosamente',
         userId
       });
@@ -502,7 +502,7 @@ export async function updateRestaurantPlan(req, res) {
 
     const restaurante = await RestaurantModel.getRestaurantById(id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     // Datos a actualizar en el restaurante
@@ -585,7 +585,7 @@ export async function updateRestaurantConfig(req, res) {
 
     const restaurante = await RestaurantModel.getRestaurantById(id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const updateData = {};
@@ -643,7 +643,7 @@ export async function updateRestaurantConfig(req, res) {
 
 /**
  * Cambiar la modalidad de un restaurante entre "ofrece domicilio" y "solo
- * recoge en local". Endpoint dedicado (en vez de un genérico PUT) para
+ * retiro en local". Endpoint dedicado (en vez de un genérico PUT) para
  * mantener consistencia con /plan y /config y para registrar el cambio en
  * logs.
  */
@@ -662,7 +662,7 @@ export async function updateRestaurantDomicilio(req, res) {
 
     const restaurante = await RestaurantModel.getRestaurantById(id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
@@ -680,6 +680,90 @@ export async function updateRestaurantDomicilio(req, res) {
   } catch (error) {
     console.error('Error actualizando modalidad:', error);
     res.status(500).json({ error: 'Error actualizando modalidad', detalles: error.message });
+  }
+}
+
+/**
+ * Cambiar el flag "Mercado y abarrotes" de un restaurante desde el dashboard
+ * admin. Endpoint dedicado (en vez de un genérico PUT) para mantener
+ * consistencia con /ofrece-domicilio, /plan y /config y para registrar el
+ * cambio en logs.
+ */
+export async function updateRestaurantEsMercado(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar el tipo de negocio' });
+    }
+
+    const { id } = req.params;
+    const { es_mercado_abarrotes } = req.body;
+
+    if (es_mercado_abarrotes === undefined || es_mercado_abarrotes === null) {
+      return res.status(400).json({ error: 'El campo "es_mercado_abarrotes" es requerido' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Local no encontrado' });
+    }
+
+    // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
+    const nuevoValor = Boolean(es_mercado_abarrotes);
+
+    await RestaurantModel.updateRestaurant(id, { es_mercado_abarrotes: nuevoValor });
+
+    logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_mercado_abarrotes=${nuevoValor}`);
+
+    res.json({
+      mensaje: 'Tipo de negocio actualizado',
+      restaurante_id: id,
+      es_mercado_abarrotes: nuevoValor,
+    });
+  } catch (error) {
+    console.error('Error actualizando tipo de negocio:', error);
+    res.status(500).json({ error: 'Error actualizando tipo de negocio', detalles: error.message });
+  }
+}
+
+/**
+ * Cambiar el flag "Comida rápida" de un restaurante desde el dashboard
+ * admin. Réplica de `updateRestaurantEsMercado` para mantener consistencia
+ * con /ofrece-domicilio, /plan y /config. Mismo patrón de validación,
+ * logging y respuesta.
+ */
+export async function updateRestaurantEsComidaRapida(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar el tipo de negocio' });
+    }
+
+    const { id } = req.params;
+    const { es_comida_rapida } = req.body;
+
+    if (es_comida_rapida === undefined || es_comida_rapida === null) {
+      return res.status(400).json({ error: 'El campo "es_comida_rapida" es requerido' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Local no encontrado' });
+    }
+
+    // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
+    const nuevoValor = Boolean(es_comida_rapida);
+
+    await RestaurantModel.updateRestaurant(id, { es_comida_rapida: nuevoValor });
+
+    logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_comida_rapida=${nuevoValor}`);
+
+    res.json({
+      mensaje: 'Tipo de negocio actualizado',
+      restaurante_id: id,
+      es_comida_rapida: nuevoValor,
+    });
+  } catch (error) {
+    console.error('Error actualizando tipo de negocio:', error);
+    res.status(500).json({ error: 'Error actualizando tipo de negocio', detalles: error.message });
   }
 }
 
@@ -718,4 +802,6 @@ export default {
   getRestaurantSubscriptionHistory,
   updateRestaurantConfig,
   updateRestaurantDomicilio,
+  updateRestaurantEsMercado,
+  updateRestaurantEsComidaRapida,
 };

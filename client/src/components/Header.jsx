@@ -163,12 +163,19 @@ const Header = memo(function Header() {
 
   return (
     <>
-      <header className="bg-[color:var(--bg-elevated)] shadow-soft sticky top-0 z-50 backdrop-blur-sm bg-opacity-98 safe-top border-b border-[color:var(--border-subtle)]">
+      <header
+        className="sticky top-0 z-50 safe-top border-b border-[color:var(--border-subtle)] backdrop-blur-md"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--bg-elevated) 85%, transparent)',
+          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+          boxShadow: '0 1px 0 rgba(0, 0, 0, 0.02), 0 4px 12px -2px rgba(0, 0, 0, 0.06)',
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity active:scale-95 touch-feedback">
-            <img src="/favicon.jpg" alt="GigantYa" className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-cover" />
-            <span className="text-lg md:text-xl lg:text-2xl font-heading font-bold text-[color:var(--text-primary)]">GigantYa</span>
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity active:scale-95 touch-feedback">
+            <img src="/favicon.jpg" alt="GigantYa" className="w-9 h-9 md:w-10 md:h-10 rounded-xl object-cover shadow-sm ring-1 ring-black/5" />
+            <span className="text-lg md:text-xl lg:text-2xl font-heading font-extrabold text-[color:var(--text-primary)] tracking-tight">GigantYa</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -189,7 +196,7 @@ const Header = memo(function Header() {
                <>
                  {user?.tipo_usuario === 'cliente' && (
                    <Link to="/" className="text-[color:var(--text-secondary)] hover:text-primary font-medium transition-colors">
-                     Restaurantes
+                     Locales
                    </Link>
                  )}
 
@@ -245,22 +252,25 @@ const Header = memo(function Header() {
                 <div className="relative">
                   <button
                     onClick={toggleDropdown}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[color:var(--bg-muted)] transition-colors active:scale-95 touch-feedback"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[color:var(--bg-muted)] transition-colors active:scale-95 touch-feedback"
                     aria-expanded={dropdownOpen}
                   >
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center ring-1 ring-primary/15">
                       <User size={16} className="text-primary" />
                     </div>
                     <span className="text-sm font-medium text-[color:var(--text-secondary)] max-w-[120px] lg:max-w-[150px] truncate">{user?.nombre}</span>
+                    <svg className={`w-3 h-3 text-[color:var(--text-muted)] transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
 
                   {dropdownOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-[color:var(--bg-elevated)] shadow-xl rounded-xl py-1.5 border border-[color:var(--border-subtle)] z-20 animate-scaleIn">
+                      <div className="absolute right-0 mt-2 w-52 bg-[color:var(--bg-elevated)] shadow-xl rounded-xl py-2 border border-[color:var(--border-subtle)] z-20 animate-scaleIn origin-top-right">
                         <Link
                           to="/profile"
-                          className="flex items-center gap-2 px-4 py-2.5 hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] transition-colors"
+                          className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] transition-colors rounded-md mx-1"
                           onClick={() => setDropdownOpen(false)}
                         >
                           <User size={16} />
@@ -269,19 +279,22 @@ const Header = memo(function Header() {
                         <button
                           type="button"
                           onClick={() => { toggleTheme(); setDropdownOpen(false); }}
-                          className="w-full text-left flex items-center gap-2 px-4 py-2.5 hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] transition-colors"
+                          className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] transition-colors rounded-md mx-1"
                         >
                           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
                           {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
                         </button>
-                        <div className="border-t border-[color:var(--border-subtle)] my-1" />
+                        <div className="border-t border-[color:var(--border-subtle)] my-1 mx-2" />
                         <button
                           onClick={handleLogout}
-                          className="w-full text-left px-4 py-2.5 font-medium transition-colors flex items-center gap-2"
+                          className="w-full text-left px-4 py-2.5 font-medium transition-colors flex items-center gap-2.5 mx-1 rounded-md"
                           style={{ color: 'var(--danger-text)' }}
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                         >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
                           Cerrar Sesión
                         </button>
                       </div>
@@ -333,7 +346,7 @@ const Header = memo(function Header() {
                        className="text-[color:var(--text-secondary)] font-medium py-3 px-4 hover:bg-[color:var(--bg-muted)] hover:text-primary transition-colors rounded-lg active:scale-95 touch-feedback"
                        onClick={() => setMobileMenuOpen(false)}
                      >
-                       🏪 Restaurantes
+                       🏪 Locales
                      </Link>
                    )}
                    {user?.tipo_usuario === 'cliente' && (

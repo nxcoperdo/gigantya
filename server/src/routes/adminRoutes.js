@@ -117,6 +117,8 @@ router.put('/restaurants/:id/plan', verifyToken, requireAdmin, adminController.u
 router.get('/restaurants/:id/subscriptions', verifyToken, requireAdmin, adminController.getRestaurantSubscriptionHistory);
 router.put('/restaurants/:id/config', verifyToken, requireAdmin, adminController.updateRestaurantConfig);
 router.put('/restaurants/:id/ofrece-domicilio', verifyToken, requireAdmin, adminController.updateRestaurantDomicilio);
+router.put('/restaurants/:id/es-mercado-abarrotes', verifyToken, requireAdmin, adminController.updateRestaurantEsMercado);
+router.put('/restaurants/:id/es-comida-rapida', verifyToken, requireAdmin, adminController.updateRestaurantEsComidaRapida);
 
 /**
  * Rutas de Costos de Envío por Sector (por restaurante)

@@ -10,7 +10,7 @@ export async function getMySubscription(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const suscripcion = await SubscriptionModel.getActiveSubscription(restaurante.id);
@@ -39,7 +39,7 @@ export async function getMySubscriptionHistory(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const historial = await SubscriptionModel.getSubscriptionHistory(restaurante.id);

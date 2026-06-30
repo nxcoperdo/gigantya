@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Image as ImageIcon, Trash2, Sparkles } from 'lucide-react';
 import { productService, categoryService, authService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
+import { getCategoryIcon } from '../utils/categoryIcons';
 
 const PLAN_LIMITS = { basico: 1, profesional: 5, premium: 5 };
 
-export default function ProductModal({ isOpen, onClose, onSave, product = null, restaurantId }) {
+export default function ProductModal({ isOpen, onClose, onSave, product = null, restaurantId, restaurante }) {
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -30,7 +31,20 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
     const fetchCategories = async () => {
       try {
         const res = await categoryService.getAll();
-        setCategories(res.data.categorias || []);
+        const all = res.data.categorias || [];
+        // Filtrar por el tipo de negocio del restaurante del usuario.
+        // Si el modal se usa sin restaurante (ej. admin), no filtramos.
+        // Prioridad: comida_rapida → mercado → restaurante (defensa si el admin
+        // llegara a marcar ambos flags, categoría de comida rápida gana).
+        const tipo = restaurante?.es_comida_rapida
+          ? 'comida_rapida'
+          : (restaurante?.es_mercado_abarrotes ? 'mercado' : 'restaurante');
+        const filtradas = restaurante
+          ? all.filter(c => (c.tipo_negocio || 'restaurante') === tipo)
+          : all;
+        // Orden alfabético A→Z para que el <select> sea fácil de navegar.
+        filtradas.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
+        setCategories(filtradas);
       } catch (err) {
         console.error('Error fetching categories:', err);
       }
@@ -47,7 +61,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
     };
     fetchCategories();
     fetchRestaurantPlan();
-  }, []);
+  }, [restaurante]);
 
   useEffect(() => {
     if (product) {
@@ -293,6 +307,17 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                       </option>
                     ))}
                   </select>
+                  {formData.categoria_id && (() => {
+                    const cat = categories.find(c => String(c.id) === String(formData.categoria_id));
+                    if (!cat) return null;
+                    const Icon = getCategoryIcon(cat.nombre);
+                    return (
+                      <div className="flex items-center gap-2 mt-1.5 px-2 py-1 rounded-lg bg-[color:var(--bg-subtle)] border border-[color:var(--border-subtle)]">
+                        <Icon size={14} className="text-primary flex-shrink-0" />
+                        <span className="text-xs text-[color:var(--text-secondary)]">{cat.nombre}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

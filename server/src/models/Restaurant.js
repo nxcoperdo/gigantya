@@ -151,22 +151,49 @@ export async function getRestaurants(filtros = {}) {
   }
 
   // Filtro por categoría de producto: el restaurante debe tener al menos
-  // un producto activo en una categoría con ese nombre. Mantiene el orden
-  // premium → profesional → basico definido más abajo.
+  // un producto activo en una categoría con ese nombre Y de tipo compatible
+  // con el nicho activo. Cada nicho tiene su propio namespace de categorías
+  // (un "Hamburguesas" de comida rápida es distinto del de un restaurante).
   if (filtros.categoria) {
-    sql += ` AND EXISTS (
-      SELECT 1 FROM productos p
-      JOIN categorias c ON p.categoria_id = c.id
-      WHERE p.restaurante_id = r.id
-        AND p.estado = 'activo'
-        AND c.nombre = ?
-    )`;
-    params.push(filtros.categoria);
+    // El tipo de categoría a buscar depende del nicho seleccionado:
+    //   - 'restaurante'    → tipo_negocio='restaurante'
+    //   - 'comida_rapida'  → tipo_negocio='comida_rapida'
+    //   - 'mercado'        → tipo_negocio='mercado'
+    //   - undefined/'todos' → mostrar restaurantes de cualquier nicho
+    //     que tengan la categoría con ese nombre (búsqueda global).
+    let tipoCategoria;
+    if (filtros.tipo_negocio === 'mercado') tipoCategoria = 'mercado';
+    else if (filtros.tipo_negocio === 'comida_rapida') tipoCategoria = 'comida_rapida';
+    else if (filtros.tipo_negocio === 'restaurante') tipoCategoria = 'restaurante';
+    // Si tipo_negocio es undefined/'todos', tipoCategoria queda undefined
+    // y la query matchea cualquier tipo_negocio (sin restricción).
+
+    if (tipoCategoria) {
+      sql += ` AND EXISTS (
+        SELECT 1 FROM productos p
+        JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.restaurante_id = r.id
+          AND p.estado = 'activo'
+          AND c.nombre = ?
+          AND c.tipo_negocio = ?
+      )`;
+      params.push(filtros.categoria, tipoCategoria);
+    } else {
+      // Sin nicho específico: aceptar cualquier tipo_negocio que coincida.
+      sql += ` AND EXISTS (
+        SELECT 1 FROM productos p
+        JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.restaurante_id = r.id
+          AND p.estado = 'activo'
+          AND c.nombre = ?
+      )`;
+      params.push(filtros.categoria);
+    }
   }
 
   // Filtro por modalidad de servicio:
   //   - true  → solo restaurantes con `ofrece_domicilio = 1` (Con domicilios)
-  //   - false → solo restaurantes con `ofrece_domicilio = 0` (Solo recoge en local)
+  //   - false → solo restaurantes con `ofrece_domicilio = 0` (Solo retiro en local)
   //   - undefined/null → no se filtra (compatibilidad con llamadas existentes).
   // Como la columna tiene DEFAULT 1, MySQL la rellena automáticamente para
   // filas anteriores a esta migración, así que el filtro siempre es seguro.
@@ -175,6 +202,24 @@ export async function getRestaurants(filtros = {}) {
   } else if (filtros.ofrece_domicilio === false) {
     sql += ' AND r.ofrece_domicilio = 0';
   }
+
+  // Filtro por tipo de negocio (toggle exclusivo en la home pública).
+  // Acepta: 'restaurante' | 'comida_rapida' | 'mercado'.
+  //   - 'restaurante'   → solo locales con es_comida_rapida=0 Y es_mercado_abarrotes=0
+  //   - 'comida_rapida' → solo locales con es_comida_rapida=1
+  //   - 'mercado'       → solo locales con es_mercado_abarrotes=1
+  //   - undefined/null  → NO filtra por nicho (los tres conviven en el listado)
+  if (filtros.tipo_negocio === 'comida_rapida') {
+    sql += ' AND r.es_comida_rapida = 1';
+  } else if (filtros.tipo_negocio === 'mercado') {
+    sql += ' AND r.es_mercado_abarrotes = 1';
+  } else if (filtros.tipo_negocio === 'restaurante') {
+    // Restaurante "normal" = NO es comida rápida Y NO es mercado.
+    // Esta rama mantiene la separación clara entre los tres nichos.
+    sql += ' AND r.es_comida_rapida = 0 AND r.es_mercado_abarrotes = 0';
+  }
+  // Si no llega tipo_negocio, no se agrega ningún filtro por nicho y los
+  // tres tipos de locales aparecen en el resultado (visibilidad compartida).
 
   sql += ' GROUP BY r.id ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
 
@@ -310,8 +355,18 @@ export async function updateRestaurant(id, updateData) {
     'fecha_vencimiento_plan',
     // Modalidad de servicio (toggle en el dashboard del restaurante).
     // - true  → "Ofrece servicio a domicilio"
-    // - false → "Solo recoge en local"
+    // - false → "Solo retiro en local"
     'ofrece_domicilio',
+    // Tipo de negocio "Mercado y abarrotes" (switch en el dashboard admin).
+    // Acumulable con `ofrece_domicilio`: un mercado puede ofrecer domicilio
+    // o no, en cualquier combinación.
+    'es_mercado_abarrotes',
+    // Tipo de negocio "Comida rápida" (switch en el dashboard admin).
+    // Mismo patrón que `es_mercado_abarrotes`. Mutuamente excluyente en
+    // la UI (un restaurante no puede ser comida rápida Y mercado a la vez),
+    // pero ambos flags persisten independientes en la BD para permitir
+    // transiciones sin pérdida de datos.
+    'es_comida_rapida',
   ];
 
   if (!updateData || typeof updateData !== 'object') {
@@ -330,7 +385,7 @@ export async function updateRestaurant(id, updateData) {
   // Campos booleanos que la columna MySQL guarda como INT/TINYINT (0/1).
   // El frontend los manda como boolean JS → al serializar a JSON se vuelven 'true'/'false',
   // lo que MySQL rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD. Normalizamos a 0/1 antes de bind.
-  const booleanIntFields = new Set(['ofrece_domicilio']);
+  const booleanIntFields = new Set(['ofrece_domicilio', 'es_mercado_abarrotes', 'es_comida_rapida']);
 
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';

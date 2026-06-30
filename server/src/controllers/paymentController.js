@@ -38,13 +38,13 @@ export async function updatePaymentConfig(req, res) {
   try {
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({
-        error: 'Solo restaurantes pueden configurar sus métodos de pago'
+        error: 'Solo locales pueden configurar sus métodos de pago'
       });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const { nequi, daviplata, bre_b } = req.body;
@@ -214,13 +214,13 @@ export async function getPendingProofs(req, res) {
   try {
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({
-        error: 'Solo restaurantes pueden ver comprobantes pendientes'
+        error: 'Solo locales pueden ver comprobantes pendientes'
       });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const proofs = await PaymentProofModel.getPendingProofs(restaurante.id);
@@ -245,13 +245,13 @@ export async function getProofsByRestaurant(req, res) {
   try {
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({
-        error: 'Solo restaurantes pueden ver sus comprobantes'
+        error: 'Solo locales pueden ver sus comprobantes'
       });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const { estado } = req.query;
@@ -277,7 +277,7 @@ export async function approvePaymentProof(req, res) {
   try {
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({
-        error: 'Solo restaurantes pueden aprobar comprobantes'
+        error: 'Solo locales pueden aprobar comprobantes'
       });
     }
 
@@ -360,7 +360,7 @@ export async function rejectPaymentProof(req, res) {
   try {
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({
-        error: 'Solo restaurantes pueden rechazar comprobantes'
+        error: 'Solo locales pueden rechazar comprobantes'
       });
     }
 
@@ -399,7 +399,7 @@ export async function rejectPaymentProof(req, res) {
         usuario_id: pedido.usuario_id,
         tipo: 'pago',
         titulo: 'Pago Rechazado',
-        mensaje: `Tu pago del pedido #${proof.pedido_id} ha sido rechazado. ${motivo_rechazo ? 'Motivo: ' + motivo_rechazo : 'Contacta al restaurante.'}`,
+        mensaje: `Tu pago del pedido #${proof.pedido_id} ha sido rechazado. ${motivo_rechazo ? 'Motivo: ' + motivo_rechazo : 'Contacta al local.'}`,
         data: { pedido_id: proof.pedido_id }
       });
 

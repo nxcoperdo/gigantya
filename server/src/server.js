@@ -23,7 +23,7 @@ const io = new SocketServer(httpServer, {
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   },
   // Configuración optimizada de Socket.IO
-  pingTimeout: 60000, // 60s
+  pingTimeout: 60000, // 60s<
   pingInterval: 25000, // 25s
   // Limitar tamaño de mensaje
   maxHttpBufferSize: 1e6, // 1MB

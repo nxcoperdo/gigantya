@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap } from 'lucide-react';
+import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 import ZonasAdmin from '../components/ZonasAdmin';
@@ -37,6 +38,10 @@ export default function AdminDashboardPage() {
   const [restaurantToConfig, setRestaurantToConfig] = useState(null);
   // ID del restaurante cuyo toggle de modalidad se está actualizando (para spinner inline)
   const [updatingDomicilioId, setUpdatingDomicilioId] = useState(null);
+  // ID del restaurante cuyo toggle de "Mercado y abarrotes" se está actualizando.
+  const [updatingEsMercadoId, setUpdatingEsMercadoId] = useState(null);
+  // ID del restaurante cuyo toggle de "Comida rápida" se está actualizando.
+  const [updatingEsComidaRapidaId, setUpdatingEsComidaRapidaId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -87,7 +92,7 @@ export default function AdminDashboardPage() {
       await adminService.approveRestaurant(restaurantId);
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo aprobar el restaurante');
+      setError(err.response?.data?.error || 'No se pudo aprobar el local');
     } finally {
       setActionId(null);
       setActionType('');
@@ -102,7 +107,7 @@ export default function AdminDashboardPage() {
       await adminService.rejectRestaurant(restaurantId);
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo rechazar el restaurante');
+      setError(err.response?.data?.error || 'No se pudo rechazar el local');
     } finally {
       setActionId(null);
       setActionType('');
@@ -125,7 +130,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Cambia en línea si un restaurante ofrece domicilio o solo recoge en local.
+  // Cambia en línea si un restaurante ofrece domicilio o solo retiro en local.
   // Refleja el cambio optimista en el state local y, si la API falla, revierte.
   const handleToggleDomicilio = async (restaurantId, currentValue) => {
     const nuevoValor = !currentValue;
@@ -142,6 +147,44 @@ export default function AdminDashboardPage() {
       setError(err.response?.data?.error || 'Error al cambiar la modalidad');
     } finally {
       setUpdatingDomicilioId(null);
+    }
+  };
+
+  // Cambia en línea si un restaurante es de tipo "Mercado y abarrotes".
+  // Mismo patrón que `handleToggleDomicilio`: optimistic update + reversión
+  // ante error. El flag es independiente de `ofrece_domicilio`.
+  const handleToggleEsMercado = async (restaurantId, currentValue) => {
+    const nuevoValor = !currentValue;
+    const snapshot = restaurants;
+    setRestaurants(prev => prev.map(r => r.id === restaurantId ? { ...r, es_mercado_abarrotes: nuevoValor ? 1 : 0 } : r));
+    setUpdatingEsMercadoId(restaurantId);
+    try {
+      setError('');
+      await adminService.updateRestaurantEsMercado(restaurantId, nuevoValor);
+    } catch (err) {
+      setRestaurants(snapshot);
+      setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
+    } finally {
+      setUpdatingEsMercadoId(null);
+    }
+  };
+
+  // Cambia en línea si un restaurante es de tipo "Comida rápida".
+  // Mismo patrón que `handleToggleEsMercado`: optimistic update + reversión
+  // ante error. El flag es independiente de los otros dos.
+  const handleToggleEsComidaRapida = async (restaurantId, currentValue) => {
+    const nuevoValor = !currentValue;
+    const snapshot = restaurants;
+    setRestaurants(prev => prev.map(r => r.id === restaurantId ? { ...r, es_comida_rapida: nuevoValor ? 1 : 0 } : r));
+    setUpdatingEsComidaRapidaId(restaurantId);
+    try {
+      setError('');
+      await adminService.updateRestaurantEsComidaRapida(restaurantId, nuevoValor);
+    } catch (err) {
+      setRestaurants(snapshot);
+      setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
+    } finally {
+      setUpdatingEsComidaRapidaId(null);
     }
   };
 
@@ -234,23 +277,32 @@ export default function AdminDashboardPage() {
 
         {/* Header Section */}
         <section
-          className="card-lg p-6 md:p-8"
-          style={{ backgroundImage: 'linear-gradient(to bottom right, var(--bg-elevated), var(--warning-bg))' }}
+          className="card-lg p-7 md:p-10 relative overflow-hidden"
+          style={{
+            backgroundImage: 'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-subtle) 60%, var(--warning-bg) 100%)',
+          }}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="flex flex-col gap-2">
+          {/* Decoración esquina superior derecha */}
+          <div
+            className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 blur-3xl"
+            style={{ background: 'radial-gradient(circle, var(--color-primary), transparent 70%)' }}
+          />
+
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative">
+            <div className="flex flex-col gap-3">
               <div
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full font-semibold text-xs w-fit"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-xs w-fit uppercase tracking-wide"
               style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}
             >
                 <ShieldCheck size={14} />
                 Super Administrador
               </div>
-              <h1 className="text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)]">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-heading font-extrabold text-[color:var(--text-primary)] tracking-tight">
                 Centro de Control Gigantya
               </h1>
-              <p className="text-[color:var(--text-secondary)] max-w-2xl">
-                Gestión total de la plataforma: usuarios, restaurantes, pedidos y analíticas globales.
+              <div className="w-16 h-1 bg-gradient-primary rounded-full"></div>
+              <p className="text-[color:var(--text-secondary)] max-w-2xl text-base md:text-lg">
+                Gestión total de la plataforma: usuarios, locales, pedidos y analíticas globales.
               </p>
             </div>
 
@@ -276,8 +328,8 @@ export default function AdminDashboardPage() {
                 onClick={refresh}
                 className="btn btn-outline inline-flex items-center gap-2"
               >
-                <RefreshCcw size={16} />
-                {refreshing ? '...' : 'Refrescar'}
+                <RefreshCcw size={16} className={refreshing ? 'animate-spin' : ''} />
+                {refreshing ? 'Actualizando...' : 'Refrescar'}
               </button>
             </div>
           </div>
@@ -292,17 +344,17 @@ export default function AdminDashboardPage() {
         {/* Quick Stats Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <AdminStatCard title="Usuarios" value={stats?.usuarios_totales ?? 0} icon={<Users size={20} />} />
-          <AdminStatCard title="Restaurantes" value={stats?.restaurantes_aprobados ?? 0} icon={<Store size={20} />} />
+          <AdminStatCard title="Locales" value={stats?.restaurantes_aprobados ?? 0} icon={<Store size={20} />} />
           <AdminStatCard title="Pedidos" value={stats?.pedidos_totales ?? 0} icon={<ShoppingBag size={20} />} />
           <AdminStatCard title="Ingresos" value={`$${Number(stats?.ingresos_totales || 0).toLocaleString('es-CO')}`} icon={<Banknote size={20} />} />
         </section>
 
         {/* Navigation Tabs */}
-        <nav className="flex flex-wrap gap-2 p-1 bg-[color:var(--bg-muted)] rounded-xl w-fit">
+        <nav className="flex flex-wrap gap-1.5 p-1.5 bg-[color:var(--bg-muted)] rounded-2xl w-fit border border-[color:var(--border-subtle)]">
           {[
             { id: 'overview', label: 'Vista General', icon: <BarChart3 size={16} /> },
             { id: 'users', label: 'Usuarios', icon: <Users size={16} /> },
-            { id: 'restaurants', label: 'Restaurantes', icon: <Store size={16} /> },
+            { id: 'restaurants', label: 'Locales', icon: <Store size={16} /> },
             { id: 'orders', label: 'Pedidos', icon: <ClipboardList size={16} /> },
             { id: 'categories', label: 'Categorías', icon: <Tags size={16} /> },
             { id: 'zonas', label: 'Zonas', icon: <MapPin size={16} /> },
@@ -311,8 +363,10 @@ export default function AdminDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-                activeTab === tab.id ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm' : 'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-base)]/50'
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                  : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-base)]/60'
               }`}
             >
               {tab.icon}
@@ -441,15 +495,20 @@ export default function AdminDashboardPage() {
           {/* TAB: RESTAURANTS */}
           {activeTab === 'restaurants' && (
             <section className="card-lg overflow-hidden animate-fadeIn">
-              <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Gestión de Restaurantes</h2>
-                <Store className="text-primary" size={24} />
+              <div className="p-6 md:p-7 border-b border-[color:var(--border-subtle)] flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-heading font-extrabold text-[color:var(--text-primary)] tracking-tight">Gestión de Locales</h2>
+                  <p className="text-sm text-[color:var(--text-muted)] mt-1">Aprueba, suspende o cambia la modalidad de cada local</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Store className="text-primary" size={22} />
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                     <tr>
-                      <th className="px-6 py-3">Restaurante</th>
+                      <th className="px-6 py-3">Local</th>
                       <th className="px-6 py-3">Estado</th>
                       <th className="px-6 py-3">Aprobación</th>
                       <th className="px-6 py-3">Modalidad</th>
@@ -460,7 +519,7 @@ export default function AdminDashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {restaurants.length === 0 ? (
-                      <tr><td colSpan="7" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay restaurantes registrados.</td></tr>
+                      <tr><td colSpan="7" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay locales registrados.</td></tr>
                     ) : (
                       restaurants.map(res => {
                         // Normalizar `ofrece_domicilio` que llega como 1/0/true/false.
@@ -468,6 +527,18 @@ export default function AdminDashboardPage() {
                           ? true
                           : Boolean(Number(res.ofrece_domicilio));
                         const isUpdatingDomicilio = updatingDomicilioId === res.id;
+                        // Normalizar `es_mercado_abarrotes` que llega como 1/0/true/false/undefined.
+                        // El default es FALSE (locales existentes no son mercados).
+                        const esMercadoAbarrotes = res.es_mercado_abarrotes === undefined
+                          ? false
+                          : Boolean(Number(res.es_mercado_abarrotes));
+                        const isUpdatingEsMercado = updatingEsMercadoId === res.id;
+                        // Normalizar `es_comida_rapida` que llega como 1/0/true/false/undefined.
+                        // El default es FALSE (locales existentes no son comida rápida).
+                        const esComidaRapida = res.es_comida_rapida === undefined
+                          ? false
+                          : Boolean(Number(res.es_comida_rapida));
+                        const isUpdatingEsComidaRapida = updatingEsComidaRapidaId === res.id;
                         return (
                           <tr key={res.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
                             <td className="px-6 py-4">
@@ -498,21 +569,23 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="px-6 py-4">
                               {/* Toggle inline: cambia la modalidad del restaurante sin recargar.
-                                  ON = domicilios, OFF = solo recoge en local. */}
-                              <div className="inline-flex items-center gap-2">
+                                  ON = domicilios, OFF = solo retiro en local. */}
+                              <div className="inline-flex items-center gap-2.5">
                                 <button
                                   type="button"
                                   role="switch"
                                   aria-checked={ofreceDomicilio}
                                   disabled={isUpdatingDomicilio}
                                   onClick={() => handleToggleDomicilio(res.id, ofreceDomicilio)}
-                                  title={ofreceDomicilio ? 'Ofrece servicio a domicilio' : 'Solo recoge en local'}
-                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-                                    ofreceDomicilio ? 'bg-primary' : 'bg-[color:var(--border-default)]'
+                                  title={ofreceDomicilio ? 'Ofrece servicio a domicilio' : 'Solo retiro en local'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 ring-1 ring-inset ${
+                                    ofreceDomicilio
+                                      ? 'bg-primary ring-primary/30'
+                                      : 'bg-[color:var(--border-default)] ring-[color:var(--border-strong)]'
                                   } ${isUpdatingDomicilio ? 'opacity-50 cursor-wait' : ''}`}
                                 >
                                   <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
                                       ofreceDomicilio ? 'translate-x-6' : 'translate-x-1'
                                     }`}
                                   />
@@ -525,6 +598,75 @@ export default function AdminDashboardPage() {
                                   ) : (
                                     <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
                                       <Store size={12} /> Solo local
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+
+                              {/* Segundo toggle: tipo de negocio "Mercado y abarrotes".
+                                  Independiente del toggle de modalidad de arriba. */}
+                              <div className="inline-flex items-center gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={esMercadoAbarrotes}
+                                  disabled={isUpdatingEsMercado}
+                                  onClick={() => handleToggleEsMercado(res.id, esMercadoAbarrotes)}
+                                  title={esMercadoAbarrotes ? 'Es un mercado/abarrotes' : 'No es mercado/abarrotes'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                    esMercadoAbarrotes ? 'bg-[color:var(--success-text)]' : 'bg-[color:var(--border-default)]'
+                                  } ${isUpdatingEsMercado ? 'opacity-50 cursor-wait' : ''}`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      esMercadoAbarrotes ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-semibold text-[color:var(--text-secondary)] whitespace-nowrap">
+                                  {esMercadoAbarrotes ? (
+                                    <span className="inline-flex items-center gap-1" style={{ color: 'var(--success-text)' }}>
+                                      <ShoppingBasket size={12} /> Mercado
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                                      <ShoppingBasket size={12} /> No es mercado
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+
+                              {/* Tercer toggle: tipo de negocio "Comida rápida".
+                                  Mismo patrón que los dos anteriores: switch inline
+                                  que actualiza el flag `es_comida_rapida` en la BD.
+                                  Color amber-500 para diferenciarlo visualmente de
+                                  mercado (verde) y domicilio (primary). */}
+                              <div className="inline-flex items-center gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={esComidaRapida}
+                                  disabled={isUpdatingEsComidaRapida}
+                                  onClick={() => handleToggleEsComidaRapida(res.id, esComidaRapida)}
+                                  title={esComidaRapida ? 'Es un local de comida rápida' : 'No es comida rápida'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                    esComidaRapida ? 'bg-amber-500' : 'bg-[color:var(--border-default)]'
+                                  } ${isUpdatingEsComidaRapida ? 'opacity-50 cursor-wait' : ''}`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      esComidaRapida ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-semibold text-[color:var(--text-secondary)] whitespace-nowrap">
+                                  {esComidaRapida ? (
+                                    <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                                      <Zap size={12} /> Comida rápida
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                                      <Zap size={12} /> No es comida rápida
                                     </span>
                                   )}
                                 </span>
@@ -590,7 +732,7 @@ export default function AdminDashboardPage() {
                     <tr>
                       <th className="px-6 py-3">Pedido ID</th>
                       <th className="px-6 py-3">Cliente</th>
-                      <th className="px-6 py-3">Restaurante</th>
+                      <th className="px-6 py-3">Local</th>
                       <th className="px-6 py-3">Total</th>
                       <th className="px-6 py-3">Estado</th>
                       <th className="px-6 py-3 text-right">Acción</th>
@@ -665,8 +807,9 @@ export default function AdminDashboardPage() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
                     <tr>
-                      <th className="px-6 py-3">Restaurante</th>
+                      <th className="px-6 py-3">Local</th>
                       <th className="px-6 py-3">Nombre</th>
+                      <th className="px-6 py-3">Tipo</th>
                       <th className="px-6 py-3">Descripción</th>
                       <th className="px-6 py-3">Orden</th>
                       <th className="px-6 py-3 text-right">Acciones</th>
@@ -674,23 +817,43 @@ export default function AdminDashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-[color:var(--border-subtle)]">
                     {categories.length === 0 ? (
-                      <tr><td colSpan="5" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay categorías registradas.</td></tr>
+                      <tr><td colSpan="6" className="px-6 py-10 text-center text-[color:var(--text-muted)]">No hay categorías registradas.</td></tr>
                     ) : (
-                      categories.map(cat => (
-                        <tr key={cat.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-[color:var(--text-primary)]">{cat.restaurante_nombre || 'Restaurante desconocido'}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-[color:var(--text-primary)]">{cat.nombre}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <p className="text-sm text-[color:var(--text-secondary)]">{cat.descripcion || 'Sin descripción'}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-xs font-bold text-[color:var(--text-secondary)]">{cat.orden}</span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
+                      categories.map(cat => {
+                        const Icon = getCategoryIcon(cat.nombre);
+                        const esMercado = cat.tipo_negocio === 'mercado';
+                        return (
+                          <tr key={cat.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="font-semibold text-[color:var(--text-primary)]">
+                                {esMercado ? '—' : (cat.restaurante_nombre || 'Local desconocido')}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <Icon size={18} className="text-primary flex-shrink-0" />
+                                <p className="font-semibold text-[color:var(--text-primary)]">{cat.nombre}</p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+                                style={
+                                  esMercado
+                                    ? { backgroundColor: 'var(--success-bg, #dcfce7)', color: 'var(--success-text, #15803d)' }
+                                    : { backgroundColor: 'var(--bg-muted, #f1f5f9)', color: 'var(--text-secondary, #475569)' }
+                                }
+                              >
+                                {esMercado ? 'Mercado' : 'Local'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-[color:var(--text-secondary)]">{cat.descripcion || 'Sin descripción'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-xs font-bold text-[color:var(--text-secondary)]">{cat.orden}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={() => {
@@ -717,7 +880,8 @@ export default function AdminDashboardPage() {
                             </div>
                           </td>
                         </tr>
-                      ))
+                      );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -738,7 +902,7 @@ export default function AdminDashboardPage() {
               <section className="card-lg p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <Store className="text-primary" size={24} />
-                  <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Top Restaurantes</h2>
+                  <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Top Locales</h2>
                 </div>
                 <div className="space-y-4">
                   {analytics.topRestaurants.map((res, i) => (
@@ -951,7 +1115,8 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
     restaurante_id: '',
     nombre: '',
     descripcion: '',
-    orden: '0'
+    orden: '0',
+    tipo_negocio: 'restaurante'
   });
 
   useEffect(() => {
@@ -960,14 +1125,22 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
         restaurante_id: categoryToEdit.restaurante_id || '',
         nombre: categoryToEdit.nombre || '',
         descripcion: categoryToEdit.descripcion || '',
-        orden: categoryToEdit.orden?.toString() || '0'
+        orden: categoryToEdit.orden?.toString() || '0',
+        tipo_negocio: categoryToEdit.tipo_negocio || 'restaurante'
       });
     }
   }, [categoryToEdit]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Si la categoría es de un nicho transversal (mercado o comida rápida),
+    // forzamos restaurante_id a null antes de enviar. El backend también
+    // lo valida, pero mandarlo limpio evita ruido en los logs.
+    const payload = { ...formData };
+    if (payload.tipo_negocio === 'mercado' || payload.tipo_negocio === 'comida_rapida') {
+      payload.restaurante_id = null;
+    }
+    onSubmit(payload);
   };
 
   const handleChange = (e) => {
@@ -979,6 +1152,14 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
   };
 
   if (!isOpen) return null;
+
+  // Preview del ícono que se asignará a esta categoría en la UI del cliente.
+  // Las claves del mapa en utils/categoryIcons.js son case-sensitive y deben
+  // coincidir exactamente con `formData.nombre`.
+  const IconPreview = getCategoryIcon(formData.nombre);
+  // Cualquier categoría de un nicho transversal (mercado / comida rápida)
+  // NO se asocia a un restaurante específico — el catálogo es compartido.
+  const esTransversal = formData.tipo_negocio === 'mercado' || formData.tipo_negocio === 'comida_rapida';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -994,21 +1175,45 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Restaurante *</label>
+            <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Tipo de negocio *</label>
             <select
-              name="restaurante_id"
-              value={formData.restaurante_id}
+              name="tipo_negocio"
+              value={formData.tipo_negocio}
               onChange={handleChange}
               className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <option value="">Seleccione un restaurante</option>
-              {restaurants.map(rest => (
-                <option key={rest.id} value={rest.id}>
-                  {rest.nombre}
-                </option>
-              ))}
+              <option value="restaurante">Local</option>
+              <option value="comida_rapida">Comida rápida</option>
+              <option value="mercado">Mercado y abarrotes</option>
             </select>
+            <p className="text-xs text-[color:var(--text-muted)]">
+              {formData.tipo_negocio === 'mercado'
+                ? 'Las categorías de mercado aplican para todos los negocios de mercado y abarrotes.'
+                : formData.tipo_negocio === 'comida_rapida'
+                  ? 'Las categorías de comida rápida aplican para todos los locales de comida rápida (hamburgueserías, perros, pizzas, etc.).'
+                  : 'Las categorías de local quedan asociadas a un local específico.'}
+            </p>
           </div>
+
+          {!esTransversal && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Local *</label>
+              <select
+                name="restaurante_id"
+                value={formData.restaurante_id}
+                onChange={handleChange}
+                className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Seleccione un local</option>
+                {restaurants.map(rest => (
+                  <option key={rest.id} value={rest.id}>
+                    {rest.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Nombre *</label>
             <input
@@ -1019,6 +1224,14 @@ function CategoryModal({ isOpen, onClose, onSubmit, onUpdate, categoryToEdit, re
               className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Ej: Bebidas, Entrantes, Postres"
             />
+            {formData.nombre && (
+              <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-[color:var(--bg-subtle)] border border-[color:var(--border-subtle)]">
+                <IconPreview size={16} className="text-primary flex-shrink-0" />
+                <span className="text-xs text-[color:var(--text-secondary)]">
+                  Se mostrará con el ícono <strong className="text-[color:var(--text-primary)]">{formData.nombre}</strong>
+                </span>
+              </div>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Descripción</label>

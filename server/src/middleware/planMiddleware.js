@@ -19,12 +19,12 @@ export function requirePlanFeature(feature) {
   return async (req, res, next) => {
     try {
       if (req.user?.tipo_usuario !== 'restaurante') {
-        return res.status(403).json({ error: 'Solo restaurantes pueden usar este recurso' });
+        return res.status(403).json({ error: 'Solo locales pueden usar este recurso' });
       }
 
       const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
       if (!restaurante) {
-        return res.status(404).json({ error: 'Restaurante no encontrado' });
+        return res.status(404).json({ error: 'Local no encontrado' });
       }
 
       // Adjuntar al request para reutilizar en el controlador

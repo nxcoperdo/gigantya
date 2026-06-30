@@ -70,7 +70,7 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const restNombre = restaurante?.nombre || 'Restaurante';
+    const restNombre = restaurante?.nombre || 'Local';
     const subtitle = buildSubtitle(restaurante);
 
     // ---- Encabezado ----
@@ -287,7 +287,7 @@ export async function generateOrdersPDF(pedidos, restaurante, filtros = {}) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const restNombre = restaurante?.nombre || 'Restaurante';
+    const restNombre = restaurante?.nombre || 'Local';
     const subtitle = buildSubtitle(restaurante);
     const filterLabel = filtros?.label || 'Todos los estados — Top 100';
 
@@ -613,7 +613,7 @@ export async function generateStatsExcel(statsData, restaurante, dateRange) {
   workbook.creator = 'GigantYa';
   workbook.created = new Date();
 
-  const restNombre = restaurante?.nombre || 'Restaurante';
+  const restNombre = restaurante?.nombre || 'Local';
   const subtitle = buildSubtitle(restaurante);
   const titleFull = `📊 Estadísticas — ${restNombre}`;
   const subtitleFull = [subtitle, `Período: ${dateRange}`, `Emitido: ${fmtDateTime()}`]
@@ -861,7 +861,7 @@ export async function generateOrdersExcel(pedidos, restaurante, filtros = {}) {
   workbook.creator = 'GigantYa';
   workbook.created = new Date();
 
-  const restNombre = restaurante?.nombre || 'Restaurante';
+  const restNombre = restaurante?.nombre || 'Local';
   const subtitle = buildSubtitle(restaurante);
   const filterLabel = filtros?.label || 'Todos los estados — Top 500';
   const titleFull = `📋 Pedidos — ${restNombre}`;

@@ -15,13 +15,19 @@ export async function getAllCategories() {
 
 /**
  * Obtener todas las categorías con el nombre del restaurante (para admin)
+ *
+ * Ordenamiento:
+ *   1) `orden` ASC (prioridad manual que el admin asigna)
+ *   2) `nombre` ASC como desempate alfabético (case-insensitive).
+ * Esto garantiza que cuando hay empate en `orden`, las categorías aparezcan en
+ * orden alfabético A→Z en el admin y en el selector de la home pública.
  */
 export async function getAllCategoriesWithRestaurantName() {
   const sql = `
-    SELECT c.id, c.nombre, c.descripcion, c.orden, r.nombre as restaurante_nombre
+    SELECT c.id, c.nombre, c.descripcion, c.orden, c.tipo_negocio, r.nombre as restaurante_nombre
     FROM categorias c
     LEFT JOIN restaurantes r ON c.restaurante_id = r.id
-    ORDER BY c.orden ASC
+    ORDER BY c.orden ASC, LOWER(c.nombre) ASC
   `;
 
   try {
@@ -53,7 +59,11 @@ export async function createCategory(categoryData) {
     restaurante_id,
     nombre,
     descripcion = '',
-    orden = 0
+    orden = 0,
+    // Tipo de negocio: 'restaurante' (default, categoría por restaurante)
+    // o 'mercado' (catálogo transversal de los locales marcados como
+    // `es_mercado_abarrotes = 1`).
+    tipo_negocio = 'restaurante',
   } = categoryData;
 
   const sql = `
@@ -62,8 +72,9 @@ export async function createCategory(categoryData) {
       nombre,
       descripcion,
       orden,
+      tipo_negocio,
       creado_en
-    ) VALUES (?, ?, ?, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, NOW())
   `;
 
   try {
@@ -71,7 +82,8 @@ export async function createCategory(categoryData) {
       restaurante_id,
       nombre,
       descripcion,
-      orden
+      orden,
+      tipo_negocio,
     ]);
     return result.insertId;
   } catch (error) {
@@ -112,6 +124,11 @@ export async function updateCategory(id, categoryData) {
   if (orden !== undefined) {
     updates.push('orden = ?');
     values.push(orden);
+  }
+
+  if (tipo_negocio !== undefined) {
+    updates.push('tipo_negocio = ?');
+    values.push(tipo_negocio);
   }
 
   if (updates.length === 0) {

@@ -11,7 +11,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
     horario_apertura: '',
     horario_cierre: '',
     imagen_url: '',
-    // Modalidad de servicio: true → ofrece domicilios, false → solo recoge en local.
+    // Modalidad de servicio: true → ofrece domicilios, false → solo retiro en local.
     // Default true para mantener compatibilidad con restaurantes existentes.
     ofrece_domicilio: true,
   });
@@ -145,7 +145,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
       onSave(finalData);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al actualizar los datos del restaurante');
+      setError(err.response?.data?.error || 'Error al actualizar los datos del local');
     } finally {
       setSaving(false);
     }
@@ -157,7 +157,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-slideUp">
         <div className="flex items-center justify-between p-4 border-b border-[color:var(--border-subtle)] flex-shrink-0">
-          <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Editar Datos del Restaurante</h2>
+          <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Editar Datos del Local</h2>
           <button onClick={onClose} className="p-2 hover:bg-[color:var(--bg-muted)] rounded-full transition-colors">
             <X size={20} className="text-[color:var(--text-muted)]" />
           </button>
@@ -175,7 +175,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
               <div className="relative w-36 h-36 rounded-2xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] flex items-center justify-center overflow-hidden group">
                 {imagePreview ? (
                   <>
-                    <img src={imagePreview} alt="Imagen restaurante" className="w-full h-full object-cover" />
+                    <img src={imagePreview} alt="Imagen del local" className="w-full h-full object-cover" />
                     <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                       <Upload size={20} className="text-white" />
                       <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
@@ -202,7 +202,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Nombre del Restaurante</label>
+              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">Nombre del Local</label>
               <input
                 type="text"
                 name="nombre"
@@ -296,7 +296,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                   <span className="block text-xs text-[color:var(--text-muted)] mt-0.5">
                     {formData.ofrece_domicilio
                       ? 'Los clientes pueden pedir y recibir su pedido en su domicilio.'
-                      : 'Los clientes solo pueden recoger su pedido directamente en tu local.'}
+                      : 'Los clientes solo pueden pasar a retirar su pedido directamente en tu local.'}
                   </span>
                 </div>
               </label>

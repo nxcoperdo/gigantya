@@ -341,8 +341,8 @@ export default function ZonasAdmin() {
           <p className="font-semibold mb-1">¿Cómo se usan?</p>
           <ul className="list-disc list-inside space-y-1">
             <li>El cliente selecciona un barrio al guardar una dirección y al hacer checkout.</li>
-            <li>El barrio determina el sector, y cada restaurante tiene configurado un costo de envío por sector.</li>
-            <li>Si un barrio no tiene sector configurado en un restaurante, se usa el costo de envío global como fallback.</li>
+            <li>El barrio determina el sector, y cada local tiene configurado un costo de envío por sector.</li>
+            <li>Si un barrio no tiene sector configurado en un local, se usa el costo de envío global como fallback.</li>
           </ul>
         </div>
       </div>

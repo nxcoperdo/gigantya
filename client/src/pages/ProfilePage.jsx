@@ -102,7 +102,7 @@ export default function ProfilePage() {
                 {user?.nombre}
               </h1>
               <p className="text-[color:var(--text-secondary)]">
-                Cuenta de {user?.tipo_usuario === 'cliente' ? 'cliente' : 'restaurante'}
+                Cuenta de {user?.tipo_usuario === 'cliente' ? 'cliente' : 'negocio'}
               </p>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <input
                     type="text"
-                    value={user?.tipo_usuario === 'cliente' ? 'Cliente' : 'Restaurante'}
+                    value={user?.tipo_usuario === 'cliente' ? 'Cliente' : 'Negocio'}
                     disabled
                     className="input opacity-75 bg-gray-50"
                   />

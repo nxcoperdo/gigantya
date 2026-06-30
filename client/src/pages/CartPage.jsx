@@ -12,7 +12,7 @@ export default function CartPage() {
   const [shippingConfig, setShippingConfig] = useState({ activo: false, costo_fijo: 0, envio_gratis_activo: false, envio_gratis_desde: 0 });
   const [configLoaded, setConfigLoaded] = useState(false);
   // Estado del restaurante actual del carrito (necesario para detectar
-  // si cambió a "solo recoge en local" después de agregar items).
+  // si cambió a "solo retiro en local" después de agregar items).
   const [restaurante, setRestaurante] = useState(null);
 
   // Cargar configuración de impuestos y envíos del restaurante
@@ -97,10 +97,10 @@ export default function CartPage() {
             Tu carrito está vacío
           </h1>
           <p className="text-[color:var(--text-secondary)] text-sm sm:text-base md:text-lg mb-8">
-            Explora nuestros restaurantes y agrega algunos deliciosos platillos
+            Explora nuestros locales y agrega algunos productos
           </p>
           <Link to="/" className="btn btn-primary btn-lg min-h-[48px] px-8">
-            Explorar Restaurantes
+            Explorar Locales
           </Link>
         </div>
       </div>
@@ -248,7 +248,7 @@ export default function CartPage() {
                   >
                     <Store size={16} className="flex-shrink-0 mt-0.5" />
                     <span>
-                      Este restaurante solo ofrece recogida en local. No podemos procesar tu pedido a domicilio.
+                      Este local solo ofrece retiro en local. No podemos procesar tu pedido a domicilio.
                     </span>
                   </div>
                   <button

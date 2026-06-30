@@ -127,6 +127,26 @@ export async function getAllProducts(filtros = {}) {
     params.push(filtros.categoria);
   }
 
+  // Filtro por tipo de negocio (toggle exclusivo en la home).
+  // Mismo patrón que `RestaurantModel.getRestaurants`:
+  //   - 'comida_rapida' → solo productos de locales con es_comida_rapida=1
+  //   - 'mercado'       → solo productos de locales con es_mercado_abarrotes=1
+  //   - 'restaurante'   → locales con AMBOS flags en 0
+  //   - undefined/null  → no filtra por nicho (los tres conviven en el feed)
+  //
+  // Antes de esta migración el feed ocultaba los mercados por defecto; eso
+  // cambió para que el cliente vea los tres nichos mezclados por defecto y
+  // use el toggle para segmentar.
+  if (filtros.tipo_negocio === 'comida_rapida') {
+    sql += ' AND r.es_comida_rapida = 1';
+  } else if (filtros.tipo_negocio === 'mercado') {
+    sql += ' AND r.es_mercado_abarrotes = 1';
+  } else if (filtros.tipo_negocio === 'restaurante') {
+    sql += ' AND r.es_comida_rapida = 0 AND r.es_mercado_abarrotes = 0';
+  }
+  // Si filtros.tipo_negocio no llega, no se aplica ningún filtro por nicho
+  // y los tres tipos de locales aparecen en el feed.
+
   // Mismo orden que la lista de restaurantes: premium → profesional → basico.
   // Dentro de cada plan, los productos más recientes primero.
   sql += ' ORDER BY FIELD(r.plan, "premium", "profesional", "basico"), p.creado_en DESC';

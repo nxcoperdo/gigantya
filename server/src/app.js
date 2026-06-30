@@ -152,7 +152,7 @@ app.use('/api/zonas', zonaRoutes);
 app.get('/api', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min
   res.json({
-    message: 'API Sistema de Pedidos para Restaurantes',
+    message: 'API Sistema de Pedidos para Locales',
     version: '1.0.0',
     endpoints: {
       auth: '/api/auth',

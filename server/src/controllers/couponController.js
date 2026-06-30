@@ -10,12 +10,12 @@ export async function createCoupon(req, res) {
 
     // Verificar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden crear cupones' });
+      return res.status(403).json({ error: 'Solo locales pueden crear cupones' });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     // Validación de Plan
@@ -67,7 +67,7 @@ export async function createCoupon(req, res) {
 export async function getMyCoupons(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
-    if (!restaurante) return res.status(404).json({ error: 'Restaurante no encontrado' });
+    if (!restaurante) return res.status(404).json({ error: 'Local no encontrado' });
 
     const cupones = await CouponModel.getCouponsByRestaurant(restaurante.id);
     res.json({ total: cupones.length, cupones });

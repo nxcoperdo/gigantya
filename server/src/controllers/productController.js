@@ -26,13 +26,25 @@ export async function getProductsByRestaurant(req, res) {
 
 /**
  * Listar productos de todos los restaurantes (feed público de la home).
- * Acepta `?categoria=<nombre>` para filtrar.
+ * Acepta `?categoria=<nombre>` para filtrar y `?tipo_negocio=` para
+ * segmentar por nicho (restaurante | comida_rapida | mercado).
  */
 export async function listProducts(req, res) {
   try {
-    const { categoria } = req.query;
+    const { categoria, tipo_negocio } = req.query;
     const filtros = {};
     if (categoria) filtros.categoria = categoria;
+
+    // Filtro de nicho (toggle exclusivo en la home). Mismo criterio que
+    // `restaurantController.listRestaurants`: valores aceptados
+    // 'restaurante' | 'comida_rapida' | 'mercado'. Ausente → no filtra y
+    // los tres nichos aparecen juntos en el feed.
+    if (tipo_negocio !== undefined && tipo_negocio !== null && tipo_negocio !== '') {
+      const t = String(tipo_negocio).toLowerCase();
+      if (['restaurante', 'comida_rapida', 'mercado'].includes(t)) {
+        filtros.tipo_negocio = t;
+      }
+    }
 
     const productos = await ProductModel.getAllProducts(filtros);
 
@@ -86,7 +98,7 @@ export async function createProduct(req, res) {
     // Validar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ 
-        error: 'Solo restaurantes pueden crear productos' 
+        error: 'Solo locales pueden crear productos' 
       });
     }
 
@@ -95,7 +107,7 @@ export async function createProduct(req, res) {
 
     if (!restaurante) {
       return res.status(404).json({ 
-        error: 'No tienes un restaurante asociado' 
+        error: 'No tienes un local asociado' 
       });
     }
 
@@ -147,7 +159,7 @@ export async function updateProduct(req, res) {
     // Validar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ 
-        error: 'Solo restaurantes pueden editar productos' 
+        error: 'Solo locales pueden editar productos' 
       });
     }
 
@@ -209,7 +221,7 @@ export async function deleteProduct(req, res) {
     // Validar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ 
-        error: 'Solo restaurantes pueden eliminar productos' 
+        error: 'Solo locales pueden eliminar productos' 
       });
     }
 
@@ -255,7 +267,7 @@ export async function toggleProduct(req, res) {
     // Validar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ 
-        error: 'Solo restaurantes pueden cambiar disponibilidad' 
+        error: 'Solo locales pueden cambiar disponibilidad' 
       });
     }
 
@@ -362,12 +374,12 @@ export async function addProductGallery(req, res) {
     }
 
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden subir imágenes' });
+      return res.status(403).json({ error: 'Solo locales pueden subir imágenes' });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'No tienes un restaurante asociado' });
+      return res.status(404).json({ error: 'No tienes un local asociado' });
     }
 
     if (!canAccessPlan(restaurante.plan, 'multiples_fotos')) {
@@ -447,10 +459,10 @@ export async function deleteProductGalleryImage(req, res) {
     const { producto_id, imagen_id } = req.params;
 
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden eliminar imágenes' });
+      return res.status(403).json({ error: 'Solo locales pueden eliminar imágenes' });
     }
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
-    if (!restaurante) return res.status(404).json({ error: 'Restaurante no encontrado' });
+    if (!restaurante) return res.status(404).json({ error: 'Local no encontrado' });
 
     const producto = await ProductModel.getProductById(producto_id);
     if (!producto || producto.restaurante_id !== restaurante.id) {

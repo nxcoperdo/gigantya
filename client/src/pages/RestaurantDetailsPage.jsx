@@ -79,7 +79,7 @@ export default function RestaurantDetailsPage() {
     .sort(([, a], [, b]) => a.orden - b.orden);
 
    const handleAddToCart = (producto) => {
-     // Bloqueo de modalidad: si el restaurante solo recoge en local,
+     // Bloqueo de modalidad: si el restaurante solo retiro en local,
      // NO permitimos agregar al carrito. El menú sigue siendo visible
      // (el cliente ve precios y descripciones), pero no se puede procesar
      // el pedido a domicilio.
@@ -89,7 +89,7 @@ export default function RestaurantDetailsPage() {
      if (!ofreceDomicilio) {
        // No mostramos alert — el banner de arriba del menú ya explica
        // la restricción. Devolvemos silenciosamente.
-       return { success: false, error: 'Este restaurante solo ofrece recogida en local.' };
+       return { success: false, error: 'Este local solo ofrece retiro en local.' };
      }
 
      const result = addToCart(producto);
@@ -129,7 +129,7 @@ export default function RestaurantDetailsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Restaurante no encontrado</h1>
+          <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Local no encontrado</h1>
           <a href="/" className="btn btn-primary">Volver al inicio</a>
         </div>
       </div>
@@ -289,7 +289,7 @@ export default function RestaurantDetailsPage() {
            >
              <Clock size={20} className="flex-shrink-0 mt-0.5" />
              <div>
-               <p className="font-bold">El restaurante está cerrado</p>
+               <p className="font-bold">El local está cerrado</p>
                <p className="text-sm opacity-90">
                  Volvemos a abrir a las {restaurante.horario_apertura?.slice(0, 5)}.
                  Puedes explorar el menú, pero no podrás hacer pedidos hasta entonces.
@@ -298,7 +298,7 @@ export default function RestaurantDetailsPage() {
            </div>
          )}
 
-         {/* Banner informativo: restaurante solo recoge en local.
+         {/* Banner informativo: restaurante solo retiro en local.
              El menú sigue siendo visible, pero los botones de "Agregar" están
              deshabilitados. Esto cubre el caso del toggle en el dashboard. */}
          {!ofreceDomicilio && (
@@ -312,9 +312,9 @@ export default function RestaurantDetailsPage() {
            >
              <Store size={20} className="flex-shrink-0 mt-0.5" />
              <div>
-               <p className="font-bold">Este restaurante solo ofrece recogida en local</p>
+               <p className="font-bold">Este local solo ofrece retiro en local</p>
                <p className="text-sm opacity-90">
-                 Puedes ver el menú y los precios, pero no procesamos pedidos a domicilio para este restaurante.
+                 Puedes ver el menú y los precios, pero no procesamos pedidos a domicilio para este local.
                  Si quieres pedir, acércate directamente al local.
                </p>
              </div>
@@ -348,7 +348,7 @@ export default function RestaurantDetailsPage() {
                          )}
                          {!isRestaurantOpenNow && (
                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                             <span className="badge badge-error">Restaurante cerrado</span>
+                             <span className="badge badge-error">Local cerrado</span>
                            </div>
                          )}
                          {isRestaurantOpenNow && !producto.disponible && (
@@ -375,14 +375,14 @@ export default function RestaurantDetailsPage() {
                          <button
                            onClick={() => handleAddToCart(producto)}
                            disabled={!producto.disponible || !isRestaurantOpenNow || !ofreceDomicilio}
-                           title={!ofreceDomicilio ? 'Este restaurante solo ofrece recogida en local' : undefined}
+                           title={!ofreceDomicilio ? 'Este local solo ofrece retiro en local' : undefined}
                            className="btn w-full mt-2 sm:mt-4 disabled:opacity-50 text-white min-h-[44px] active:scale-95 touch-feedback"
                            style={{ backgroundColor: 'var(--color-primary)', borderRadius: 'calc(var(--border-radius) / 2)' }}
                          >
                            {!ofreceDomicilio ? (
                              <>
                                <Store size={16} className="inline mr-1.5 sm:mr-2" />
-                               Solo recoger en local
+                               Solo retiro en local
                              </>
                            ) : (
                              <>

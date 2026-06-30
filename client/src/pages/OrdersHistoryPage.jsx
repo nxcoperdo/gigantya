@@ -275,7 +275,7 @@ export default function OrdersHistoryPage() {
                 : 'Realiza tu primer pedido ahora'}
             </p>
             <a href="/" className="btn btn-primary">
-              Explorar Restaurantes
+              Explorar Locales
             </a>
           </div>
         )}

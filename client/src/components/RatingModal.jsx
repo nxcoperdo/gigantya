@@ -35,7 +35,7 @@ const RatingModal = ({ isOpen, onClose, restaurantName, onSubmit }) => {
         {/* Header */}
         <div className="p-6 border-b border-[color:var(--border-subtle)] flex justify-between items-center bg-[color:var(--bg-subtle)]/50">
           <div>
-            <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Calificar Restaurante</h2>
+            <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Calificar Local</h2>
             <p className="text-sm text-[color:var(--text-muted)]">¿Qué te pareció {restaurantName}?</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[color:var(--bg-muted)] rounded-full transition-colors">

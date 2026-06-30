@@ -24,7 +24,7 @@ export default function CheckoutPage() {
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [restauranteId, setRestauranteId] = useState(null);
   // Objeto restaurante completo (necesario para leer ofrece_domicilio
-  // y bloquear el submit si el local solo recoge en local).
+  // y bloquear el submit si el local solo retiro en local).
   const [restaurante, setRestaurante] = useState(null);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [taxConfig, setTaxConfig] = useState({ activo: true, porcentaje: 8 });
@@ -293,7 +293,7 @@ export default function CheckoutPage() {
     try {
       const restaurante_id = cart[0]?.restaurante_id;
       if (!restaurante_id) {
-        setCouponError('No se pudo identificar el restaurante');
+        setCouponError('No se pudo identificar el local');
         return;
       }
 
@@ -340,7 +340,7 @@ export default function CheckoutPage() {
       }
 
       if (!configLoaded) {
-        alert('Cargando configuración del restaurante, por favor espera un momento...');
+        alert('Cargando configuración del local, por favor espera un momento...');
         setLoading(false);
         return;
       }
@@ -348,7 +348,7 @@ export default function CheckoutPage() {
       // Si el usuario eligió una dirección guardada, listo. Si está tipeando
       // una nueva, basta con que el campo de dirección no esté vacío.
 
-      // Bloqueo por modalidad de servicio: si el restaurante solo recoge en
+      // Bloqueo por modalidad de servicio: si el restaurante solo retiro en
       // local, no dejamos avanzar al cliente. Esta es la red de seguridad
       // por si el carrito quedó con items antes de que el restaurante
       // desactivara los domicilios, o si entró al checkout por un deep-link.
@@ -358,7 +358,7 @@ export default function CheckoutPage() {
       if (!ofreceDomicilioCheckout) {
         setErrorModal({
           isOpen: true,
-          message: 'Este restaurante solo ofrece recogida en local. No podemos procesar tu pedido a domicilio. Vuelve al inicio y elige otro restaurante.',
+          message: 'Este local solo ofrece retiro en local. No podemos procesar tu pedido a domicilio. Vuelve al inicio y elige otro local.',
         });
         setLoading(false);
         return;
@@ -528,15 +528,15 @@ export default function CheckoutPage() {
           >
             <Store size={20} className="flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold">Este restaurante solo ofrece recogida en local</p>
+              <p className="font-bold">Este local solo ofrece retiro en local</p>
               <p className="text-sm opacity-90">
-                No podemos procesar tu pedido a domicilio. Limpia el carrito o elige otro restaurante.
+                No podemos procesar tu pedido a domicilio. Limpia el carrito o elige otro local.
               </p>
               <Link
                 to="/"
                 className="inline-block mt-2 text-sm font-semibold underline hover:opacity-80"
               >
-                Ver otros restaurantes
+                Ver otros locales
               </Link>
             </div>
           </div>

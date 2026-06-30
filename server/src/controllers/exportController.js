@@ -33,12 +33,12 @@ export async function exportStatsPDF(req, res) {
     const { days = 30 } = req.query;
 
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden exportar estadísticas' });
+      return res.status(403).json({ error: 'Solo locales pueden exportar estadísticas' });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const estadisticas = req.user.restaurante?.plan === 'premium'
@@ -72,12 +72,12 @@ export async function exportStatsExcel(req, res) {
     const { days = 30 } = req.query;
 
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden exportar estadísticas' });
+      return res.status(403).json({ error: 'Solo locales pueden exportar estadísticas' });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const estadisticas = req.user.restaurante?.plan === 'premium'
@@ -111,12 +111,12 @@ export async function exportOrdersPDF(req, res) {
     const { estado = 'todos', limit = 100 } = req.query;
 
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden exportar pedidos' });
+      return res.status(403).json({ error: 'Solo locales pueden exportar pedidos' });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const limitN = Math.max(1, parseInt(limit) || 100);
@@ -154,12 +154,12 @@ export async function exportOrdersExcel(req, res) {
     const { estado = 'todos', limit = 500 } = req.query;
 
     if (req.user.tipo_usuario !== 'restaurante') {
-      return res.status(403).json({ error: 'Solo restaurantes pueden exportar pedidos' });
+      return res.status(403).json({ error: 'Solo locales pueden exportar pedidos' });
     }
 
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     const limitN = Math.max(1, parseInt(limit) || 500);

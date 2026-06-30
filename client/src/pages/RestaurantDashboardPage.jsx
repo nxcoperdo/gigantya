@@ -70,13 +70,13 @@ const PAYMENT_METHOD_LABELS = {
 function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrder, onViewDetails, isMuted = false }) {
   const nextStatus = NEXT_STATUS_BY_STATE[order.estado];
   return (
-    <article className={`border border-[color:var(--border-default)] rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-[color:var(--bg-elevated)] hover:shadow-md transition-shadow ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
+    <article className={`border border-[color:var(--border-default)] rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-[color:var(--bg-elevated)] hover:shadow-md hover:border-[color:var(--border-strong)] transition-all duration-200 ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base sm:text-lg font-bold text-[color:var(--text-primary)]">Pedido #{order.id}</h3>
             <span
-              className="px-2.5 py-1 rounded-full text-xs font-semibold border"
+              className="px-2.5 py-1 rounded-full text-xs font-bold border tabular-nums"
               style={ORDER_STATE_STYLES[order.estado] || { backgroundColor: 'var(--bg-muted)', color: 'var(--text-secondary)', borderColor: 'var(--border-default)' }}
             >
               {order.estado}
@@ -283,7 +283,7 @@ export default function RestaurantDashboardPage() {
         }
       } catch (err) {
         console.error('Error cargando perfil del restaurante:', err);
-        setError(err.response?.data?.error || 'No se pudo cargar la información del restaurante');
+        setError(err.response?.data?.error || 'No se pudo cargar la información del local');
       } finally {
         setProfileLoading(false);
       }
@@ -518,20 +518,22 @@ export default function RestaurantDashboardPage() {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen bg-[color:var(--bg-subtle)] py-8 md:py-12">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="card-lg text-center py-12">
-            <AlertCircle size={72} className="mx-auto text-primary mb-4" />
-            <h1 className="text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)] mb-3">
-              No tienes un restaurante asociado
-            </h1>
-            <p className="text-[color:var(--text-secondary)] max-w-2xl mx-auto mb-6">
-              Tu cuenta está registrada como restaurante, pero todavía no hay un perfil de restaurante configurado.
-              Contacta al equipo administrativo para habilitar tu panel operativo.
-            </p>
-            <div className="text-sm text-[color:var(--text-muted)]">
-              Usuario: <span className="font-semibold text-[color:var(--text-secondary)]">{profile?.nombre}</span>
-            </div>
+      <div className="min-h-screen bg-[color:var(--bg-subtle)] py-12 md:py-20 flex items-center justify-center px-4">
+        <div className="max-w-2xl mx-auto text-center animate-fadeIn">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-primary/10 mb-6">
+            <AlertCircle size={48} className="text-primary" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-[color:var(--text-primary)] mb-4 tracking-tight">
+            No tienes un local asociado
+          </h1>
+          <div className="w-20 h-1 bg-gradient-primary rounded-full mx-auto mb-5"></div>
+          <p className="text-[color:var(--text-secondary)] max-w-xl mx-auto mb-6 leading-relaxed">
+            Tu cuenta está registrada como local, pero todavía no hay un perfil de local configurado.
+            Contacta al equipo administrativo para habilitar tu panel operativo.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--bg-elevated)] border border-[color:var(--border-default)] text-sm text-[color:var(--text-secondary)]">
+            <span className="text-[color:var(--text-muted)]">Usuario:</span>
+            <span className="font-bold text-[color:var(--text-primary)]">{profile?.nombre}</span>
           </div>
         </div>
       </div>
@@ -541,20 +543,24 @@ export default function RestaurantDashboardPage() {
   return (
     <div className="min-h-screen bg-[color:var(--bg-subtle)] py-4 sm:py-6 md:py-8 lg:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 space-y-4 sm:space-y-6 md:space-y-8">
-        <section className="card-lg bg-gradient-to-br from-[color:var(--bg-elevated)] to-red-50/60">
-          <div className="flex flex-col gap-4 sm:gap-6">
+        <section className="card-lg relative overflow-hidden bg-gradient-to-br from-[color:var(--bg-elevated)] to-red-50/60">
+          {/* Decoración esquina */}
+          <div
+            className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-10 blur-3xl"
+            style={{ background: 'radial-gradient(circle, var(--color-primary), transparent 70%)' }}
+          />
+          <div className="flex flex-col gap-4 sm:gap-6 relative">
             <div className="flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-xs sm:text-sm mb-3">
-                <LayoutDashboard size={14} className="hidden xs:inline" />
-                <LayoutDashboard size={16} className="inline xs:hidden" />
-                Dashboard restaurante
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-xs sm:text-sm mb-3 ring-1 ring-primary/15">
+                <LayoutDashboard size={16} />
+                Dashboard del local
                 {restaurant.plan && (
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-[color:var(--bg-elevated)] text-primary text-[10px] uppercase shadow-sm border border-primary/20">
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-[color:var(--bg-elevated)] text-primary text-[10px] uppercase font-extrabold shadow-sm border border-primary/20 tracking-wide">
                     Plan {restaurant.plan}
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[color:var(--text-primary)] mb-2 break-words">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-extrabold text-[color:var(--text-primary)] mb-2 break-words tracking-tight">
                 {restaurant.nombre}
               </h1>
               <p className="text-[color:var(--text-secondary)] text-sm sm:text-base max-w-2xl">
@@ -710,7 +716,7 @@ export default function RestaurantDashboardPage() {
                 </p>
                 <p className="text-sm opacity-90">
                   {esVencido
-                    ? 'Tu restaurante pasó a plan Básico. Contacta al administrador para renovar.'
+                    ? 'Tu local pasó a plan Básico. Contacta al administrador para renovar.'
                     : `Renueva antes del ${new Date(restaurant.fecha_vencimiento_plan).toLocaleDateString('es-CO')} para no perder funciones.`}
                 </p>
               </div>
@@ -780,6 +786,7 @@ export default function RestaurantDashboardPage() {
         onSave={handleSaveProduct}
         product={selectedProduct}
         restaurantId={restaurant?.id}
+        restaurante={restaurant}
       />
 
       <RestaurantModal
@@ -848,7 +855,7 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-[color:var(--text-primary)]">Recepción de Pedidos</h2>
-            <p className="text-[color:var(--text-secondary)] text-xs sm:text-sm">Gestiona la operatividad de tu restaurante en tiempo real.</p>
+            <p className="text-[color:var(--text-secondary)] text-xs sm:text-sm">Gestiona la operatividad de tu local en tiempo real.</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1055,7 +1062,7 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
       <aside className="space-y-4 sm:space-y-6">
         <section className="card-lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg sm:text-2xl font-bold text-[color:var(--text-primary)]">Datos del Restaurante</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-[color:var(--text-primary)]">Datos del Local</h2>
             <button
               type="button"
               onClick={() => setIsRestaurantModalOpen(true)}
@@ -1069,13 +1076,13 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
             {restaurant.imagen_url ? (
               <img
                 src={getImageUrl(restaurant.imagen_url)}
-                alt={restaurant.nombre || 'Imagen del restaurante'}
+                alt={restaurant.nombre || 'Imagen del local'}
                 className="w-full h-32 sm:h-40 rounded-xl object-cover border border-[color:var(--border-default)]"
               />
             ) : (
               <div className="w-full h-32 sm:h-40 rounded-xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] flex flex-col items-center justify-center text-[color:var(--text-muted)]">
                 <ImageIcon size={24} className="mb-2" />
-                <p className="text-xs sm:text-sm font-medium">Sin imagen del restaurante</p>
+                <p className="text-xs sm:text-sm font-medium">Sin imagen del local</p>
                 <p className="text-xs">Usa el boton Editar para agregar una foto</p>
               </div>
             )}
@@ -1146,7 +1153,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-[color:var(--text-primary)] mb-1">
-              Estadísticas del Restaurante
+              Estadísticas del Local
             </h2>
             <p className="text-sm text-[color:var(--text-secondary)]">
               Plan actual: <span className="font-bold text-primary capitalize">{restaurant?.plan || 'básico'}</span>

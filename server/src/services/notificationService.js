@@ -113,7 +113,7 @@ const EmailTemplates = {
 
         <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <h2 style="color: #667eea; margin-top: 0;">Detalle del Pedido #${pedido.id}</h2>
-          <p><strong>Restaurante:</strong> ${pedido.restaurante_nombre}</p>
+          <p><strong>Local:</strong> ${pedido.restaurante_nombre}</p>
           <p><strong>Total:</strong> $${Number(pedido.total).toLocaleString('es-CO')}</p>
           <p><strong>Estado:</strong> <span style="color: #667eea; font-weight: bold;">${pedido.estado}</span></p>
           <p><strong>Fecha:</strong> ${new Date(pedido.creado_en).toLocaleString('es-CO')}</p>
@@ -136,11 +136,11 @@ const EmailTemplates = {
       </div>
       <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px;">
         <p style="font-size: 16px; color: #333;">Hola <strong>${pedido.cliente_nombre}</strong>,</p>
-        <p style="font-size: 16px; color: #555;">El restaurante ya está preparando tu pedido. ¡Pronto estará listo!</p>
+        <p style="font-size: 16px; color: #555;">El local ya está preparando tu pedido. ¡Pronto estará listo!</p>
 
         <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <p><strong>Pedido #${pedido.id}</strong></p>
-          <p><strong>Restaurante:</strong> ${pedido.restaurante_nombre}</p>
+          <p><strong>Local:</strong> ${pedido.restaurante_nombre}</p>
           <p><strong>Estado actual:</strong> <span style="color: #f5576c; font-weight: bold;">${pedido.estado}</span></p>
         </div>
 
@@ -263,7 +263,7 @@ const EmailTemplates = {
         </div>
 
         <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-          <p style="margin: 0; font-size: 14px;"><strong>Importante:</strong> Contacta al restaurante para resolver esta situación.</p>
+          <p style="margin: 0; font-size: 14px;"><strong>Importante:</strong> Contacta al local para resolver esta situación.</p>
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
@@ -427,7 +427,7 @@ const WhatsAppTemplates = {
   },
   paymentRejected: {
     template: 'payment_rejected',
-    params: pedido => [String(pedido.id), pedido.motivo || 'Contacta al restaurante']
+    params: pedido => [String(pedido.id), pedido.motivo || 'Contacta al local']
   }
 };
 

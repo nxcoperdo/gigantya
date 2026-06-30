@@ -187,8 +187,8 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
               </div>
             ) : (
               <div className="bg-[color:var(--bg-elevated)] rounded-lg p-4 text-center text-[color:var(--text-muted)]">
-                <p>El restaurante no ha configurado este método de pago.</p>
-                <p className="text-sm mt-1">Selecciona otro método o contacta al restaurante.</p>
+                <p>El local no ha configurado este método de pago.</p>
+                <p className="text-sm mt-1">Selecciona otro método o contacta al local.</p>
               </div>
             )}
 
@@ -264,7 +264,7 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
             No necesitas pagar ahora. Prepara el monto exacto o pregunta si el repartidor tiene cambio.
           </p>
           <p className="text-xs text-[color:var(--text-muted)] mt-2">
-            Tu pedido tendrá el estado "Pendiente de Confirmación" hasta que el restaurante lo acepte.
+            Tu pedido tendrá el estado "Pendiente de Confirmación" hasta que el local lo acepte.
           </p>
         </div>
       )}

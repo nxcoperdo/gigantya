@@ -49,7 +49,7 @@ function calcularEnvioParaBarrio(restaurante, barrioId) {
  */
 export async function listRestaurants(req, res) {
   try {
-    const { ciudad, nombre, categoria, q, ofrece_domicilio } = req.query;
+    const { ciudad, nombre, categoria, q, ofrece_domicilio, tipo_negocio } = req.query;
     const filtros = {};
 
     if (ciudad) filtros.ciudad = ciudad;
@@ -66,6 +66,19 @@ export async function listRestaurants(req, res) {
       const v = String(ofrece_domicilio).toLowerCase();
       if (v === 'true' || v === '1') filtros.ofrece_domicilio = true;
       else if (v === 'false' || v === '0') filtros.ofrece_domicilio = false;
+    }
+
+    // Filtro de tipo de negocio (toggle EXCLUSIVO en la home).
+    // Acepta: 'restaurante' | 'comida_rapida' | 'mercado'.
+    // Ausente o cualquier otro valor → no filtra por nicho (los tres
+    // conviven en el listado). Este toggle reemplaza al antiguo
+    // `es_mercado_abarrotes` que era acumulable; ahora cada nicho se
+    // selecciona con un único botón y se excluye mutuamente.
+    if (tipo_negocio !== undefined && tipo_negocio !== null && tipo_negocio !== '') {
+      const t = String(tipo_negocio).toLowerCase();
+      if (['restaurante', 'comida_rapida', 'mercado'].includes(t)) {
+        filtros.tipo_negocio = t;
+      }
     }
 
     const restaurantes = await RestaurantModel.getRestaurants(filtros);
@@ -97,7 +110,7 @@ export async function getRestaurant(req, res) {
 
     if (!restaurante) {
       return res.status(404).json({
-        error: 'Restaurante no encontrado'
+        error: 'Local no encontrado'
       });
     }
 
@@ -171,7 +184,7 @@ export async function createRestaurant(req, res) {
     // Validar que sea tipo restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
       return res.status(403).json({ 
-        error: 'Solo los usuarios tipo restaurante pueden crear restaurantes' 
+        error: 'Solo los usuarios con local pueden crear locales'
       });
     }
 
@@ -186,7 +199,7 @@ export async function createRestaurant(req, res) {
     const restauranteExistente = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (restauranteExistente) {
       return res.status(409).json({ 
-        error: 'Ya tienes un restaurante registrado' 
+        error: 'Ya tienes un local registrado'
       });
     }
 
@@ -203,7 +216,7 @@ export async function createRestaurant(req, res) {
     });
 
     res.status(201).json({
-      mensaje: 'Restaurante creado exitosamente. Pendiente de aprobación del administrador.',
+      mensaje: 'Local creado exitosamente. Pendiente de aprobación del administrador.',
       restaurante_id: restauranteId
     });
   } catch (error) {
@@ -239,13 +252,13 @@ export async function updateRestaurant(req, res) {
 
     if (!restaurante) {
       return res.status(404).json({
-        error: 'Restaurante no encontrado'
+        error: 'Local no encontrado'
       });
     }
 
     if (restaurante.usuario_id !== req.user.id) {
       return res.status(403).json({
-        error: 'No tienes permiso para editar este restaurante'
+        error: 'No tienes permiso para editar este local'
       });
     }
 
@@ -323,7 +336,7 @@ export async function updateRestaurant(req, res) {
     }
 
     res.json({
-      mensaje: 'Restaurante actualizado exitosamente'
+      mensaje: 'Local actualizado exitosamente'
     });
   } catch (error) {
     console.error('Error actualizando restaurante:', error);
@@ -345,7 +358,7 @@ export async function getRestaurantStats(req, res) {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
 
     if (!restaurante) {
-      return res.status(404).json({ error: 'Restaurante no encontrado' });
+      return res.status(404).json({ error: 'Local no encontrado' });
     }
 
     // Control de acceso por plan

@@ -338,7 +338,7 @@ export default function PageBuilder({ restaurant, onSave, onUpdate }) {
                     <Facebook size={14} /> Redes Sociales
                   </label>
                   <p className="text-[10px] text-[color:var(--text-subtle)] italic mb-2">
-                    Se mostrarán como iconos clicables en la página pública de tu restaurante.
+                    Se mostrarán como iconos clicables en la página pública de tu local.
                   </p>
 
                   <div className="relative">
@@ -373,7 +373,7 @@ export default function PageBuilder({ restaurant, onSave, onUpdate }) {
                       Redes Sociales disponibles en Premium
                     </p>
                     <p className="text-xs text-[color:var(--text-secondary)] mt-1">
-                      Vincula los perfiles de Facebook e Instagram de tu restaurante para que los clientes puedan encontrarlos desde tu página. Disponible en el plan Premium.
+                      Vincula los perfiles de Facebook e Instagram de tu local para que los clientes puedan encontrarlos desde tu página. Disponible en el plan Premium.
                     </p>
                   </div>
                 </div>

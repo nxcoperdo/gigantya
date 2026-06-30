@@ -76,7 +76,7 @@ export async function register(req, res) {
 
     if (req.body.tipo_usuario && req.body.tipo_usuario !== 'cliente') {
       return res.status(400).json({
-        error: 'En esta plataforma solo se permiten registros de clientes. Los restaurantes se gestionan de forma manual con mensualidad.'
+        error: 'En esta plataforma solo se permiten registros de clientes. Los locales se gestionan de forma manual con mensualidad.'
       });
     }
 
