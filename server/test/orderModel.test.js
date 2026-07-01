@@ -23,10 +23,17 @@ test('normalizeOrderItems rejects invalid quantities', () => {
 });
 
 test('calculateOrderTotal ignores client prices when given server-priced items', () => {
+  // 2 × 12.000 + 1 × 5.500 = 29.500 subtotal; impuestos 8% = 2.360 → total 31.860.
+  // calculateOrderTotal devuelve un OBJETO con desglose, no un número.
+  // Antes: `assert.equal(total, 31860)` — fallaba porque comparaba objeto
+  // con número. Test puro (no toca DB) y por eso no necesita setupTestDb.
   const total = calculateOrderTotal([
     { producto_id: 10, cantidad: 2, precio_unitario: 12000 },
     { producto_id: 11, cantidad: 1, precio_unitario: 5500 }
   ]);
 
-  assert.equal(total, 31860);
+  assert.equal(total.total, 31860);
+  assert.equal(total.subtotal, 29500);
+  // Total = subtotal + impuestos (envío=0 cuando no se pasa costo)
+  assert.equal(total.total, total.subtotal + total.impuestos);
 });
