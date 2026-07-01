@@ -19,6 +19,11 @@ export async function createOrder(req, res) {
       coupon_code,
       cupon_codigo,
       cupon_descuento,
+      // Si el carrito tiene productos de varios locales, el cupón tiene
+      // que ser GLOBAL (uno de local no podría aplicarse a un carrito
+      // multi-local). El frontend envía este flag para que la validación
+      // sepa buscar solamente en el pool de cupones globales.
+      es_carrito_multi_local,
       metodo_pago,
       costo_envio,
       total: totalFromFrontend,
@@ -90,7 +95,17 @@ export async function createOrder(req, res) {
           return sum + (p ? p.precio * item.cantidad : 0);
         }, 0);
 
-        const coupon = await CouponModel.validateCoupon(codigoCupon, restaurante_id, subtotal);
+        const coupon = await CouponModel.validateCoupon(
+          codigoCupon,
+          restaurante_id,
+          subtotal,
+          {
+            es_carrito_multi_local: es_carrito_multi_local === true
+              || es_carrito_multi_local === 1
+              || es_carrito_multi_local === '1'
+              || es_carrito_multi_local === 'true',
+          }
+        );
         couponId = coupon.id;
 
         // Validar que el descuento aplicado sea correcto

@@ -165,19 +165,29 @@ CREATE TABLE IF NOT EXISTS comprobantes_pago (
 -- ====================================================
 CREATE TABLE IF NOT EXISTS cupones (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  restaurante_id INT NOT NULL,
-  codigo VARCHAR(50) UNIQUE NOT NULL,
+  -- restaurante_id es NULL para cupones globales (es_global = 1).
+  -- La FK a restaurantes(id) se eliminó en la migración Knex
+  -- 20260701000005_add_es_global_to_cupones; al borrar un local
+  -- hay que limpiar manualmente los cupones en Restaurant.deleteRestaurant.
+  restaurante_id INT NULL,
+  codigo VARCHAR(50) NOT NULL,
   descuento DECIMAL(10, 2) NOT NULL,
   tipo_descuento ENUM('porcentaje', 'monto') NOT NULL,
   fecha_expiracion DATE,
   min_compra DECIMAL(10, 2),
+  max_compra DECIMAL(10, 2),
   usos_maximos INT,
   usos_actuales INT DEFAULT 0,
   activo BOOLEAN DEFAULT 1,
+  es_global TINYINT(1) NOT NULL DEFAULT 0,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
+  -- El UNIQUE(restaurante_id, codigo) lo define la migración Knex
+  -- 20260609000001_subscriptions_and_plans (no se replica acá porque
+  -- MySQL permite múltiples NULLs en UNIQUE y eso es justo lo que
+  -- queremos: N locales + 1 global pueden compartir el mismo código).
   INDEX idx_restaurante_id (restaurante_id),
-  INDEX idx_codigo (codigo)
+  INDEX idx_codigo (codigo),
+  INDEX idx_es_global (es_global)
 );
 
 -- ====================================================

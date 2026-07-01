@@ -33,6 +33,20 @@ export default function AddressesTab() {
     loadSectores();
   }, []);
 
+  // FIX: cuando el usuario cambia el sector en el form, hay que cargar
+  // los barrios de ese sector. Antes esto solo se hacía en `handleEdit`
+  // (precarga para editar), pero al crear o cambiar de sector después
+  // de tener uno seleccionado, el <select> de barrio quedaba vacío.
+  //
+  // Se dispara también en mount (con sector_id = ''), pero `loadBarrios`
+  // ya tiene un guard `if (!sectorId) return []` así que es no-op.
+  useEffect(() => {
+    if (formData.sector_id) {
+      loadBarrios(formData.sector_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.sector_id]);
+
   const loadSectores = async () => {
     try {
       setLoadingSectores(true);
@@ -101,10 +115,15 @@ export default function AddressesTab() {
     try {
       setLoading(true);
 
+      // El backend solo persiste barrio_id; sector_id NO se guarda en
+      // la dirección (se resuelve por JOIN con barrios.sector_id al
+      // leer). Lo omitimos del payload para no confundir.
       const payload = {
         ...formData,
         barrio_id: formData.barrio_id ? Number(formData.barrio_id) : null,
+        sector_id: undefined, // explícitamente removido
       };
+      delete payload.sector_id;
 
       if (editingId) {
         await addressService.update(editingId, payload);

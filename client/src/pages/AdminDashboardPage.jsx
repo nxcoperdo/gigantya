@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 import ZonasAdmin from '../components/ZonasAdmin';
+import CouponsView from '../components/CouponsView';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -357,6 +358,7 @@ export default function AdminDashboardPage() {
             { id: 'restaurants', label: 'Locales', icon: <Store size={16} /> },
             { id: 'orders', label: 'Pedidos', icon: <ClipboardList size={16} /> },
             { id: 'categories', label: 'Categorías', icon: <Tags size={16} /> },
+            { id: 'coupons', label: 'Cupones', icon: <Ticket size={16} /> },
             { id: 'zonas', label: 'Zonas', icon: <MapPin size={16} /> },
             { id: 'analytics', label: 'Analíticas', icon: <Package size={16} /> },
           ].map(tab => (
@@ -887,6 +889,13 @@ export default function AdminDashboardPage() {
                 </table>
               </div>
             </section>
+          )}
+
+          {/* TAB: CUPONES */}
+          {activeTab === 'coupons' && (
+            <div className="animate-fadeIn">
+              <CouponsView mode="admin" />
+            </div>
           )}
 
           {/* TAB: ZONAS (sectores / barrios) */}

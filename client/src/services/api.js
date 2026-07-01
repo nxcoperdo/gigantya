@@ -163,6 +163,12 @@ export const adminService = {
     api.put(`/admin/restaurants/${id}/es-comida-rapida`, { es_comida_rapida }),
   getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
   updateRestaurantConfig: (id, payload) => api.put(`/admin/restaurants/${id}/config`, payload),
+  // Coupon management (admin) — cupones globales y de cualquier local
+  getCoupons: (params = {}) => api.get('/admin/coupons', { params }),
+  createCoupon: (data) => api.post('/admin/coupons', data),
+  getCoupon: (id) => api.get(`/admin/coupons/${id}`),
+  updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
+  deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
 };
 
 // ========== NOTIFICACIONES ==========

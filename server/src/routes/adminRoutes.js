@@ -3,6 +3,7 @@ import * as adminController from '../controllers/adminController.js';
 import * as categoryController from '../controllers/categoryController.js';
 import * as zonaController from '../controllers/zonaController.js';
 import * as restaurantShippingController from '../controllers/restaurantShippingController.js';
+import * as couponController from '../controllers/couponController.js';
 import * as SectorModel from '../models/Sector.js';
 import * as BarrioModel from '../models/Barrio.js';
 import { query, queryOne } from '../config/database.js';
@@ -163,5 +164,20 @@ router.get('/categorias', verifyToken, requireAdmin, categoryController.getCateg
 router.post('/categorias', verifyToken, requireAdmin, categoryController.createCategory);
 router.put('/categorias/:id', verifyToken, requireAdmin, categoryController.updateCategory);
 router.delete('/categorias/:id', verifyToken, requireAdmin, categoryController.deleteCategory);
+
+/**
+ * Rutas de Gestión de Cupones (Admin)
+ *
+ * El admin puede crear cupones globales (es_global=true, sin local
+ * asociado) o cupones en nombre de un local específico. También puede
+ * editar o borrar cualquier cupón de la plataforma, sean propios del
+ * local o globales. Los handlers están en `couponController` con el
+ * prefijo `admin*`.
+ */
+router.get('/coupons', verifyToken, requireAdmin, couponController.adminListCoupons);
+router.post('/coupons', verifyToken, requireAdmin, couponController.adminCreateCoupon);
+router.get('/coupons/:id', verifyToken, requireAdmin, couponController.adminGetCoupon);
+router.put('/coupons/:id', verifyToken, requireAdmin, couponController.adminUpdateCoupon);
+router.delete('/coupons/:id', verifyToken, requireAdmin, couponController.adminDeleteCoupon);
 
 export default router;

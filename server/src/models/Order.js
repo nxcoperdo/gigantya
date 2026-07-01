@@ -261,11 +261,22 @@ export async function createOrderWithItems(orderData) {
       // FIX: validar también que el cupón pertenece al mismo restaurante.
       // Sin este filtro, un cupón creado por el restaurante A podría
       // aplicarse a pedidos del restaurante B (vulnerabilidad menor).
+      //
+      // Excepción: cupones GLOBALES (es_global = 1) no tienen
+      // restaurante_id (es NULL) y pueden aplicarse a pedidos de
+      // cualquier local. En ese caso, NO aplicamos el filtro
+      // restaurante_id y dejamos que la validación pase.
       const [couponResult] = await connection.query(
-        'SELECT * FROM cupones WHERE id = ? AND restaurante_id = ?',
+        `SELECT * FROM cupones
+         WHERE id = ?
+           AND (es_global = 1 OR restaurante_id = ?)
+         LIMIT 1`,
         [coupon_id, restaurante_id]
       );
       coupon = couponResult[0];
+      if (!coupon) {
+        throw new Error('Cupón no válido para este pedido');
+      }
     }
 
     // Obtener configuración de impuestos y envíos del restaurante

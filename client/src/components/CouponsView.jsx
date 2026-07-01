@@ -1,8 +1,26 @@
 import { useEffect, useState } from 'react';
-import { couponService } from '../services/api';
-import { Ticket, Plus, Pencil, Trash2, AlertCircle, Calendar, Percent, DollarSign, Copy } from 'lucide-react';
+import { couponService, adminService } from '../services/api';
+import {
+  Ticket, Plus, Pencil, Trash2, AlertCircle,
+  Calendar, Percent, DollarSign, Copy, Globe, Store, Lock
+} from 'lucide-react';
 
-function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
+/**
+ * Modal para crear/editar un cupón.
+ *
+ * Props:
+ *   - isOpen, onClose, onSave
+ *   - coupon: el cupón a editar (null = creación)
+ *   - mode: 'restaurant' | 'admin'
+ *       - 'restaurant': el cupón SIEMPRE es del local del caller.
+ *         El toggle no se muestra (o se muestra fijo en "local").
+ *       - 'admin': el admin puede elegir entre cupón global o cupón
+ *         de un local específico. Si elige local, debe elegir el
+ *         restaurante en un select.
+ *   - restaurants: lista de restaurantes para el selector (solo admin).
+ */
+function CouponModal({ isOpen, onClose, onSave, coupon, mode = 'restaurant', restaurants = [] }) {
+  const isAdmin = mode === 'admin';
   const [formData, setFormData] = useState({
     codigo: '',
     descuento: '',
@@ -11,6 +29,8 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
     min_compra: '',
     max_compra: '',
     usos_maximos: '',
+    es_global: !isAdmin ? false : true,
+    restaurante_id: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,6 +45,8 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         min_compra: coupon.min_compra || '',
         max_compra: coupon.max_compra || '',
         usos_maximos: coupon.usos_maximos || '',
+        es_global: coupon.es_global === 1 || coupon.es_global === true,
+        restaurante_id: coupon.restaurante_id || '',
       });
     } else {
       setFormData({
@@ -35,9 +57,11 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         min_compra: '',
         max_compra: '',
         usos_maximos: '',
+        es_global: !isAdmin ? false : true,
+        restaurante_id: '',
       });
     }
-  }, [coupon]);
+  }, [coupon, isAdmin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,6 +77,26 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         usos_maximos: formData.usos_maximos ? parseInt(formData.usos_maximos, 10) : null,
       };
 
+      if (isAdmin) {
+        payload.es_global = formData.es_global === true;
+        if (!payload.es_global) {
+          // Cupón de local específico: necesitamos restaurante_id
+          if (!formData.restaurante_id) {
+            setError('Seleccioná un local para el cupón');
+            setLoading(false);
+            return;
+          }
+          payload.restaurante_id = parseInt(formData.restaurante_id, 10);
+        } else {
+          // Global: explícitamente null para que el backend no use el valor viejo
+          payload.restaurante_id = null;
+        }
+      } else {
+        // Modo local: nunca es global
+        payload.es_global = false;
+        delete payload.restaurante_id;
+      }
+
       // Validación de UI: coherencia min/max antes de enviar al server
       if (payload.min_compra !== null && payload.max_compra !== null
           && payload.max_compra < payload.min_compra) {
@@ -61,10 +105,19 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
         return;
       }
 
-      if (coupon) {
-        await couponService.update(coupon.id, payload);
+      // Decidir qué servicio usar
+      if (isAdmin) {
+        if (coupon) {
+          await adminService.updateCoupon(coupon.id, payload);
+        } else {
+          await adminService.createCoupon(payload);
+        }
       } else {
-        await couponService.create(payload);
+        if (coupon) {
+          await couponService.update(coupon.id, payload);
+        } else {
+          await couponService.create(payload);
+        }
       }
 
       onSave();
@@ -86,7 +139,9 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
             <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
               <Ticket size={20} />
             </div>
-            <h3 className="text-xl font-bold text-[color:var(--text-primary)]">{coupon ? 'Editar Cupón' : 'Nuevo Cupón'}</h3>
+            <h3 className="text-xl font-bold text-[color:var(--text-primary)]">
+              {coupon ? 'Editar Cupón' : 'Nuevo Cupón'}
+            </h3>
           </div>
 
           {error && (
@@ -96,6 +151,62 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Toggle de alcance (solo admin) */}
+            {isAdmin && (
+              <div className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] p-3">
+                <p className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide mb-2">
+                  Alcance del cupón
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, es_global: true, restaurante_id: '' })}
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all ${
+                      formData.es_global
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-[color:var(--bg-elevated)] text-[color:var(--text-secondary)] border-[color:var(--border-default)] hover:border-primary/50'
+                    }`}
+                  >
+                    <Globe size={16} />
+                    Global (plataforma)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, es_global: false })}
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all ${
+                      !formData.es_global
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-[color:var(--bg-elevated)] text-[color:var(--text-secondary)] border-[color:var(--border-default)] hover:border-primary/50'
+                    }`}
+                  >
+                    <Store size={16} />
+                    Para un local
+                  </button>
+                </div>
+
+                {!formData.es_global && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-semibold text-[color:var(--text-secondary)] mb-1">
+                      Local *
+                    </label>
+                    <select
+                      value={formData.restaurante_id}
+                      onChange={(e) => setFormData({ ...formData, restaurante_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      required
+                    >
+                      <option value="">Seleccioná un local</option>
+                      {Array.isArray(restaurants) && restaurants.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-semibold text-[color:var(--text-secondary)] mb-1">Código *</label>
               <input
@@ -206,8 +317,22 @@ function CouponModal({ isOpen, onClose, onSave, coupon, restaurant }) {
   );
 }
 
-function CouponCard({ coupon, onEdit, onDelete }) {
+/**
+ * Card de un cupón individual.
+ *
+ * `puede_editar` (viene del backend en el payload del local): si es
+ * false (típicamente para cupones globales en la vista del local),
+ * los botones de editar/borrar se deshabilitan con tooltip.
+ *
+ * Si `restaurante_nombre` viene (vista admin), se muestra el nombre
+ * del local o "Plataforma" si es global.
+ */
+function CouponCard({ coupon, onEdit, onDelete, mode = 'restaurant' }) {
   const [copied, setCopied] = useState(false);
+  const isAdmin = mode === 'admin';
+  const isExpired = coupon.fecha_expiracion && new Date(coupon.fecha_expiracion) < new Date();
+  const isGlobal = coupon.es_global === 1 || coupon.es_global === true;
+  const canEdit = isAdmin || coupon.puede_editar !== 0;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(coupon.codigo);
@@ -215,7 +340,6 @@ function CouponCard({ coupon, onEdit, onDelete }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isExpired = coupon.fecha_expiracion && new Date(coupon.fecha_expiracion) < new Date();
   const discountLabel = coupon.tipo_descuento === 'porcentaje'
     ? `${coupon.descuento}%`
     : `$${Number(coupon.descuento).toLocaleString('es-CO')}`;
@@ -224,10 +348,29 @@ function CouponCard({ coupon, onEdit, onDelete }) {
     <div className={`border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] ${isExpired ? 'opacity-60' : 'hover:shadow-sm'} transition-all`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold font-mono">
               {coupon.codigo}
             </span>
+            {isGlobal && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold"
+                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
+                title={isAdmin ? 'Cupón global de plataforma' : 'Administrado por la plataforma'}
+              >
+                <Globe size={12} />
+                {isAdmin ? 'Global' : 'Plataforma'}
+              </span>
+            )}
+            {!isGlobal && isAdmin && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)]"
+                title="Cupón de un local específico"
+              >
+                <Store size={12} />
+                {coupon.restaurante_nombre || `Local #${coupon.restaurante_id}`}
+              </span>
+            )}
             {isExpired && (
               <span className="px-2 py-1 bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] rounded-lg text-xs font-semibold">
                 Expirado
@@ -241,9 +384,17 @@ function CouponCard({ coupon, onEdit, onDelete }) {
                 Máx: {coupon.usos_maximos}
               </span>
             )}
+            {coupon.activo === 0 && (
+              <span
+                className="px-2 py-1 rounded-lg text-xs font-semibold"
+                style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
+              >
+                Pausado
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-[color:var(--text-secondary)] mb-2">
+          <div className="flex items-center gap-4 text-sm text-[color:var(--text-secondary)] mb-2 flex-wrap">
             <div className="flex items-center gap-1">
               {coupon.tipo_descuento === 'porcentaje' ? <Percent size={14} /> : <DollarSign size={14} />}
               <span className="font-semibold text-[color:var(--text-primary)]">{discountLabel} de descuento</span>
@@ -281,20 +432,22 @@ function CouponCard({ coupon, onEdit, onDelete }) {
           </button>
           <button
             type="button"
-            onClick={() => onEdit(coupon)}
-            className="p-2 text-[color:var(--text-muted)] hover:text-primary transition-colors"
-            title="Editar"
+            onClick={() => canEdit && onEdit(coupon)}
+            disabled={!canEdit}
+            className="p-2 text-[color:var(--text-muted)] hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-[color:var(--text-muted)]"
+            title={canEdit ? 'Editar' : 'Cupón administrado por la plataforma'}
           >
-            <Pencil size={18} />
+            {canEdit ? <Pencil size={18} /> : <Lock size={18} />}
           </button>
           <button
             type="button"
-            onClick={() => onDelete(coupon)}
-            className="p-2 transition-colors"
+            onClick={() => canEdit && onDelete(coupon)}
+            disabled={!canEdit}
+            className="p-2 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger-text)'; }}
+            onMouseEnter={(e) => { if (canEdit) e.currentTarget.style.color = 'var(--danger-text)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
-            title="Eliminar"
+            title={canEdit ? 'Eliminar' : 'Cupón administrado por la plataforma'}
           >
             <Trash2 size={18} />
           </button>
@@ -310,22 +463,47 @@ function CouponCard({ coupon, onEdit, onDelete }) {
   );
 }
 
-export default function CouponsView({ restaurant, refreshData }) {
+/**
+ * Componente principal: gestión de cupones.
+ *
+ * Props:
+ *   - mode: 'restaurant' (default) | 'admin'
+ *       - 'restaurant': muestra solo los del local + los globales (read-only).
+ *       - 'admin': muestra TODOS los cupones de la plataforma y permite
+ *         crear/editar/borrar cualquiera.
+ *   - restaurant: info del local (solo en modo 'restaurant'). Usado
+ *       para detectar plan 'basico' y mostrar el upsell.
+ *   - refreshData: callback opcional para refrescar datos del padre.
+ */
+export default function CouponsView({ mode = 'restaurant', restaurant, refreshData }) {
+  const isAdmin = mode === 'admin';
   const [coupons, setCoupons] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
-  const [deletingCouponId, setDeletingCouponId] = useState(null);
+  const [filtroRestaurante, setFiltroRestaurante] = useState('');
 
-  const isBasicPlan = restaurant?.plan === 'basico';
+  const isBasicPlan = !isAdmin && restaurant?.plan === 'basico';
 
   const loadCoupons = async () => {
     try {
       setError('');
       setLoading(true);
-      const response = await couponService.getMyCoupons();
-      setCoupons(response.data?.cupones || []);
+      if (isAdmin) {
+        const params = {};
+        if (filtroRestaurante === 'global') {
+          params.es_global = 1;
+        } else if (filtroRestaurante) {
+          params.restaurante_id = filtroRestaurante;
+        }
+        const response = await adminService.getCoupons(params);
+        setCoupons(response.data?.cupones || []);
+      } else {
+        const response = await couponService.getMyCoupons();
+        setCoupons(response.data?.cupones || []);
+      }
     } catch (err) {
       console.error('Error cargando cupones:', err);
       setError(err.response?.data?.error || 'No se pudieron cargar los cupones');
@@ -334,11 +512,28 @@ export default function CouponsView({ restaurant, refreshData }) {
     }
   };
 
-  useEffect(() => {
-    if (restaurant?.id) {
-      loadCoupons();
+  const loadRestaurants = async () => {
+    if (!isAdmin) return;
+    try {
+      // El backend devuelve { total, restaurantes: [...] }, NO un array
+      // directo. Hay que leer response.data.restaurantes.
+      const response = await adminService.getRestaurants();
+      setRestaurants(response.data?.restaurantes || []);
+    } catch (err) {
+      console.error('Error cargando locales:', err);
     }
-  }, [restaurant?.id]);
+  };
+
+  useEffect(() => {
+    loadCoupons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, filtroRestaurante]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadRestaurants();
+    }
+  }, [isAdmin]);
 
   const handleSave = async () => {
     await loadCoupons();
@@ -356,14 +551,15 @@ export default function CouponsView({ restaurant, refreshData }) {
     if (!window.confirm(`¿Estás seguro de eliminar el cupón "${coupon.codigo}"?`)) return;
 
     try {
-      setDeletingCouponId(coupon.id);
-      await couponService.delete(coupon.id);
+      if (isAdmin) {
+        await adminService.deleteCoupon(coupon.id);
+      } else {
+        await couponService.delete(coupon.id);
+      }
       await loadCoupons();
     } catch (err) {
       console.error('Error eliminando cupón:', err);
       setError(err.response?.data?.error || 'No se pudo eliminar el cupón');
-    } finally {
-      setDeletingCouponId(null);
     }
   };
 
@@ -372,6 +568,7 @@ export default function CouponsView({ restaurant, refreshData }) {
     setIsModalOpen(true);
   };
 
+  // Upsell: solo aparece en modo 'restaurant' con plan basico.
   if (isBasicPlan) {
     return (
       <div className="card-lg p-12 text-center">
@@ -394,16 +591,28 @@ export default function CouponsView({ restaurant, refreshData }) {
     );
   }
 
+  // Header copy cambia según el modo.
+  const headerTitle = isAdmin ? 'Cupones de la plataforma' : 'Gestión de Cupones';
+  const headerSubtitle = isAdmin
+    ? 'Crea cupones globales que aplican a toda la plataforma o para locales específicos'
+    : 'Crea y administra descuentos para tus clientes';
+  const emptyTitle = isAdmin
+    ? 'No hay cupones en la plataforma'
+    : 'No tienes cupones creados todavía';
+  const emptyHint = isAdmin
+    ? 'Creá el primer cupón global para ofrecer descuentos a todos los clientes'
+    : 'Crea tu primer cupón para ofrecer descuentos a tus clientes';
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
             <Ticket size={20} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Gestión de Cupones</h2>
-            <p className="text-sm text-[color:var(--text-secondary)]">Crea y administra descuentos para tus clientes</p>
+            <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">{headerTitle}</h2>
+            <p className="text-sm text-[color:var(--text-secondary)]">{headerSubtitle}</p>
           </div>
         </div>
         <button
@@ -415,6 +624,52 @@ export default function CouponsView({ restaurant, refreshData }) {
           Nuevo Cupón
         </button>
       </div>
+
+      {/* Filtro por local (solo admin) */}
+      {isAdmin && (
+        <div className="card-base p-3 flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-semibold text-[color:var(--text-secondary)]">Filtrar:</span>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setFiltroRestaurante('')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                filtroRestaurante === ''
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-[color:var(--bg-base)] text-[color:var(--text-secondary)] border-[color:var(--border-default)] hover:border-primary/50'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltroRestaurante('global')}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                filtroRestaurante === 'global'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-[color:var(--bg-base)] text-[color:var(--text-secondary)] border-[color:var(--border-default)] hover:border-primary/50'
+              }`}
+            >
+              <Globe size={14} />
+              Solo globales
+            </button>
+            {Array.isArray(restaurants) && restaurants.length > 0 && (
+              <select
+                value={filtroRestaurante === 'global' ? '' : filtroRestaurante}
+                onChange={(e) => setFiltroRestaurante(e.target.value)}
+                className="px-3 py-1.5 rounded-lg text-sm border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="">Por local…</option>
+                {restaurants.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="alert alert-error rounded-xl">
@@ -432,8 +687,8 @@ export default function CouponsView({ restaurant, refreshData }) {
           <div className="w-16 h-16 bg-[color:var(--bg-muted)] text-[color:var(--text-subtle)] rounded-full flex items-center justify-center mx-auto mb-4">
             <Ticket size={32} />
           </div>
-          <p className="text-[color:var(--text-secondary)]">No tienes cupones creados todavía</p>
-          <p className="text-sm text-[color:var(--text-muted)] mt-1">Crea tu primer cupón para ofrecer descuentos a tus clientes</p>
+          <p className="text-[color:var(--text-secondary)]">{emptyTitle}</p>
+          <p className="text-sm text-[color:var(--text-muted)] mt-1">{emptyHint}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -443,6 +698,7 @@ export default function CouponsView({ restaurant, refreshData }) {
               coupon={coupon}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              mode={mode}
             />
           ))}
         </div>
@@ -456,7 +712,8 @@ export default function CouponsView({ restaurant, refreshData }) {
         }}
         onSave={handleSave}
         coupon={selectedCoupon}
-        restaurant={restaurant}
+        mode={mode}
+        restaurants={restaurants}
       />
     </div>
   );

@@ -1,7 +1,16 @@
 import { query, queryOne } from '../config/database.js';
 
 /**
- * Crear nuevo cupón
+ * Crear nuevo cupón.
+ *
+ * Acepta cupones de local (es_global = false) y cupones globales de
+ * plataforma (es_global = true). En el caso global, `restaurante_id`
+ * se fuerza a NULL en la fila. La aplicación garantiza el invariante
+ * `es_global = 1 ⇔ restaurante_id IS NULL` (también reforzado por
+ * un CHECK constraint a nivel DB, ver migración 20260701000005).
+ *
+ * Si llega una combinación inválida (es_global=true con restaurante_id,
+ * o es_global=false sin restaurante_id) se rechaza con error.
  */
 export async function createCoupon(couponData) {
   const {
@@ -12,8 +21,45 @@ export async function createCoupon(couponData) {
     fecha_expiracion,
     min_compra,
     max_compra,
-    usos_maximos
+    usos_maximos,
+    es_global = false
   } = couponData;
+
+  // Normalizar y validar el invariante lógico.
+  // Importante: primero validamos la combinación QUE LLEGA del caller,
+  // sin tocar los valores. Recién después de validar decidimos qué
+  // guardar. Si solo validáramos `finalRestauranteId`, estaríamos
+  // aceptando combinaciones inválidas silenciosamente (porque
+  // `finalRestauranteId` se fuerza a null para los globales).
+  const esGlobalBool = es_global === true || es_global === 1 || es_global === '1';
+  const tieneRestauranteId = restaurante_id !== null && restaurante_id !== undefined && restaurante_id !== '';
+
+  if (esGlobalBool && tieneRestauranteId) {
+    throw new Error('Cupón global no puede tener restaurante_id');
+  }
+  if (!esGlobalBool && !tieneRestauranteId) {
+    throw new Error('Cupón de local requiere restaurante_id');
+  }
+
+  const finalRestauranteId = esGlobalBool ? null : restaurante_id;
+
+  // Validar unicidad del código entre cupones globales.
+  // (El UNIQUE(restaurante_id, codigo) de MySQL ya cubre el caso
+  // local-vs-local; este check cubre global-vs-global porque
+  // MySQL trata NULLs como distintos en UNIQUE.)
+  if (esGlobalBool) {
+    const exists = await codeExistsForGlobal(codigo);
+    if (exists) {
+      throw new Error('Ya existe un cupón global con ese código');
+    }
+  } else {
+    // Defensa adicional: validar que no choque con un global existente
+    // (un local no debería poder tener un código que ya usa la plataforma).
+    const globalExists = await codeExistsForGlobal(codigo);
+    if (globalExists) {
+      throw new Error('Ese código ya está reservado por un cupón global de la plataforma');
+    }
+  }
 
   const sql = `
     INSERT INTO cupones (
@@ -24,20 +70,22 @@ export async function createCoupon(couponData) {
       fecha_expiracion,
       min_compra,
       max_compra,
-      usos_maximos
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      usos_maximos,
+      es_global
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   try {
     const result = await query(sql, [
-      restaurante_id,
+      finalRestauranteId,
       codigo.toUpperCase(),
       descuento,
       tipo_descuento,
       fecha_expiracion,
       min_compra ?? null,
       max_compra ?? null,
-      usos_maximos
+      usos_maximos,
+      esGlobalBool ? 1 : 0
     ]);
     return result.insertId;
   } catch (error) {
@@ -46,15 +94,108 @@ export async function createCoupon(couponData) {
 }
 
 /**
- * Obtener cupones de un restaurante
+ * Obtener cupones de un restaurante.
+ *
+ * - `includeGlobal = false` (default legacy): solo los cupones del local.
+ *   Mantiene la semántica original.
+ * - `includeGlobal = true`: además de los del local, suma los cupones
+ *   globales de la plataforma. Usado por la vista del panel del local
+ *   para que el dueño vea qué promociones de plataforma están activas.
+ *
+ * El flag `puede_editar` se calcula en SQL: el local solo puede editar
+ * los propios (es_global=0); los globales son read-only para él.
  */
-export async function getCouponsByRestaurant(restaurante_id) {
-  const sql = 'SELECT * FROM cupones WHERE restaurante_id = ? ORDER BY creado_en DESC';
+export async function getCouponsByRestaurant(restaurante_id, { includeGlobal = false } = {}) {
+  if (!includeGlobal) {
+    const sql = 'SELECT * FROM cupones WHERE restaurante_id = ? ORDER BY creado_en DESC';
+    return query(sql, [restaurante_id]);
+  }
+
+  const sql = `
+    SELECT
+      c.*,
+      CASE WHEN c.es_global = 1 THEN 0 ELSE 1 END AS puede_editar
+    FROM cupones c
+    WHERE c.restaurante_id = ? OR c.es_global = 1
+    ORDER BY c.es_global DESC, c.creado_en DESC
+  `;
   return query(sql, [restaurante_id]);
 }
 
 /**
- * Validar cupón para un pedido
+ * Listar TODOS los cupones de la plataforma (admin).
+ *
+ * Soporta filtros:
+ *   - es_global: 1 / 0
+ *   - restaurante_id: número
+ *   - activo: 1 / 0
+ *   - codigo: LIKE match
+ *   - limit, offset: paginación
+ *
+ * Devuelve una fila con el nombre del local (o NULL si es global)
+ * para mostrar "Global" en la UI admin.
+ */
+export async function getAllCouponsForAdmin(filtros = {}) {
+  const where = [];
+  const params = [];
+
+  if (filtros.es_global !== undefined && filtros.es_global !== null && filtros.es_global !== '') {
+    where.push('c.es_global = ?');
+    params.push(filtros.es_global === true || filtros.es_global === 1 || filtros.es_global === '1' ? 1 : 0);
+  }
+
+  if (filtros.restaurante_id !== undefined && filtros.restaurante_id !== null && filtros.restaurante_id !== '') {
+    where.push('c.restaurante_id = ?');
+    params.push(Number(filtros.restaurante_id));
+  }
+
+  if (filtros.activo !== undefined && filtros.activo !== null && filtros.activo !== '') {
+    where.push('c.activo = ?');
+    params.push(filtros.activo === true || filtros.activo === 1 || filtros.activo === '1' ? 1 : 0);
+  }
+
+  if (filtros.codigo) {
+    where.push('c.codigo LIKE ?');
+    params.push(`%${filtros.codigo.toUpperCase()}%`);
+  }
+
+  const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+  const limit = Math.max(0, Math.min(Number(filtros.limit) || 200, 500));
+  const offset = Math.max(0, Number(filtros.offset) || 0);
+
+  const sql = `
+    SELECT
+      c.*,
+      r.nombre AS restaurante_nombre
+    FROM cupones c
+    LEFT JOIN restaurantes r ON c.restaurante_id = r.id
+    ${whereClause}
+    ORDER BY c.es_global DESC, c.creado_en DESC
+    LIMIT ? OFFSET ?
+  `;
+  params.push(limit, offset);
+  return query(sql, params);
+}
+
+/**
+ * Obtener un cupón por id. Devuelve null si no existe.
+ * Usado por el controller admin para chequear ownership antes de
+ * update/delete.
+ */
+export async function getCouponById(id) {
+  const sql = `
+    SELECT c.*, r.nombre AS restaurante_nombre
+    FROM cupones c
+    LEFT JOIN restaurantes r ON c.restaurante_id = r.id
+    WHERE c.id = ?
+    LIMIT 1
+  `;
+  return queryOne(sql, [id]);
+}
+
+/**
+ * Validar cupón para un pedido.
  *
  * Reglas aplicadas (todas opcionales según la config del cupón):
  *   - Activo (activo = 1)
@@ -62,20 +203,62 @@ export async function getCouponsByRestaurant(restaurante_id) {
  *   - Usos disponibles (usos_actuales < usos_maximos, o NULL = ilimitado)
  *   - Subtotal/total dentro del rango permitido (min_compra / max_compra)
  *
- * Si el restaurante configuró tanto `min_compra` como `max_compra`, ambos
- * se cumplen y los mensajes son específicos para cada caso.
+ * Búsqueda de cupón:
+ *   - Caso normal: cupón de local. Filtra por `restaurante_id`.
+ *   - Caso global: cupón de plataforma. Se busca sin filtro de
+ *     restaurante y se exige `es_global = 1`.
+ *
+ * `options`:
+ *   - es_carrito_multi_local: si true, ignora restaurante_id y
+ *     permite tanto locales (de cualquier local) como globales. Útil
+ *     para cuando un cliente mete productos de varios locales al carrito.
+ *     En la práctica, hoy el carrito es single-local, pero la opción
+ *     queda por si el modelo evoluciona.
+ *   - forzar_global: si true, SOLO busca cupones globales (ignora
+ *     cupones de local aunque coincida restaurante_id). Útil si el
+ *     cliente hace checkout multi-local y el frontend quiere reintentar
+ *     con un cupón global después de que el local falló.
+ *
+ * Devuelve el cupón con su flag `es_global` para que el caller sepa
+ * qué reglas aplicar.
  */
-export async function validateCoupon(codigo, restaurante_id, total_pedido) {
-  const sql = `
-    SELECT * FROM cupones
-    WHERE codigo = ? AND restaurante_id = ? AND activo = 1
-    AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURDATE())
-    AND (usos_maximos IS NULL OR usos_actuales < usos_maximos)
-  `;
+export async function validateCoupon(codigo, restaurante_id, total_pedido, options = {}) {
+  const {
+    es_carrito_multi_local = false,
+    forzar_global = false
+  } = options;
 
-  const cupon = await queryOne(sql, [codigo.toUpperCase(), restaurante_id]);
+  let sql;
+  let params;
+
+  if (forzar_global || es_carrito_multi_local) {
+    sql = `
+      SELECT * FROM cupones
+      WHERE codigo = ? AND es_global = 1 AND activo = 1
+      AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURDATE())
+      AND (usos_maximos IS NULL OR usos_actuales < usos_maximos)
+    `;
+    params = [codigo.toUpperCase()];
+  } else {
+    sql = `
+      SELECT * FROM cupones
+      WHERE codigo = ? AND restaurante_id = ? AND activo = 1
+      AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURDATE())
+      AND (usos_maximos IS NULL OR usos_actuales < usos_maximos)
+    `;
+    params = [codigo.toUpperCase(), restaurante_id];
+  }
+
+  const cupon = await queryOne(sql, params);
 
   if (!cupon) {
+    // Mensaje específico para que el cliente sepa qué probar.
+    if (forzar_global) {
+      throw new Error('No existe un cupón global de la plataforma con ese código');
+    }
+    if (es_carrito_multi_local) {
+      throw new Error('Cupón no encontrado. Si querés usar un cupón de un local, sacá los productos de otros locales del carrito');
+    }
     throw new Error('Cupón inválido, expirado o no disponible para este restaurante');
   }
 
@@ -103,21 +286,59 @@ export async function recordCouponUsage(couponId) {
 }
 
 /**
- * Actualizar cupón
+ * Actualizar cupón.
+ *
+ * Campos permitidos (whitelist):
+ *   codigo, descuento, tipo_descuento, fecha_expiracion, min_compra,
+ *   max_compra, usos_maximos, activo, es_global, restaurante_id
+ *
+ * Si se incluye `es_global` o `restaurante_id` en el payload, se
+ * normaliza la combinación para mantener el invariante
+ * `es_global = 1 ⇔ restaurante_id IS NULL`. No se valida la
+ * existencia de restaurante_id si se cambia (eso lo hace el controller
+ * con un check de FK manual o con un JOIN).
  */
 export async function updateCoupon(id, updateData) {
-  const allowedFields = ['codigo', 'descuento', 'tipo_descuento', 'fecha_expiracion', 'min_compra', 'max_compra', 'usos_maximos', 'activo'];
+  const allowedFields = [
+    'codigo', 'descuento', 'tipo_descuento', 'fecha_expiracion',
+    'min_compra', 'max_compra', 'usos_maximos', 'activo',
+    'es_global', 'restaurante_id'
+  ];
   const fields = Object.keys(updateData).filter(key => allowedFields.includes(key));
 
   if (fields.length === 0) throw new Error('No hay campos para actualizar');
+
+  // Si cambian es_global o restaurante_id, normalizar el par.
+  let nextEsGlobal;
+  let nextRestauranteId;
+  if (fields.includes('es_global')) {
+    nextEsGlobal = updateData.es_global === true || updateData.es_global === 1 || updateData.es_global === '1';
+  }
+  if (fields.includes('restaurante_id')) {
+    nextRestauranteId = updateData.restaurante_id;
+  }
+
+  if (nextEsGlobal === true) {
+    updateData.restaurante_id = null;
+    if (!fields.includes('restaurante_id')) fields.push('restaurante_id');
+  } else if (nextEsGlobal === false) {
+    // Si pasa a local pero no mandó restaurante_id, lo dejamos como está
+    // (el caller tiene que saber qué local asignar).
+  }
 
   let sql = 'UPDATE cupones SET ';
   const values = [];
 
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';
-    sql += field === 'codigo' ? `${field} = ?` : `${field} = ?`;
-    values.push(field === 'codigo' ? updateData[field].toUpperCase() : updateData[field]);
+    let value = updateData[field];
+    if (field === 'codigo' && value) value = value.toUpperCase();
+    // Boolean→int para TINYINT(1)
+    if (field === 'es_global') {
+      value = (value === true || value === 1 || value === '1') ? 1 : 0;
+    }
+    sql += `${field} = ?`;
+    values.push(value);
   });
 
   sql += ' WHERE id = ?';
@@ -132,7 +353,7 @@ export async function updateCoupon(id, updateData) {
 }
 
 /**
- * Eliminar cupón
+ * Eliminar cupón. No chequea ownership (eso lo hace el controller).
  */
 export async function deleteCoupon(id) {
   const sql = 'DELETE FROM cupones WHERE id = ?';
@@ -144,9 +365,27 @@ export async function deleteCoupon(id) {
   }
 }
 
+// =============================================================
+// Helpers internos
+// =============================================================
+
+/**
+ * Chequea si ya existe un cupón GLOBAL con ese código.
+ * El chequeo es case-insensitive (códigos siempre se guardan en upper).
+ * Usado por createCoupon para enforce unicidad entre globales.
+ */
+async function codeExistsForGlobal(codigo) {
+  if (!codigo) return false;
+  const sql = 'SELECT id FROM cupones WHERE es_global = 1 AND codigo = ? LIMIT 1';
+  const row = await queryOne(sql, [codigo.toUpperCase()]);
+  return row !== null && row !== undefined;
+}
+
 export default {
   createCoupon,
   getCouponsByRestaurant,
+  getAllCouponsForAdmin,
+  getCouponById,
   validateCoupon,
   recordCouponUsage,
   updateCoupon,

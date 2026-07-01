@@ -51,6 +51,10 @@ export async function createAddress(req, res) {
       telefono,
       notas,
       es_default,
+      // Barrio (opcional). El sector NO se guarda: se resuelve en lectura
+      // vía JOIN con barrios.sector_id. Guardar sector_id en la dirección
+      // sería redundante y desnormalizado.
+      barrio_id,
       // Campos opcionales de Google Maps (Places Autocomplete)
       latitud,
       longitud,
@@ -64,6 +68,12 @@ export async function createAddress(req, res) {
       });
     }
 
+    // barrio_id: si viene del cliente puede ser string (viene de un
+    // <select>) o number. Normalizamos a number|null.
+    const barrioIdNormalizado = barrio_id === undefined || barrio_id === null || barrio_id === ''
+      ? null
+      : Number(barrio_id);
+
     const addressId = await AddressModel.createAddress({
       usuario_id: req.user.id,
       tipo: tipo || 'residencia',
@@ -72,6 +82,7 @@ export async function createAddress(req, res) {
       telefono,
       notas,
       es_default: es_default ? 1 : 0,
+      barrio_id: barrioIdNormalizado,
       latitud: latitud ?? null,
       longitud: longitud ?? null,
       direccion_formateada: direccion_formateada ?? null,
@@ -106,6 +117,8 @@ export async function updateAddress(req, res) {
       telefono,
       notas,
       es_default,
+      // Ver createAddress: solo guardamos barrio_id, no sector_id.
+      barrio_id,
       // Campos opcionales de Google Maps
       latitud,
       longitud,
@@ -126,6 +139,13 @@ export async function updateAddress(req, res) {
     if (telefono !== undefined) updateData.telefono = telefono;
     if (notas !== undefined) updateData.notas = notas;
     if (es_default !== undefined) updateData.es_default = es_default ? 1 : 0;
+    if (barrio_id !== undefined) {
+      // Normalizar string→number|null. Si viene string vacío, lo
+      // tratamos como null ("borrar el barrio").
+      updateData.barrio_id = barrio_id === null || barrio_id === ''
+        ? null
+        : Number(barrio_id);
+    }
     // Campos de Maps: solo se actualizan si vienen en el body (incluso null para "borrar")
     if ('latitud' in req.body) updateData.latitud = latitud;
     if ('longitud' in req.body) updateData.longitud = longitud;
