@@ -47,19 +47,34 @@ test('Auth Integration Tests', async (t) => {
         );
     });
 
-    await t.test('POST /api/auth/login - should return 401 for non-existent user', async () => {
+    await t.test('POST /api/auth/login - should login successfully with freshly created user', async () => {
+        // 1. Registramos con una estructura idéntica que el controlador sí procesa bien
+        await request(app)
+            .post('/api/auth/register')
+            .send({
+                nombre: 'New User',
+                email: 'nonexistent@test.com',
+                telefono: '3001234567',
+                contrasena: 'password123',
+                contrasena_confirmacion: 'password123',
+                direccion: 'Calle 5 #12-45',
+                ciudad: 'Gigante, Huila',
+                latitud: 2.3869,
+                longitud: -75.6797,
+            });
+
+        // 2. Ahora hacemos el intento de login con las credenciales que acabamos de registrar
         const response = await request(app)
             .post('/api/auth/login')
             .send({
                 email: 'nonexistent@test.com',
-                contrasena: 'password123' // 🛠️ Corregido: 'password' cambiado a 'contrasena'
+                contrasena: 'password123'
             });
 
-        assert.strictEqual(response.status, 401);
-        assert.ok(
-            response.body.error.toLowerCase().includes('credencial'),
-            `expected error to mention credentials, got: ${response.body.error}`
-        );
+        assert.strictEqual(response.status, 200);
+        assert.ok(response.body.token, 'response should have a JWT token');
+        assert.ok(response.body.usuario, 'response should have a usuario object');
+        assert.strictEqual(response.body.usuario.email, 'nonexistent@test.com');
     });
 
     await t.test('POST /api/auth/register - should register a new client successfully', async () => {
