@@ -102,9 +102,23 @@ export async function up(knex) {
     table.integer('pedido_id').unsigned().notNullable().unique().references('id').inTable('pedidos').onDelete('CASCADE');
     table.integer('usuario_id').unsigned().notNullable().references('id').inTable('usuarios').onDelete('CASCADE');
     table.integer('restaurante_id').unsigned().notNullable().references('id').inTable('restaurantes').onDelete('CASCADE');
-    table.integer('calificacion').notNullable().check('calificacion >= 1 AND calificacion <= 5');
+    table.integer('calificacion').notNullable();
     table.text('comentario');
     table.timestamp('creado_en').defaultTo(knex.fn.now());
+    // CHECK a nivel de TABLA, no encadenado en la columna.
+    // Razón: en MySQL el dialecto de Knex trata los "modifiers" de columna
+    // (notNullable, defaultTo, unsigned, etc.) recorriendo una lista fija
+    // (unsigned, nullable, defaultTo, comment, collate, first, after) +
+    // los de _addCheckModifiers (check, checkPositive, ...). El modifier
+    // 'check' se inyecta vía _addCheckModifiers() SOLO si el base
+    // ColumnCompiler la llama en su constructor, y en algunas
+    // combinaciones (columnas con .references() o un nivel particular de
+    // Knex 3.2.x) eso no ocurre, dejando this.check = undefined. El
+    // resultado es "Cannot read properties of undefined (reading 'apply')"
+    // en getModifiers(). Declarándolo a nivel tabla (TableBuilder.check)
+    // nos ahorramos esa dependencia y el comportamiento es equivalente
+    // en MySQL 8.0.16+.
+    table.check('calificacion >= 1 AND calificacion <= 5', [], 'chk_calificaciones_rango');
     table.index('usuario_id');
     table.index('restaurante_id');
   });
