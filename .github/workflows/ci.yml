@@ -43,10 +43,18 @@ jobs:
           cd server
           npm install
 
-      - name: Run Backend Tests
+      - name: Ensure test DB exists
+        # Defensa: aunque el servicio mysql:8.0 declara MYSQL_DATABASE,
+        # ocasionalmente la DB no llega materializada cuando las
+        # migraciones Knex arrancan (timing entre el healthcheck y
+        # el init del schema). El script setup-test-db.js falla con
+        # un error claro en ese caso, pero preferimos blindar CI
+        # creando la DB explícitamente. CREATE DATABASE IF NOT EXISTS
+        # es idempotente: si ya existe, no hace nada.
+        # Usa el cliente mysql (instalado por mysql-client en el runner
+        # ubuntu-latest; si en el futuro no está, agregar
+        # `sudo apt-get install -y mysql-client` antes).
         run: |
-          cd server
-          # Esperar a que MySQL acepte conexiones (el healthcheck tarda unos segundos)
           for i in $(seq 1 30); do
             if mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; then
               echo "MySQL listo"
@@ -55,6 +63,14 @@ jobs:
             echo "Esperando MySQL... intento $i"
             sleep 2
           done
+          mysql -h 127.0.0.1 -uroot -proot -e \
+            "CREATE DATABASE IF NOT EXISTS restaurante_pedidos_test \
+             CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+          echo "✅ DB de test asegurada"
+
+      - name: Run Backend Tests
+        run: |
+          cd server
           npm test
 
   frontend-tests:
