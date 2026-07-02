@@ -14,6 +14,13 @@ dotenv.config();
  */
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Offset de Colombia respecto a UTC: -05:00 (sin DST).
+// MySQL/mysql2 NO acepta el nombre IANA ("America/Bogota") en la opción
+// `timezone` del driver, por eso usamos el offset literal.
+// Combinado con `process.env.TZ='America/Bogota'` en server.js (que sí
+// entiende el IANA name), Node y MySQL quedan alineados en hora Colombia.
+const COLOMBIA_OFFSET = '-05:00';
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
@@ -33,12 +40,14 @@ const pool = mysql.createPool({
   charset: 'utf8mb4',
   // Para evitar problemas de zona horaria:
   // - dateStrings: false → mysql2 devuelve objetos Date en vez de strings.
-  // - timezone: 'America/Bogota' → el driver sabe en qué zona está el
-  //   servidor MySQL y ajusta correctamente la conversión al parsear
-  //   TIMESTAMP/DATETIME. Combinado con `process.env.TZ='America/Bogota'`
-  //   en server.js, evita los off-by-5h que se veían antes.
+  // - timezone: '-05:00' → el driver ajusta la conversión al parsear
+  //   TIMESTAMP/DATETIME para que coincida con la zona del proceso Node
+  //   (que está fijada a America/Bogota vía process.env.TZ en server.js).
+  //   Esto evita el off-by-5h que se veía antes.
+  //   ⚠️ mysql2 NO acepta nombres IANA tipo "America/Bogota" aquí,
+  //   hay que pasarle el offset literal (ver COLOMBIA_OFFSET arriba).
   dateStrings: false,
-  timezone: 'America/Bogota',
+  timezone: COLOMBIA_OFFSET,
   // Permitir placeholders nombrados (más legibles)
   namedPlaceholders: false,
   // Decimal como string para evitar pérdida de precisión
