@@ -368,7 +368,11 @@ export async function forgotPassword(req, res) {
       [usuario.id, resetToken, resetTokenExpira, resetToken, resetTokenExpira]
     );
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    const frontendUrl = process.env.FRONTEND_URL;
+    if (!frontendUrl) {
+      console.warn('⚠️ FRONTEND_URL no está configurada; el email de reset usará http://localhost:5173. Defínela en el .env de producción para evitar enlaces rotos.');
+    }
+    const resetUrl = `${frontendUrl || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
 
     // Plantilla de email para reseteo de contraseña
     const emailHtml = `
