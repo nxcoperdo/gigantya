@@ -1139,6 +1139,9 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
     );
   }
 
+  // Métricas premium bloqueadas (para mostrar el contador en el banner de upgrade)
+  const premiumMetricsCount = 11;
+
   // Calcular porcentaje de métodos de pago
   const totalPedidosPago = statsData.metodos_pago?.reduce((sum, m) => sum + Number(m.cantidad), 0) || 0;
   const metodosPagoConPorcentaje = statsData.metodos_pago?.map(m => ({
@@ -1188,13 +1191,59 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         </div>
         {exportError && (
           <div
-          className="mt-3 p-2 rounded-lg text-sm"
-          style={{ backgroundColor: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}
+          className="mt-3 p-2 rounded-lg text-sm"          style={{ backgroundColor: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}
         >
             {exportError}
           </div>
         )}
       </section>
+
+      {/* ========== BANNER UPGRADE A PREMIUM (solo para planes no-Premium) ========== */}
+      {!isPremium && (
+        <section
+          className="card-lg border-2 relative overflow-hidden"
+          style={{
+            borderColor: 'var(--warning-border)',
+            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          }}
+        >
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+            >
+              <TrendingUp size={24} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-bold text-amber-900">Desbloquea {premiumMetricsCount} métricas avanzadas con Premium</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-900 text-amber-50">
+                  Recomendado
+                </span>
+              </div>
+              <p className="text-sm text-amber-800 mb-3">
+                Conocé tu <strong>hora pico</strong>, tus <strong>clientes recurrentes</strong>, la <strong>tasa de crecimiento mensual</strong>, el rendimiento de tus cupones y mucho más.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const mensaje = `Hola, soy un local con plan ${(restaurant?.plan || 'basico').toUpperCase()} y quiero actualizar mi plan a Premium en GigantYA. ¿Me pueden dar información?`;
+                    window.open(`https://wa.me/573115320211?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+                >
+                  ⭐ Actualizar a Premium · $200.000/mes
+                </button>
+                <span className="text-xs text-amber-800 font-medium">
+                  Menos de $7.000 al día · 12 métricas exclusivas
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ========== PLAN PROFESIONAL Y PREMIUM: VENTAS TOTALES ========== */}
       <section>
@@ -1501,7 +1550,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           )}
         </section>
       ) : (
-        <PremiumLockedFeature title="Horarios con Más Ventas" description="Gráfico por horas, hora pico y horas de menor actividad" />
+        <PremiumLockedFeature title="Horarios con Más Ventas" description="Gráfico por horas, hora pico y horas de menor actividad" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: DÍAS MÁS RENTABLES ========== */}
@@ -1549,7 +1598,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           )}
         </section>
       ) : (
-        <PremiumLockedFeature title="Días Más Rentables" description="Comparativa semanal y día con más ingresos" />
+        <PremiumLockedFeature title="Días Más Rentables" description="Comparativa semanal y día con más ingresos" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: CLIENTES RECURRENTES ========== */}
@@ -1593,7 +1642,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           )}
         </section>
       ) : (
-        <PremiumLockedFeature title="Clientes Recurrentes" description="Top clientes, número de pedidos y gasto total" />
+        <PremiumLockedFeature title="Clientes Recurrentes" description="Top clientes, número de pedidos y gasto total" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: CLIENTES NUEVOS VS RECURRENTES ========== */}
@@ -1614,7 +1663,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           </div>
         </section>
       ) : (
-        <PremiumLockedFeature title="Clientes Nuevos vs Recurrentes" description="Gráfico comparativo de clientes" />
+        <PremiumLockedFeature title="Clientes Nuevos vs Recurrentes" description="Gráfico comparativo de clientes" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: EVOLUCIÓN DE VENTAS ========== */}
@@ -1690,7 +1739,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           </div>
         </section>
       ) : (
-        <PremiumLockedFeature title="Evolución de Ventas" description="Comparación mes a mes y semana a semana" />
+        <PremiumLockedFeature title="Evolución de Ventas" description="Comparación mes a mes y semana a semana" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: TASA DE CRECIMIENTO ========== */}
@@ -1716,7 +1765,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           </div>
         </section>
       ) : (
-        <PremiumLockedFeature title="Tasa de Crecimiento" description="Porcentaje de crecimiento de ventas mensual" />
+        <PremiumLockedFeature title="Tasa de Crecimiento" description="Porcentaje de crecimiento de ventas mensual" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: RENDIMIENTO DE PROMOCIONES ========== */}
@@ -1769,7 +1818,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           )}
         </section>
       ) : (
-        <PremiumLockedFeature title="Rendimiento de Promociones" description="Cupones más utilizados y promociones más rentables" />
+        <PremiumLockedFeature title="Rendimiento de Promociones" description="Cupones más utilizados y promociones más rentables" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: PRODUCTOS CON MAYOR RENTABILIDAD ========== */}
@@ -1813,7 +1862,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           )}
         </section>
       ) : (
-        <PremiumLockedFeature title="Productos con Mayor Rentabilidad" description="Producto, cantidad vendida e ingreso generado" />
+        <PremiumLockedFeature title="Productos con Mayor Rentabilidad" description="Producto, cantidad vendida e ingreso generado" planActual={restaurant?.plan || 'basico'} />
       )}
 
       {/* ========== SOLO PREMIUM: TENDENCIAS DE CONSUMO ========== */}
@@ -1908,25 +1957,48 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           )}
         </section>
       ) : (
-        <PremiumLockedFeature title="Tendencias de Consumo" description="Productos en crecimiento y descenso" />
+        <PremiumLockedFeature title="Tendencias de Consumo" description="Productos en crecimiento y descenso" planActual={restaurant?.plan || 'basico'} />
       )}
     </div>
   );
 }
 
-function PremiumLockedFeature({ title, description }) {
+function PremiumLockedFeature({ title, description, planActual = 'profesional' }) {
+  // El upgrade a Premium lo hace el admin de GigantYA tras pago.
+  // Abrimos WhatsApp con un mensaje pre-armado: menos fricción que un formulario.
+  const handleUpgrade = () => {
+    const mensaje = `Hola, soy un local con plan ${planActual.toUpperCase()} y quiero actualizar mi plan a Premium en GigantYA. ¿Me pueden dar información?`;
+    const url = `https://wa.me/573115320211?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
-    <section className="card-lg border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-subtle)]/50">
-      <div className="flex items-center gap-3 mb-3 opacity-50">
-        <Lock className="text-[color:var(--text-subtle)]" size={24} />
+    <section
+      className="card-lg border-2 border-dashed relative overflow-hidden"
+      style={{ borderColor: 'var(--warning-border)', background: 'linear-gradient(135deg, var(--bg-subtle) 0%, var(--warning-bg) 100%)' }}
+    >
+      <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700">
+        <Lock size={12} className="text-amber-700 dark:text-amber-300" />
+        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Premium</span>
+      </div>
+
+      <div className="flex items-center gap-3 mb-2 opacity-70">
         <h3 className="text-lg font-bold text-[color:var(--text-muted)]">{title}</h3>
       </div>
-      <p className="text-sm text-[color:var(--text-muted)] mb-4">{description}</p>
-      <div
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
-        style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }}
-      >
-        <span className="text-sm font-bold" style={{ color: 'var(--warning-text)' }}>⭐ Disponible solo en Plan Premium</span>
+      <p className="text-sm text-[color:var(--text-muted)] mb-5 max-w-md">{description}</p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleUpgrade}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+        >
+          ⭐ Actualizar a Premium
+        </button>
+        <span className="text-xs text-[color:var(--text-muted)]">
+          Desde $200.000/mes · menos de $7.000 al día
+        </span>
       </div>
     </section>
   );

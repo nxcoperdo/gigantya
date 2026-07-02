@@ -1,7 +1,7 @@
 import exportService from '../services/exportService.js';
-import * as StatsModel from '../models/Stats.js';
 import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
+import { resolveStatsForRestaurant, StatsAccessError } from '../utils/statsAccess.js';
 
 /**
  * Construye un string legible con el rango de fechas para los reportes.
@@ -36,14 +36,22 @@ export async function exportStatsPDF(req, res) {
       return res.status(403).json({ error: 'Solo locales pueden exportar estadísticas' });
     }
 
+    // SIEMPRE leer el plan fresco de la DB (no del JWT), para evitar stats
+    // desactualizadas tras un cambio de plan o una suscripción vencida.
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
     if (!restaurante) {
       return res.status(404).json({ error: 'Local no encontrado' });
     }
 
-    const estadisticas = req.user.restaurante?.plan === 'premium'
-      ? await StatsModel.getPremiumStats(restaurante.id)
-      : await StatsModel.getBasicStats(restaurante.id);
+    let estadisticas;
+    try {
+      ({ estadisticas } = await resolveStatsForRestaurant(restaurante));
+    } catch (err) {
+      if (err instanceof StatsAccessError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
+      throw err;
+    }
 
     const dateRange = buildDateRange(days);
 
@@ -80,9 +88,15 @@ export async function exportStatsExcel(req, res) {
       return res.status(404).json({ error: 'Local no encontrado' });
     }
 
-    const estadisticas = req.user.restaurante?.plan === 'premium'
-      ? await StatsModel.getPremiumStats(restaurante.id)
-      : await StatsModel.getBasicStats(restaurante.id);
+    let estadisticas;
+    try {
+      ({ estadisticas } = await resolveStatsForRestaurant(restaurante));
+    } catch (err) {
+      if (err instanceof StatsAccessError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
+      throw err;
+    }
 
     const dateRange = buildDateRange(days);
 

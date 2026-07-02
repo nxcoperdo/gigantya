@@ -352,35 +352,25 @@ export async function updateRestaurant(req, res) {
  * Solo disponible para planes Profesional y Premium
  * - Profesional: estadísticas básicas
  * - Premium: estadísticas completas avanzadas
+ *
+ * El control de acceso está centralizado en `resolveStatsForRestaurant`
+ * (server/src/utils/statsAccess.js). No duplicar la lógica acá.
  */
 export async function getRestaurantStats(req, res) {
   try {
+    const { resolveStatsForRestaurant, StatsAccessError } = await import('../utils/statsAccess.js');
+
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
 
-    if (!restaurante) {
-      return res.status(404).json({ error: 'Local no encontrado' });
+    try {
+      const { estadisticas, plan, es_premium } = await resolveStatsForRestaurant(restaurante);
+      res.json({ estadisticas, plan, es_premium });
+    } catch (err) {
+      if (err instanceof StatsAccessError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
+      throw err;
     }
-
-    // Control de acceso por plan
-    if (restaurante.plan === 'basico') {
-      return res.status(403).json({
-        error: 'Esta funcionalidad solo está disponible para los planes Profesional y Premium'
-      });
-    }
-
-    const restauranteId = restaurante.id;
-    const esPremium = restaurante.plan === 'premium';
-
-    // Obtener estadísticas según el plan
-    const estadisticas = esPremium
-      ? await StatsModel.getPremiumStats(restauranteId)
-      : await StatsModel.getBasicStats(restauranteId);
-
-    res.json({
-      estadisticas,
-      plan: restaurante.plan,
-      es_premium: esPremium
-    });
   } catch (error) {
     console.error('Error obteniendo estadísticas:', error);
     res.status(500).json({
