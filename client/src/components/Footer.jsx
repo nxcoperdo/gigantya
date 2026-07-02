@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -135,7 +135,7 @@ export default function Footer() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Mail size={14} className="text-primary" />
                 </div>
-                <a href="mailto:coderepairtech@gmail.com" className="hover:text-primary transition-colors font-light pt-1">
+                <a href="mailto:coderepairtech@gmail.com" className="hover:text-primary transition-colors font-light pt-1 break-all">
                     coderepairtech@gmail.com
                 </a>
               </div>
@@ -143,8 +143,21 @@ export default function Footer() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Phone size={14} className="text-primary" />
                 </div>
-                <a href="tel:+573219429385" className="hover:text-primary transition-colors font-light pt-1">
-                  +57 321 9429 385
+                <a href="tel:+573115320211" className="hover:text-primary transition-colors font-light pt-1">
+                  +57 311 532 0211
+                </a>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#25D366]/15 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle size={14} className="text-[#25D366]" />
+                </div>
+                <a
+                  href="https://wa.me/573115320211"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#25D366] transition-colors font-light pt-1"
+                >
+                  WhatsApp · 311 532 0211
                 </a>
               </div>
               <div className="flex items-start gap-3">
