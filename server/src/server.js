@@ -1,3 +1,10 @@
+// Forzar zona horaria de Colombia para TODO el proceso Node.
+// Tiene que ser la PRIMERA línea ejecutable (antes de imports que puedan
+// cachear fechas, abrir el pool de MySQL o registrar crons) para que
+// mysql2, Intl, y `new Date()` del servidor trabajen alineados con la
+// hora que ven los usuarios en Colombia.
+process.env.TZ = 'America/Bogota';
+
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import dotenv from 'dotenv';

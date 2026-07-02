@@ -31,8 +31,14 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
   // Charset correcto
   charset: 'utf8mb4',
-  // Para evitar problemas de zona horaria
+  // Para evitar problemas de zona horaria:
+  // - dateStrings: false → mysql2 devuelve objetos Date en vez de strings.
+  // - timezone: 'America/Bogota' → el driver sabe en qué zona está el
+  //   servidor MySQL y ajusta correctamente la conversión al parsear
+  //   TIMESTAMP/DATETIME. Combinado con `process.env.TZ='America/Bogota'`
+  //   en server.js, evita los off-by-5h que se veían antes.
   dateStrings: false,
+  timezone: 'America/Bogota',
   // Permitir placeholders nombrados (más legibles)
   namedPlaceholders: false,
   // Decimal como string para evitar pérdida de precisión

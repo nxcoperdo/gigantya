@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, CheckCheck, Bell } from 'lucide-react';
 import { notificationService } from '../services/api';
 import { playNotificationSound, resumeAudioContext } from '../utils/notificationSound';
+import { formatDate } from '../utils/dateHelper';
 
 const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
   const [notifications, setNotifications] = useState([]);
@@ -162,7 +163,7 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
                 >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-semibold text-sm text-[color:var(--text-primary)]">{n.titulo}</span>
-                    <span className="text-[10px] text-[color:var(--text-muted)]">{new Date(n.creado_en).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-[color:var(--text-muted)]">{formatDate(n.creado_en)}</span>
                   </div>
                   <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">{n.mensaje}</p>
                   {n.leido === 0 && (

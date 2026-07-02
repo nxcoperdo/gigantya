@@ -4,6 +4,7 @@ import api from '../services/api';
 import { Mail, Phone, FileText, Lock, MapPin, ShoppingBag } from 'lucide-react';
 import AddressesTab from '../components/AddressesTab';
 import PurchaseHistoryTab from '../components/PurchaseHistoryTab';
+import { formatDate } from '../utils/dateHelper';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -234,7 +235,7 @@ export default function ProfilePage() {
 
               <div className="pt-4 border-t border-[color:var(--border-default)]">
                 <p className="text-sm text-[color:var(--text-muted)] mb-4">
-                  Cuenta creada: {new Date(user?.creado_en).toLocaleDateString('es-CO')}
+                  Cuenta creada: {formatDate(user?.creado_en)}
                 </p>
                 <button
                   type="submit"

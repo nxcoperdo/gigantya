@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, DollarSign, Truck, X, MapPin, Clock } from 'lucide-react';
 import { restaurantService, zonaService, restaurantShippingService } from '../services/api';
+import { formatDateTime } from '../utils/dateHelper';
 
 /**
  * Modal para que el dueño del restaurante configure:
@@ -386,7 +387,7 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                             </span>
                           )}
                           {autorFecha && (
-                            <span>{new Date(autorFecha).toLocaleString('es-CO')}</span>
+                            <span>{formatDateTime(autorFecha)}</span>
                           )}
                         </div>
                       )}

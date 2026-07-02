@@ -4,6 +4,7 @@ import {
   Ticket, Plus, Pencil, Trash2, AlertCircle,
   Calendar, Percent, DollarSign, Copy, Globe, Store, Lock
 } from 'lucide-react';
+import { formatDate } from '../utils/dateHelper';
 
 /**
  * Modal para crear/editar un cupón.
@@ -416,7 +417,7 @@ function CouponCard({ coupon, onEdit, onDelete, mode = 'restaurant' }) {
           {coupon.fecha_expiracion && (
             <div className="flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
               <Calendar size={12} />
-              <span>Expira: {new Date(coupon.fecha_expiracion).toLocaleDateString('es-CO')}</span>
+              <span>Expira: {formatDate(coupon.fecha_expiracion)}</span>
             </div>
           )}
         </div>

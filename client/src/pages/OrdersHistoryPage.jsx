@@ -6,6 +6,7 @@ import RatingModal from '../components/RatingModal';
 import ThankYouModal from '../components/ThankYouModal';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 import { ratingService } from '../services/api';
+import { formatDate, formatTime, formatDateTime } from '../utils/dateHelper';
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState([]);
@@ -132,7 +133,7 @@ export default function OrdersHistoryPage() {
             </button>
             {lastRefreshedAt && (
               <span className="text-xs text-[color:var(--text-muted)]">
-                Última actualización: {lastRefreshedAt.toLocaleString('es-CO')}
+                Última actualización: {formatDateTime(lastRefreshedAt)}
               </span>
             )}
           </div>
@@ -202,13 +203,13 @@ export default function OrdersHistoryPage() {
                   <div>
                     <p className="text-sm text-[color:var(--text-muted)] mb-1">Fecha</p>
                     <p className="font-semibold text-[color:var(--text-primary)]">
-                      {new Date(order.creado_en).toLocaleDateString('es-CO')}
+                      {formatDate(order.creado_en)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-[color:var(--text-muted)] mb-1">Hora</p>
                     <p className="font-semibold text-[color:var(--text-primary)]">
-                      {new Date(order.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                      {formatTime(order.creado_en)}
                     </p>
                   </div>
                   <div>
@@ -236,7 +237,7 @@ export default function OrdersHistoryPage() {
 
                 <div className="mt-4 pt-4 border-t border-[color:var(--border-default)] flex justify-between items-center gap-3 flex-wrap">
                   <p className="text-sm text-[color:var(--text-muted)]">
-                    Última actualización: {new Date(order.actualizado_en).toLocaleString('es-CO')}
+                    Última actualización: {formatDateTime(order.actualizado_en)}
                   </p>
 
                   <div className="flex gap-2">

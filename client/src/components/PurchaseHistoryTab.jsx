@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShoppingBag, Calendar, DollarSign, TrendingUp, Eye } from 'lucide-react';
 import { orderService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '../utils/dateHelper';
 
 export default function PurchaseHistoryTab() {
   const navigate = useNavigate();
@@ -169,13 +170,7 @@ export default function PurchaseHistoryTab() {
                   </div>
 
                   <p className="text-sm text-[color:var(--text-secondary)] mb-1">
-                    📅 {new Date(order.creado_en).toLocaleDateString('es-CO', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    📅 {formatDateTime(order.creado_en)}
                   </p>
 
                   {order.direccion_entrega && (

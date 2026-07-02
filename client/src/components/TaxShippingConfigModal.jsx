@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, DollarSign, Percent, Truck, X, MapPin, Clock } from 'lucide-react';
 import { adminService, zonaService, restaurantShippingService } from '../services/api';
+import { formatDateTime } from '../utils/dateHelper';
 
 export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, restaurant }) {
   const [loading, setLoading] = useState(false);
@@ -452,7 +453,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                             </span>
                           )}
                           {autorFecha && (
-                            <span>{new Date(autorFecha).toLocaleString('es-CO')}</span>
+                            <span>{formatDateTime(autorFecha)}</span>
                           )}
                         </div>
                       )}

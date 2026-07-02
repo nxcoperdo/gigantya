@@ -7,6 +7,7 @@ import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 import ZonasAdmin from '../components/ZonasAdmin';
 import CouponsView from '../components/CouponsView';
+import { formatDate } from '../utils/dateHelper';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -687,7 +688,7 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="px-6 py-4 text-xs text-[color:var(--text-secondary)]">
                               {res.fecha_vencimiento_plan
-                                ? new Date(res.fecha_vencimiento_plan).toLocaleDateString('es-CO')
+                                ? formatDate(res.fecha_vencimiento_plan)
                                 : <span className="text-[color:var(--text-subtle)]">—</span>}
                             </td>
                             <td className="px-6 py-4 text-right">

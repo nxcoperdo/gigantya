@@ -45,13 +45,18 @@ module.exports = {
       // Tiempo mínimo entre reinicios (ms)
       min_uptime: '10s',
       // Variables de entorno
+      // TZ: forzar la zona horaria de Colombia para que mysql2, Intl y
+      // `new Date()` del servidor queden alineados con la hora que ven
+      // los usuarios en la web.
       env: {
         NODE_ENV: 'development',
         PORT: 5000,
+        TZ: 'America/Bogota',
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 5000,
+        TZ: 'America/Bogota',
       },
       // Configuración de logs
       out_file: './logs/pm2-out.log',

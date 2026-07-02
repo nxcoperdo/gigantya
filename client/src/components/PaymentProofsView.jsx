@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { paymentService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { FileText, CheckCircle, XCircle, Eye, AlertCircle, Calendar, User, RefreshCcw } from 'lucide-react';
+import { formatDate, formatDateTime } from '../utils/dateHelper';
 
 export default function PaymentProofsView({ refreshData }) {
   const [pendingProofs, setPendingProofs] = useState([]);
@@ -182,7 +183,7 @@ export default function PaymentProofsView({ refreshData }) {
                     </p>
                     <p className="text-sm text-[color:var(--text-secondary)] flex items-center gap-1 mt-1">
                       <Calendar size={14} />
-                      {new Date(proof.fecha_subida).toLocaleString('es-CO')}
+                      {formatDateTime(proof.fecha_subida)}
                     </p>
                   </div>
                   <span
@@ -287,7 +288,7 @@ export default function PaymentProofsView({ refreshData }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-[color:var(--text-muted)]">
-                      {new Date(proof.fecha_subida).toLocaleDateString('es-CO')}
+                      {formatDate(proof.fecha_subida)}
                     </td>
                   </tr>
                 ))}

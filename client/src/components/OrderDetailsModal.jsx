@@ -2,6 +2,7 @@ import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag } from 
 import { useEffect, useState } from 'react';
 import { orderService } from '../services/api';
 import AddressMapPreview from './AddressMapPreview';
+import { formatDateTime } from '../utils/dateHelper';
 
 const ORDER_STATE_STYLES = {
   Pendiente:  { bg: 'var(--warning-bg)',         text: 'var(--warning-text)',         border: 'var(--warning-border)' },
@@ -88,7 +89,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
             </button>
           </div>
           <p className="text-sm text-[color:var(--text-secondary)]">
-            Fecha: {displayOrder.creado_en ? new Date(displayOrder.creado_en).toLocaleString('es-CO') : 'No disponible'}
+            Fecha: {displayOrder.creado_en ? formatDateTime(displayOrder.creado_en) : 'No disponible'}
           </p>
         </div>
 

@@ -11,6 +11,7 @@ import ProductGalleryModal from '../components/ProductGalleryModal';
 import api, { productService } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { ratingService } from '../services/api';
+import { formatDate } from '../utils/dateHelper';
 
 export default function RestaurantDetailsPage() {
   const { id } = useParams();
@@ -551,7 +552,7 @@ export default function RestaurantDetailsPage() {
                            </div>
                          </div>
                          <span className="text-xs text-[color:var(--text-muted)] flex-shrink-0 whitespace-nowrap">
-                           {new Date(rating.creado_en).toLocaleDateString('es-CO')}
+                           {formatDate(rating.creado_en)}
                          </span>
                        </div>
                        {rating.comentario && (

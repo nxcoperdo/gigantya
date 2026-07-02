@@ -40,6 +40,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
+import { formatDate, formatDateTime, formatShortDate } from '../utils/dateHelper';
 
 // Estilos de estado de pedido: usan vars semánticas (legibles en dark mode).
 // Devuelven {backgroundColor, color, borderColor} para pasar a style={}.
@@ -91,7 +92,7 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrd
             <p className="text-[color:var(--text-secondary)]">Cliente: <span className="font-semibold text-[color:var(--text-primary)]">{order.cliente_nombre || 'Sin nombre'}</span></p>
             <p className="text-[color:var(--text-secondary)]">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
           </div>
-          <p className="text-[color:var(--text-secondary)] text-sm">Fecha: {order.creado_en ? new Date(order.creado_en).toLocaleString('es-CO') : 'No disponible'}</p>
+          <p className="text-[color:var(--text-secondary)] text-sm">Fecha: {formatDateTime(order.creado_en)}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-[color:var(--border-subtle)]">
@@ -677,7 +678,7 @@ export default function RestaurantDashboardPage() {
                 </button>
                 {lastRefreshedAt && (
                   <div className="text-xs text-[color:var(--text-muted)] space-y-0.5">
-                    <span className="block">Última actualización: {lastRefreshedAt.toLocaleString('es-CO')}</span>
+                    <span className="block">Última actualización: {formatDateTime(lastRefreshedAt)}</span>
                     <span className="block font-medium text-primary/80">Cada 7 segundos</span>
                   </div>
                 )}
@@ -717,7 +718,7 @@ export default function RestaurantDashboardPage() {
                 <p className="text-sm opacity-90">
                   {esVencido
                     ? 'Tu local pasó a plan Básico. Contacta al administrador para renovar.'
-                    : `Renueva antes del ${new Date(restaurant.fecha_vencimiento_plan).toLocaleDateString('es-CO')} para no perder funciones.`}
+                    : `Renueva antes del ${formatDate(restaurant.fecha_vencimiento_plan)} para no perder funciones.`}
                 </p>
               </div>
             </div>
@@ -1384,7 +1385,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                   return (
                     <tr key={`day-${day.fecha}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
                       <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">
-                        {fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                        {fecha && !isNaN(fecha.getTime()) ? formatShortDate(fecha) : 'N/A'}
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-bold text-primary">
                         ${Number(day.total_ventas || 0).toLocaleString('es-CO')}
