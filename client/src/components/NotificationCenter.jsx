@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { X, CheckCheck, Bell } from 'lucide-react';
 import { notificationService } from '../services/api';
 import { playNotificationSound, resumeAudioContext } from '../utils/notificationSound';
 import { formatDate } from '../utils/dateHelper';
+import { groupNotificationsByDay, getDateRangeForGroup } from '../utils/notificationGrouper';
 
 const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
   const [notifications, setNotifications] = useState([]);
@@ -95,6 +96,47 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
     }
   };
 
+  // Marcar como leídas todas las notificaciones de un grupo (Hoy / Ayer / Esta semana / Anteriores).
+  // Optimista: actualiza el estado local de inmediato, sin esperar al refetch.
+  const handleMarkGroupRead = useCallback(async (group) => {
+    const range = getDateRangeForGroup(group.key);
+    if (!range) return;
+    try {
+      await notificationService.markGroupAsRead({
+        dateKey: group.key,
+        from: range.from,
+        to: range.to,
+      });
+      // Marcar como leídos los items de ESTE grupo en el estado local.
+      setNotifications(prev => {
+        const next = prev.map(n => {
+          if (n.leido !== 0) return n;
+          const dayKey = (n.creado_en || '').slice(0, 10);
+          // Comparamos por día local: from/to tienen formato 'YYYY-MM-DD HH:mm:ss'
+          // y group.key ya separa por día, así que alcanza con comparar el prefijo YYYY-MM-DD
+          // contra el rango recibido.
+          if (dayKey >= range.from.slice(0, 10) && dayKey < range.to.slice(0, 10)) {
+            return { ...n, leido: 1 };
+          }
+          return n;
+        });
+        // Actualizar contador global
+        const remaining = next.filter(n => n.leido === 0).length;
+        setUnreadCount(remaining);
+        return next;
+      });
+    } catch (error) {
+      console.error('Error marking group as read:', error);
+    }
+  }, []);
+
+  // Agrupar notificaciones por día. useMemo para no recalcular en cada render.
+  // O(n) en memoria, perfectamente bien para 50-100 notis.
+  const groups = useMemo(
+    () => groupNotificationsByDay(notifications),
+    [notifications]
+  );
+
   if (!shouldRender) return null;
 
   const panelClassName = `absolute right-0 top-0 h-full w-full max-w-md bg-[color:var(--bg-elevated)] shadow-2xl transform will-change-transform transition-all duration-300 ease-out ${
@@ -140,7 +182,7 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
           )}
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
             {loading ? (
               <div className="flex justify-center items-center h-full text-[color:var(--text-muted)]">Cargando...</div>
             ) : notifications.length === 0 ? (
@@ -151,28 +193,61 @@ const NotificationCenter = ({ isOpen, onClose, onNotificationArrived }) => {
                 <p className="text-[color:var(--text-muted)]">No tienes notificaciones pendientes</p>
               </div>
             ) : (
-              notifications.map(n => (
-                <div
-                  key={n.id}
-                  className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md`}
-                  style={n.leido === 0
-                    ? { backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-border)' }
-                    : { backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }
-                  }
-                  onClick={() => handleMarkAsRead(n.id)}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-sm text-[color:var(--text-primary)]">{n.titulo}</span>
-                    <span className="text-[10px] text-[color:var(--text-muted)]">{formatDate(n.creado_en)}</span>
-                  </div>
-                  <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">{n.mensaje}</p>
-                  {n.leido === 0 && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--info-text)' }}>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--info-text)' }} />
-                      Nuevo
+              groups.map(group => (
+                <section key={group.key} className="space-y-2">
+                  {/* Header del grupo: label + contador de no leídas + acción marcar como leídas */}
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-muted)]">
+                        {group.label}
+                      </h3>
+                      {group.unreadCount > 0 && (
+                        <span
+                          className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold text-white"
+                          style={{ backgroundColor: 'var(--primary, #667eea)' }}
+                          aria-label={`${group.unreadCount} sin leer`}
+                        >
+                          {group.unreadCount}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
+                    {group.unreadCount > 0 && (
+                      <button
+                        onClick={() => handleMarkGroupRead(group)}
+                        className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary-dark transition-colors"
+                        aria-label={`Marcar las notificaciones de ${group.label} como leídas`}
+                      >
+                        <CheckCheck className="w-3 h-3" />
+                        Marcar como leídas
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Items del grupo */}
+                  {group.items.map(n => (
+                    <div
+                      key={n.id}
+                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md`}
+                      style={n.leido === 0
+                        ? { backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-border)' }
+                        : { backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }
+                      }
+                      onClick={() => handleMarkAsRead(n.id)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-semibold text-sm text-[color:var(--text-primary)]">{n.titulo}</span>
+                        <span className="text-[10px] text-[color:var(--text-muted)]">{formatDate(n.creado_en)}</span>
+                      </div>
+                      <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">{n.mensaje}</p>
+                      {n.leido === 0 && (
+                        <div className="mt-2 flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--info-text)' }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--info-text)' }} />
+                          Nuevo
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </section>
               ))
             )}
           </div>

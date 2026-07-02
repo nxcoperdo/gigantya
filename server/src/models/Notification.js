@@ -43,10 +43,40 @@ export async function markAllAsRead(usuario_id) {
   return true;
 }
 
+/**
+ * Marca como leídas todas las notificaciones no leídas de un usuario dentro de un rango
+ * de fechas [from, to) (formato 'YYYY-MM-DD HH:mm:ss' en hora local de America/Bogota).
+ *
+ * Por qué recibe from/to del cliente y no los recalcula el backend:
+ * - El VPS está en UTC (ver [[timezone-fix-pedidos]]). Si el backend recalcula "hoy"
+ *   con `NOW()` puede caer en otro día que el cliente si hay drift.
+ * - Confiar en el rango del cliente es consistente con el resto del sistema (el cliente
+ *   ya genera timestamps con timeZone America/Bogota en dateHelper.js).
+ * - El usuario solo puede marcar sus propias notificaciones (filtro por usuario_id del JWT).
+ *
+ * Solo marca no leídas (filtro `leido = 0` en WHERE) para no pisar el estado ya leído.
+ */
+export async function markGroupAsRead(usuario_id, from, to) {
+  if (!usuario_id || !from || !to) {
+    throw new Error('markGroupAsRead: usuario_id, from y to son requeridos');
+  }
+  const sql = `
+    UPDATE notificaciones
+       SET leido = 1
+     WHERE usuario_id = ?
+       AND leido = 0
+       AND creado_en >= ?
+       AND creado_en < ?
+  `;
+  const res = await query(sql, [usuario_id, from, to]);
+  return { affectedRows: res.affectedRows ?? 0 };
+}
+
 export default {
   createNotification,
   getUserNotifications,
   markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  markGroupAsRead
 };
 

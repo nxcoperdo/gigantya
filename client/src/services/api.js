@@ -177,6 +177,10 @@ export const notificationService = {
   getNotifications: () => api.get('/notifications'),
   markAsRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.patch('/notifications/read-all'),
+  // Marca como leídas todas las notificaciones de un grupo (Hoy/Ayer/Esta semana/Anteriores).
+  // El backend recibe el rango de fechas generado en America/Bogota desde el cliente.
+  markGroupAsRead: ({ dateKey, from, to }) =>
+    api.patch('/notifications/read-by-group', { dateKey, from, to }),
 };
 
 // ========== PREFERENCIAS (FAVORITOS Y BÚSQUEDA) ==========
