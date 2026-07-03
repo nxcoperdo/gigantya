@@ -217,22 +217,34 @@ export default function CheckoutPage() {
     ? subtotalConDescuento * (taxConfig.porcentaje / 100)
     : 0;
 
+  // Determinar la modalidad del pedido a partir del flag del local.
+  // Si el local es de SOLO RETIRO (ofrece_domicilio=0), el envío es 0
+  // sin importar shippingConfig. Se usa tanto para el cálculo del total
+  // visible al cliente como para forzar costo_envio=0 en el payload.
+  const ofreceDomicilioCheckout = restaurante?.ofrece_domicilio === undefined
+    ? true
+    : Boolean(Number(restaurante.ofrece_domicilio));
+  const esRetiroLocal = !ofreceDomicilioCheckout;
+
   // Determinar el costo de envío efectivo:
+  // - Si es retiro en local → 0
   // - Si hay envioInfo (barrio resuelto) → usar su costo
   // - Si no, fallback al costo_fijo global
   // - Si envío gratis está activo y el subtotalConDescuento lo supera → 0
-  const envioGratisCorresponde = (
+  const envioGratisCorresponde = !esRetiroLocal && (
     shippingConfig.activo &&
     shippingConfig.envio_gratis_activo === true &&
     Number(shippingConfig.envio_gratis_desde) > 0 &&
     subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
   );
 
-  const calculatedShippingAmount = envioGratisCorresponde
+  const calculatedShippingAmount = esRetiroLocal
     ? 0
-    : (envioInfo && envioInfo.costo !== undefined
-        ? Number(envioInfo.costo) || 0
-        : (shippingConfig.activo ? (Number(shippingConfig.costo_fijo) || 0) : 0));
+    : envioGratisCorresponde
+      ? 0
+      : (envioInfo && envioInfo.costo !== undefined
+          ? Number(envioInfo.costo) || 0
+          : (shippingConfig.activo ? (Number(shippingConfig.costo_fijo) || 0) : 0));
 
   const envioSectorTexto = envioInfo
     ? envioInfo.envio_gratis_aplicado
@@ -354,10 +366,7 @@ export default function CheckoutPage() {
       // body los traiga poblados, pero los mandamos limpios desde acá para
       // evitar inconsistencias y para que el cliente no vea formularios
       // que no aplican.
-      const ofreceDomicilioCheckout = restaurante?.ofrece_domicilio === undefined
-        ? true
-        : Boolean(Number(restaurante.ofrece_domicilio));
-      const esRetiroLocalCheckout = !ofreceDomicilioCheckout;
+      // (esRetiroLocal ya está calculado al tope del componente)
 
       const restaurante_id = cart[0].restaurante_id || 1;
       setRestauranteId(restaurante_id);
@@ -375,7 +384,7 @@ export default function CheckoutPage() {
       // ni barrio: el cliente retira en el mostrador del local.
       let barrioIdEnviar = null;
 
-      if (!esRetiroLocalCheckout) {
+      if (!esRetiroLocal) {
         if (!useNewAddress && selectedAddressId) {
           const addr = addresses.find(a => a.id === selectedAddressId);
           if (addr && addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
@@ -386,7 +395,7 @@ export default function CheckoutPage() {
 
       // Para que el backend pueda calcular el envío, la dirección debe tener
       // barrio_id (catálogo de zonas). Esto NO aplica a pedidos de retiro.
-      if (!esRetiroLocalCheckout && !barrioIdEnviar) {
+      if (!esRetiroLocal && !barrioIdEnviar) {
         const mensaje = useNewAddress
           ? 'Para calcular el envío, elegí un sector y barrio de la lista.'
           : 'La dirección seleccionada no tiene barrio. Edítala para precisar la ubicación.';
@@ -403,7 +412,7 @@ export default function CheckoutPage() {
         ? subtotalConDescuentoOrder * (taxConfig.porcentaje / 100)
         : 0;
 
-      const envioGratisOrder = (
+      const envioGratisOrder = !esRetiroLocal && (
         shippingConfig.activo &&
         shippingConfig.envio_gratis_activo === true &&
         Number(shippingConfig.envio_gratis_desde) > 0 &&
@@ -414,7 +423,7 @@ export default function CheckoutPage() {
       // importar la config de `shippingConfig` del local (la config
       // sigue activa porque el local la configuró por si en algún
       // momento futuro ofrece domicilios, pero no aplica al retiro).
-      const costoEnvio = esRetiroLocalCheckout
+      const costoEnvio = esRetiroLocal
         ? 0
         : envioGratisOrder
           ? 0
@@ -436,11 +445,11 @@ export default function CheckoutPage() {
         })),
         cupon_codigo: appliedCoupon?.codigo || null,
         notas: formData.notas,
-        direccion_entrega: esRetiroLocalCheckout ? null : formData.direccion_entrega,
+        direccion_entrega: esRetiroLocal ? null : formData.direccion_entrega,
         telefono_contacto: formData.telefono_contacto,
         metodo_pago: paymentMethod,
         costo_envio: costoEnvio,
-        barrio_id: esRetiroLocalCheckout ? null : barrioIdEnviar,
+        barrio_id: esRetiroLocal ? null : barrioIdEnviar,
         // Sin autocompletado de mapa en el cliente: latitud/longitud las
         // genera el restaurante al ver el pedido (AddressMapPreview.jsx
         // geocodifica el texto en el iframe de embed).
@@ -877,16 +886,18 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
-                  <span>Envío{envioInfo && envioInfo.sector_nombre ? ` (${envioInfo.sector_nombre})` : ''}:</span>
+                  <span>{esRetiroLocal ? 'Retiro en mostrador:' : `Envío${envioInfo && envioInfo.sector_nombre ? ` (${envioInfo.sector_nombre})` : ''}:`}</span>
                   <span
                     className={calculatedShippingAmount === 0 ? 'font-semibold' : ''}
                     style={calculatedShippingAmount === 0 ? { color: 'var(--success-text)' } : undefined}
                   >
-                    {envioGratisCorresponde
+                    {esRetiroLocal
                       ? 'Gratis'
-                      : calculatedShippingAmount === 0
+                      : envioGratisCorresponde
                         ? 'Gratis'
-                        : envioSectorTexto || `$${calculatedShippingAmount.toLocaleString('es-CO')}`}
+                        : calculatedShippingAmount === 0
+                          ? 'Gratis'
+                          : envioSectorTexto || `$${calculatedShippingAmount.toLocaleString('es-CO')}`}
                   </span>
                 </div>
                 {shippingConfig.envio_gratis_activo && Number(shippingConfig.envio_gratis_desde) > 0 && subtotalConDescuento <= Number(shippingConfig.envio_gratis_desde) && (

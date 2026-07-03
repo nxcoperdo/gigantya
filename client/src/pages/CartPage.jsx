@@ -70,12 +70,20 @@ export default function CartPage() {
   // se conoce la dirección del usuario. Mostrar "Gratis" aquí generaba
   // inconsistencia: el cliente veía envío gratis en el carrito pero al
   // pasar al checkout (con su barrio/sector) le aparecía el costo real.
+  // Si el local es de SOLO RETIRO (ofrece_domicilio=0), el envío es
+  // siempre 0 sin importar la configuracion_envios del restaurante.
+  const esRetiroLocalCart = restaurante && restaurante.ofrece_domicilio !== undefined
+    && !Boolean(Number(restaurante.ofrece_domicilio));
+
   const shippingAmount = useMemo(() => {
+    if (esRetiroLocalCart) {
+      return 0;
+    }
     if (!shippingConfig.activo) {
       return 0;
     }
     return Number(shippingConfig.costo_fijo) || 0;
-  }, [shippingConfig]);
+  }, [shippingConfig, esRetiroLocalCart]);
 
   const taxAmount = useMemo(() => {
     const amount = taxConfig.activo && taxConfig.porcentaje > 0
@@ -215,9 +223,11 @@ export default function CartPage() {
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
                   <span>Envío:</span>
                   <span className="font-medium">
-                    {!shippingConfig.activo
-                      ? 'Gratis'
-                      : formatCurrency(shippingAmount)}
+                    {esRetiroLocalCart
+                      ? 'Gratis (retiro en local)'
+                      : !shippingConfig.activo
+                        ? 'Gratis'
+                        : formatCurrency(shippingAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
