@@ -335,7 +335,23 @@ export default function CheckoutPage() {
         return;
       }
 
-      const response = await couponService.validate(couponCode.toUpperCase(), restaurante_id, total);
+      const code = couponCode.toUpperCase();
+
+      // Primer intento: buscar el cupón en el local actual.
+      // (Cupones de local, asignados a este restaurante_id.)
+      let response = await couponService.validate(code, restaurante_id, total);
+
+      // Fallback: si el cupón no matcheó con el local, puede ser un
+      // cupón GLOBAL de plataforma. Reintentamos forzando la búsqueda
+      // global (es_carrito_multi_local=1 en backend). Ver
+      // `couponService.validateGlobal`.
+      if (!response.data?.valido) {
+        const primerError = response.data?.error || '';
+        const esErrorDeLocal = primerError.includes('no disponible para este restaurante');
+        if (esErrorDeLocal) {
+          response = await couponService.validateGlobal(code, total);
+        }
+      }
 
       if (response.data.valido) {
         const cupon = response.data.cupon;

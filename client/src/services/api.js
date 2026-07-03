@@ -221,6 +221,14 @@ export const categoryService = {
 export const couponService = {
   validate: (codigo, restaurante_id, total_pedido) =>
     api.get('/coupons/validate', { params: { codigo, restaurante_id, total_pedido } }),
+  // Búsqueda forzada de cupones globales (ignora restaurante_id).
+  // Usado como fallback después de un validate normal que no encontró
+  // el cupón en el local actual: si es global, debería matchear acá.
+  // Ver `CheckoutPage.handleApplyCoupon` para el flujo completo.
+  validateGlobal: (codigo, total_pedido) =>
+    api.get('/coupons/validate', {
+      params: { codigo, total_pedido, es_carrito_multi_local: 1 },
+    }),
   getMyCoupons: () => api.get('/coupons/my-coupons'),
   create: (data) => api.post('/coupons', data),
   update: (id, data) => api.put(`/coupons/${id}`, data),
