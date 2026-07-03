@@ -173,6 +173,36 @@ const EmailTemplates = {
     </div>
   `,
 
+  // Cliente: Pedido listo para retirar en mostrador
+  // (variante del template anterior usada cuando el local no ofrece
+  //  domicilio. El cliente debe acercarse al local a buscar su pedido.)
+  orderReadyPickup: (pedido) => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">🛍️ ¡Tu pedido está listo para retirar!</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 16px; color: #333;">Hola <strong>${pedido.cliente_nombre}</strong>,</p>
+        <p style="font-size: 16px; color: #555;">Tu pedido ya está listo en <strong>${pedido.restaurante_nombre}</strong>. ¡Pasá a retirarlo por el mostrador del local!</p>
+
+        <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <p><strong>Pedido #${pedido.id}</strong></p>
+          <p><strong>Local:</strong> ${pedido.restaurante_nombre}</p>
+          <p><strong>Estado:</strong> <span style="color: #4facfe; font-weight: bold;">Listo para retirar</span></p>
+        </div>
+
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4caf50;">
+          <p style="margin: 0; font-size: 14px;"><strong>📍 ¿Qué hago ahora?</strong></p>
+          <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">Acercate al mostrador del local y pedí tu pedido #${pedido.id}. No hace falta que confirmes nada antes.</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+          <p style="font-size: 14px; color: #999;">GigantYA - Retiro en mostrador</p>
+        </div>
+      </div>
+    </div>
+  `,
+
   // Cliente: Pedido entregado
   orderDelivered: (pedido) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -327,6 +357,7 @@ function getSubjectForTemplate(template, pedido) {
     newOrderCustomer: `✅ Pedido #${pedido.id} confirmado - GigantYA`,
     orderPreparing: `🍳 Pedido #${pedido.id} en preparación - GigantYA`,
     orderReady: `✅ Pedido #${pedido.id} listo - GigantYA`,
+    orderReadyPickup: `🛍️ Pedido #${pedido.id} listo para retirar - GigantYA`,
     orderDelivered: `🎉 Pedido #${pedido.id} entregado - GigantYA`,
     newOrderRestaurant: `🔔 Nuevo Pedido #${pedido.id} - GigantYA`,
     paymentApproved: `✅ Pago aprobado - Pedido #${pedido.id}`,
@@ -480,7 +511,19 @@ export async function notifyOrderStatusChange({
 
   // Notificar al cliente
   if (notifyCustomer && pedido.cliente_email) {
-    const template = customerTemplates[nuevoEstado];
+    // Si el pedido es para retirar en mostrador y el estado es "Listo",
+    // usamos el template específico de pickup. El flag esRetiroLocal llega
+    // desde el controller derivado del flag del local (ofrece_domicilio=0).
+    let template = customerTemplates[nuevoEstado];
+    if (
+      template === 'orderReady' &&
+      (pedido.esRetiroLocal === true ||
+       pedido.esRetiroLocal === 1 ||
+       pedido.esRetiroLocal === '1' ||
+       pedido.esRetiroLocal === 'true')
+    ) {
+      template = 'orderReadyPickup';
+    }
     if (template) {
       results.email = await sendOrderNotification({
         to: pedido.cliente_email,

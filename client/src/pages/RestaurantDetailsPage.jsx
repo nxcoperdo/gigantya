@@ -126,19 +126,10 @@ export default function RestaurantDetailsPage() {
     .sort(([, a], [, b]) => a.orden - b.orden);
 
    const handleAddToCart = (producto) => {
-     // Bloqueo de modalidad: si el restaurante solo retiro en local,
-     // NO permitimos agregar al carrito. El menú sigue siendo visible
-     // (el cliente ve precios y descripciones), pero no se puede procesar
-     // el pedido a domicilio.
-     const ofreceDomicilio = restaurante?.ofrece_domicilio === undefined
-       ? true
-       : Boolean(Number(restaurante.ofrece_domicilio));
-     if (!ofreceDomicilio) {
-       // No mostramos alert — el banner de arriba del menú ya explica
-       // la restricción. Devolvemos silenciosamente.
-       return { success: false, error: 'Este local solo ofrece retiro en local.' };
-     }
-
+     // El cliente puede agregar productos al carrito incluso si el local
+     // es "solo retiro en mostrador" (ofrece_domicilio=0). El checkout
+     // y el backend se encargan de forzar nulls en dirección/barrio/sector
+     // y costo_envio=0 en ese caso. Ya no bloqueamos acá.
      const result = addToCart(producto);
 
      if (!result.success) {
@@ -353,9 +344,9 @@ export default function RestaurantDetailsPage() {
            </div>
          )}
 
-         {/* Banner informativo: restaurante solo retiro en local.
-             El menú sigue siendo visible, pero los botones de "Agregar" están
-             deshabilitados. Esto cubre el caso del toggle en el dashboard. */}
+         {/* Banner informativo: restaurante solo retiro en mostrador.
+             El cliente puede armar el carrito y hacer el pedido, pero
+             retira en el mostrador del local (no se hace envío a domicilio). */}
          {!ofreceDomicilio && (
            <div
              className="mx-2 mb-6 p-4 rounded-xl flex items-start gap-3"
@@ -367,10 +358,10 @@ export default function RestaurantDetailsPage() {
            >
              <Store size={20} className="flex-shrink-0 mt-0.5" />
              <div>
-               <p className="font-bold">Este local solo ofrece retiro en local</p>
+               <p className="font-bold">Retiro en mostrador</p>
                <p className="text-sm opacity-90">
-                 Puedes ver el menú y los precios, pero no procesamos pedidos a domicilio para este local.
-                 Si quieres pedir, acércate directamente al local.
+                 Podés hacer tu pedido por la app y retirarlo en el local.
+                 No hacemos envíos a domicilio para este local.
                </p>
              </div>
            </div>
@@ -440,22 +431,14 @@ export default function RestaurantDetailsPage() {
 
                          <button
                            onClick={() => handleAddToCart(producto)}
-                           disabled={!producto.disponible || !isRestaurantOpenNow || !ofreceDomicilio}
-                           title={!ofreceDomicilio ? 'Este local solo ofrece retiro en local' : undefined}
+                           disabled={!producto.disponible || !isRestaurantOpenNow}
                            className="btn w-full mt-2 sm:mt-4 disabled:opacity-50 text-white min-h-[44px] active:scale-95 touch-feedback"
                            style={{ backgroundColor: 'var(--color-primary)', borderRadius: 'calc(var(--border-radius) / 2)' }}
                          >
-                           {!ofreceDomicilio ? (
-                             <>
-                               <Store size={16} className="inline mr-1.5 sm:mr-2" />
-                               Solo retiro en local
-                             </>
-                           ) : (
-                             <>
-                               <Plus size={16} className="inline mr-1.5 sm:mr-2" />
-                               {isRestaurantOpenNow ? 'Agregar' : 'No disponible'}
-                             </>
-                           )}
+                           <>
+                             <Plus size={16} className="inline mr-1.5 sm:mr-2" />
+                             {isRestaurantOpenNow ? (ofreceDomicilio ? 'Agregar' : 'Agregar · retira en local') : 'No disponible'}
+                           </>
                          </button>
                        </div>
                      </div>

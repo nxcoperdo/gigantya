@@ -233,37 +233,30 @@ export default function CartPage() {
                 </span>
               </div>
 
-              {/* Aviso de modalidad: si el restaurante desactivó domicilios,
-                  bloqueamos el paso al checkout y dejamos un camino claro al
-                  usuario: vaciar el carrito o elegir otro restaurante. */}
-              {restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)) ? (
-                <>
-                  <div
-                    className="mb-4 p-3 rounded-xl flex items-start gap-2 text-sm"
-                    style={{
-                      backgroundColor: 'var(--warning-bg)',
-                      border: '1px solid var(--warning-border)',
-                      color: 'var(--warning-text)',
-                    }}
-                  >
-                    <Store size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>
-                      Este local solo ofrece retiro en local. No podemos procesar tu pedido a domicilio.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    disabled
-                    className="btn btn-primary btn-lg btn-block min-h-[48px] disabled:opacity-50"
-                  >
-                    Proceder al Pago
-                  </button>
-                </>
-              ) : (
-                <Link to="/checkout" className="btn btn-primary btn-lg btn-block min-h-[48px]">
-                  Proceder al Pago
-                </Link>
+              {/* Aviso de modalidad: si el restaurante es "solo retiro en mostrador",
+                  dejamos un cartel informativo y permitimos avanzar al checkout.
+                  El checkout y el backend se encargan de forzar nulls en la
+                  dirección y costo_envio=0. */}
+              {restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)) && (
+                <div
+                  className="mb-4 p-3 rounded-xl flex items-start gap-2 text-sm"
+                  style={{
+                    backgroundColor: 'var(--warning-bg)',
+                    border: '1px solid var(--warning-border)',
+                    color: 'var(--warning-text)',
+                  }}
+                >
+                  <Store size={16} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    Este local solo ofrece retiro en mostrador. No hace falta
+                    dirección de envío: retirás tu pedido en el local.
+                  </span>
+                </div>
               )}
+
+              <Link to="/checkout" className="btn btn-primary btn-lg btn-block min-h-[48px]">
+                Proceder al Pago
+              </Link>
 
               <p className="text-xs text-[color:var(--text-muted)] text-center mt-4">
                 {shippingConfig.envio_gratis_activo && Number(shippingConfig.envio_gratis_desde) > 0

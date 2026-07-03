@@ -57,20 +57,17 @@ export async function createOrder(req, res) {
       });
     }
 
-    // Bloqueo de seguridad: si el restaurante está marcado como "solo retiro
-    // en local", no aceptamos pedidos. La home pública ya filtra este caso y
-    // el frontend deshabilita el botón "Agregar", pero dejamos esta guarda
-    // para que un cliente con carrito viejo o un script externo no pueda
-    // saltarse la restricción. El `Number(...)` cubre tanto 1/0 (tinyint de
-    // MySQL) como boolean nativo.
+    // Determinar la modalidad del pedido a partir del flag del local.
+    // - ofrece_domicilio = 1 → envío a domicilio (como hasta hoy)
+    // - ofrece_domicilio = 0 → retiro en mostrador (no se requiere dirección
+    //   de envío). El frontend muestra un banner informativo cuando el
+    //   cliente entra al checkout con un carrito de este tipo de local;
+    //   el modelo `createOrderWithItems` se encarga de forzar nulls en
+    //   dirección/barrio/sector y costo_envio=0.
     const ofreceDomicilio = restaurante.ofrece_domicilio === undefined
       ? true
       : Boolean(Number(restaurante.ofrece_domicilio));
-    if (!ofreceDomicilio) {
-      return res.status(400).json({
-        error: 'Este local solo ofrece retiro en local. No procesa pedidos a domicilio.'
-      });
-    }
+    const esRetiroLocal = !ofreceDomicilio;
 
     // Validar método de pago
     const validPaymentMethods = ['contra_entrega', 'nequi', 'daviplata', 'bre_b'];
@@ -144,6 +141,9 @@ export async function createOrder(req, res) {
       longitud: longitud ?? null,
       direccion_formateada: direccion_formateada ?? null,
       place_id: place_id ?? null,
+      // Modalidad del pedido: si el local es solo retiro, el modelo ignora
+      // dirección/barrio/sector y fuerza costo_envio=0 aunque el body los traiga.
+      esRetiroLocal,
       total: (typeof totalFromFrontend === 'number' && totalFromFrontend > 0) ? totalFromFrontend : null
     });
 
@@ -366,13 +366,36 @@ export async function updateOrderStatus(req, res) {
     try {
       const pedidoActualizado = await OrderModel.getOrderById(id);
 
+      // Determinar la modalidad del pedido a partir del flag del local
+      // (mismo cálculo que en createOrder: un local con ofrece_domicilio=0
+      // implica que el pedido es de retiro en mostrador). Lo usamos para
+      // customizar el texto de la notificación cuando el local marca el
+      // pedido como "Listo" (en ese caso el cliente debe retirar, no
+      // esperar un envío).
+      const restauranteNotif = await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id);
+      const ofreceDomicilioNotif = restauranteNotif?.ofrece_domicilio === undefined
+        ? true
+        : Boolean(Number(restauranteNotif.ofrece_domicilio));
+      const esRetiroLocalNotif = !ofreceDomicilioNotif;
+
       // Notificación interna (base de datos)
+      // Si es retiro y el estado es "Listo", customizamos el mensaje y el
+      // título para que el cliente entienda que tiene que ir a buscar el
+      // pedido al local (no que lo van a enviar).
+      const esNotifRetiroListo = esRetiroLocalNotif && matchedState === 'Listo';
+      const notifTitulo = esNotifRetiroListo
+        ? '🛍️ ¡Tu pedido está listo para retirar!'
+        : 'Actualización de Pedido';
+      const notifMensaje = esNotifRetiroListo
+        ? `Tu pedido #${id} ya está listo en ${restauranteNotif?.nombre || 'el local'}. Pasá a retirarlo por el mostrador.`
+        : `Tu pedido #${id} ahora está en estado: ${matchedState}`;
+
       await NotificationModel.createNotification({
         usuario_id: pedidoActualizado.usuario_id,
         tipo: 'pedido',
-        titulo: 'Actualización de Pedido',
-        mensaje: `Tu pedido #${id} ahora está en estado: ${matchedState}`,
-        data: { pedido_id: id, estado: matchedState }
+        titulo: notifTitulo,
+        mensaje: notifMensaje,
+        data: { pedido_id: id, estado: matchedState, es_retiro_local: esRetiroLocalNotif }
       });
 
       // Notificación externa (email/SMS) - solo para ciertos estados
@@ -380,15 +403,17 @@ export async function updateOrderStatus(req, res) {
       if (estadosConNotificacion.includes(matchedState)) {
         // Obtener datos completos para la notificación
         const cliente = await RestaurantModel.getUserById(pedidoActualizado.usuario_id);
-        const restauranteData = await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id);
 
         const pedidoParaNotificar = {
           ...pedidoActualizado,
           cliente_email: cliente?.email,
           cliente_telefono: cliente?.telefono,
           cliente_nombre: cliente?.nombre,
-          restaurante_email: restauranteData?.usuario_email,
-          restaurante_nombre: restauranteData?.nombre
+          restaurante_email: restauranteNotif?.usuario_email,
+          restaurante_nombre: restauranteNotif?.nombre,
+          // Flag que usa notificationService para elegir el template
+          // "orderReadyPickup" cuando aplica (Listo + retiro en mostrador).
+          esRetiroLocal: esRetiroLocalNotif
         };
 
         notificationService.notifyOrderStatusChange({

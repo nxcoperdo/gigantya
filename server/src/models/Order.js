@@ -211,6 +211,12 @@ export async function createOrderWithItems(orderData) {
     longitud = null,
     direccion_formateada = null,
     place_id = null,
+    // Cuando el local es "solo retiro en mostrador" (ofrece_domicilio=0),
+    // forzamos dirección/barrio/sector null y costo_envio 0 aunque el
+    // cliente haya enviado valores. La modalidad la decide el local, no
+    // el cliente. El default false mantiene compatibilidad con callers
+    // que todavía no pasan este flag.
+    esRetiroLocal = false,
     total: totalFromRequest = null // Total enviado desde el frontend (opcional)
   } = orderData;
 
@@ -295,7 +301,7 @@ export async function createOrderWithItems(orderData) {
 
     // Resolver sector_id a partir de barrio_id (si viene barrio pero no sector)
     let resolvedSectorId = sector_id ? Number(sector_id) : null;
-    if (barrio_id && !resolvedSectorId) {
+    if (barrio_id && !resolvedSectorId && !esRetiroLocal) {
       const barrio = await Barrio.getBarrioById(Number(barrio_id));
       if (barrio) resolvedSectorId = Number(barrio.sector_id);
     }
@@ -304,7 +310,7 @@ export async function createOrderWithItems(orderData) {
     // desde Google Maps, intentar geocoding: el sector más cercano dentro
     // de un radio (default 5 km, ver utils/geoUtils.js).
     let geocodedSector = null;
-    if (!resolvedSectorId && latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
+    if (!resolvedSectorId && latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined && !esRetiroLocal) {
       try {
         geocodedSector = await resolverSectorPorCoordenadas(latitud, longitud);
         if (geocodedSector) {
@@ -316,9 +322,15 @@ export async function createOrderWithItems(orderData) {
       }
     }
 
-    // Si tenemos sector, intentar resolver el costo específico para ese sector
+    // Si tenemos sector, intentar resolver el costo específico para ese sector.
+    // En pedidos de retiro en mostrador NO se cobra envío: la tabla
+    // `restaurante_envios_sector` y `configuracion_envios` no aplican
+    // aunque estén configurados (el local no hace domicilios).
     let resolvedCostoEnvio = Number(costo_envio) || 0;
-    if (resolvedSectorId) {
+    if (esRetiroLocal) {
+      resolvedCostoEnvio = 0;
+      resolvedSectorId = null;
+    } else if (resolvedSectorId) {
       const sectorCosto = await RestauranteEnvioSector.getCosto(Number(restaurante_id), resolvedSectorId);
       if (sectorCosto !== null && sectorCosto !== undefined) {
         // Solo usar el costo del sector si el cliente no pasó uno explícito,
@@ -351,6 +363,18 @@ export async function createOrderWithItems(orderData) {
       ? ORDER_STATES.PENDIENTE
       : ORDER_STATES.COMPROBANTE_ENVIADO;
 
+    // En pedidos de retiro en mostrador, dirección y zonas quedan null
+    // (override de lo que haya llegado en el body). El costo de envío
+    // también queda en 0 aunque el frontend haya enviado algo distinto.
+    const insertDireccionEntrega = esRetiroLocal ? null : (direccion_entrega ?? null);
+    const insertBarrioId = esRetiroLocal ? null : (barrio_id ? Number(barrio_id) : null);
+    const insertSectorId = esRetiroLocal ? null : resolvedSectorId;
+    const insertCostoEnvio = esRetiroLocal ? 0 : resolvedCostoEnvio;
+    const insertLatitud = esRetiroLocal ? null : (latitud !== null && latitud !== undefined ? Number(latitud) : null);
+    const insertLongitud = esRetiroLocal ? null : (longitud !== null && longitud !== undefined ? Number(longitud) : null);
+    const insertDireccionFormateada = esRetiroLocal ? null : (direccion_formateada || null);
+    const insertPlaceId = esRetiroLocal ? null : (place_id || null);
+
     const [orderResult] = await connection.query(
       `
         INSERT INTO pedidos (
@@ -378,20 +402,20 @@ export async function createOrderWithItems(orderData) {
         usuario_id,
         restaurante_id,
         total,
-        resolvedCostoEnvio,
+        insertCostoEnvio,
         estadoInicial,
         metodo_pago,
         metodo_pago === 'contra_entrega' ? 'aprobado' : 'pendiente',
         coupon_id,
         notas,
-        direccion_entrega,
+        insertDireccionEntrega,
         telefono_contacto,
-        barrio_id ? Number(barrio_id) : null,
-        resolvedSectorId,
-        latitud !== null && latitud !== undefined ? Number(latitud) : null,
-        longitud !== null && longitud !== undefined ? Number(longitud) : null,
-        direccion_formateada || null,
-        place_id || null,
+        insertBarrioId,
+        insertSectorId,
+        insertLatitud,
+        insertLongitud,
+        insertDireccionFormateada,
+        insertPlaceId,
       ]
     );
 
@@ -585,11 +609,13 @@ export async function getOrdersByRestaurant(restaurante_id, filtro = null) {
       p.*,
       u.nombre as cliente_nombre,
       u.telefono as cliente_telefono,
+      r.ofrece_domicilio,
       b.nombre as barrio_nombre,
       s.nombre as sector_nombre,
       COUNT(ip.id) as items_count
     FROM pedidos p
     LEFT JOIN usuarios u ON p.usuario_id = u.id
+    LEFT JOIN restaurantes r ON p.restaurante_id = r.id
     LEFT JOIN barrios b ON p.barrio_id = b.id
     LEFT JOIN sectores s ON p.sector_id = s.id
     LEFT JOIN items_pedido ip ON p.id = ip.pedido_id
@@ -603,7 +629,10 @@ export async function getOrdersByRestaurant(restaurante_id, filtro = null) {
     params.push(filtro);
   }
 
-  sql += ' GROUP BY p.id ORDER BY p.creado_en DESC';
+  // r.ofrece_domicilio es constante por restaurante_id (mismo r para todos
+  // los pedidos), así que agregarlo al GROUP BY es seguro y deja la query
+  // válida en MySQL strict mode.
+  sql += ' GROUP BY p.id, r.ofrece_domicilio ORDER BY p.creado_en DESC';
 
   try {
     return await query(sql, params);

@@ -38,6 +38,7 @@ import {
   Lock,
   Truck,
   DollarSign,
+  Store,
 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatDate, formatDateTime, formatShortDate } from '../utils/dateHelper';
@@ -92,6 +93,25 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrd
             <p className="text-[color:var(--text-secondary)]">Cliente: <span className="font-semibold text-[color:var(--text-primary)]">{order.cliente_nombre || 'Sin nombre'}</span></p>
             <p className="text-[color:var(--text-secondary)]">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
           </div>
+          {/* Indicador de modalidad del pedido (se deduce del flag del local):
+              - ofrece_domicilio = 0  → "Retira en local" (badge verde)
+              - ofrece_domicilio = 1  → muestra dirección de envío + costo */}
+          {(order.ofrece_domicilio === false || Number(order.ofrece_domicilio) === 0) ? (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border w-fit"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-border)' }}
+            >
+              <Store size={12} />
+              Retira en local
+            </span>
+          ) : (
+            <p className="text-sm text-[color:var(--text-secondary)]">
+              Enviar a: <span className="font-semibold text-[color:var(--text-primary)]">{order.direccion_entrega || 'Sin dirección'}</span>
+              {order.barrio_nombre && ` · ${order.barrio_nombre}`}
+              {order.sector_nombre && `, ${order.sector_nombre}`}
+              {Number(order.costo_envio) > 0 && ` (envío: $${Number(order.costo_envio).toLocaleString('es-CO')})`}
+            </p>
+          )}
           <p className="text-[color:var(--text-secondary)] text-sm">Fecha: {formatDateTime(order.creado_en)}</p>
         </div>
 

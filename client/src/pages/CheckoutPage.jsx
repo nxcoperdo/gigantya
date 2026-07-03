@@ -348,21 +348,16 @@ export default function CheckoutPage() {
       // Si el usuario eligió una dirección guardada, listo. Si está tipeando
       // una nueva, basta con que el campo de dirección no esté vacío.
 
-      // Bloqueo por modalidad de servicio: si el restaurante solo retiro en
-      // local, no dejamos avanzar al cliente. Esta es la red de seguridad
-      // por si el carrito quedó con items antes de que el restaurante
-      // desactivara los domicilios, o si entró al checkout por un deep-link.
+      // Modalidad del pedido: si el restaurante es "solo retiro en mostrador"
+      // (ofrece_domicilio=0), NO exigimos dirección ni barrio y enviamos
+      // costo_envio=0. El backend igual va a forzar los nulls aunque el
+      // body los traiga poblados, pero los mandamos limpios desde acá para
+      // evitar inconsistencias y para que el cliente no vea formularios
+      // que no aplican.
       const ofreceDomicilioCheckout = restaurante?.ofrece_domicilio === undefined
         ? true
         : Boolean(Number(restaurante.ofrece_domicilio));
-      if (!ofreceDomicilioCheckout) {
-        setErrorModal({
-          isOpen: true,
-          message: 'Este local solo ofrece retiro en local. No podemos procesar tu pedido a domicilio. Vuelve al inicio y elige otro local.',
-        });
-        setLoading(false);
-        return;
-      }
+      const esRetiroLocalCheckout = !ofreceDomicilioCheckout;
 
       const restaurante_id = cart[0].restaurante_id || 1;
       setRestauranteId(restaurante_id);
@@ -376,18 +371,22 @@ export default function CheckoutPage() {
       // Determinar barrio_id a enviar al backend. Sin autocompletado de mapa:
       // las coordenadas las genera el restaurante al ver el pedido
       // (AddressMapPreview.jsx geocodifica el texto).
+      // Para pedidos de retiro en mostrador, no se necesita dirección
+      // ni barrio: el cliente retira en el mostrador del local.
       let barrioIdEnviar = null;
 
-      if (!useNewAddress && selectedAddressId) {
-        const addr = addresses.find(a => a.id === selectedAddressId);
-        if (addr && addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
-      } else if (useNewAddress) {
-        if (formData.barrio_id) barrioIdEnviar = Number(formData.barrio_id);
+      if (!esRetiroLocalCheckout) {
+        if (!useNewAddress && selectedAddressId) {
+          const addr = addresses.find(a => a.id === selectedAddressId);
+          if (addr && addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
+        } else if (useNewAddress) {
+          if (formData.barrio_id) barrioIdEnviar = Number(formData.barrio_id);
+        }
       }
 
       // Para que el backend pueda calcular el envío, la dirección debe tener
-      // barrio_id (catálogo de zonas).
-      if (!barrioIdEnviar) {
+      // barrio_id (catálogo de zonas). Esto NO aplica a pedidos de retiro.
+      if (!esRetiroLocalCheckout && !barrioIdEnviar) {
         const mensaje = useNewAddress
           ? 'Para calcular el envío, elegí un sector y barrio de la lista.'
           : 'La dirección seleccionada no tiene barrio. Edítala para precisar la ubicación.';
@@ -411,14 +410,23 @@ export default function CheckoutPage() {
         subtotalConDescuentoOrder > Number(shippingConfig.envio_gratis_desde)
       );
 
-      const costoEnvio = envioGratisOrder
+      // Para pedidos de retiro en mostrador el envío siempre es 0, sin
+      // importar la config de `shippingConfig` del local (la config
+      // sigue activa porque el local la configuró por si en algún
+      // momento futuro ofrece domicilios, pero no aplica al retiro).
+      const costoEnvio = esRetiroLocalCheckout
         ? 0
-        : (envioInfo && envioInfo.costo !== undefined
-            ? Number(envioInfo.costo) || 0
-            : (shippingConfig.activo ? (Number(shippingConfig.costo_fijo) || 0) : 0));
+        : envioGratisOrder
+          ? 0
+          : (envioInfo && envioInfo.costo !== undefined
+              ? Number(envioInfo.costo) || 0
+              : (shippingConfig.activo ? (Number(shippingConfig.costo_fijo) || 0) : 0));
 
       const totalOrder = subtotalConDescuentoOrder + taxAmountOrder + costoEnvio;
 
+      // En pedidos de retiro mandamos dirección/barrio/coordenadas null
+      // y costo_envio=0. El backend igual los va a forzar nulls, pero
+      // los mandamos limpios para que el payload refleje la intención.
       const orderData = {
         restaurante_id,
         items: cart.map(item => ({
@@ -428,11 +436,11 @@ export default function CheckoutPage() {
         })),
         cupon_codigo: appliedCoupon?.codigo || null,
         notas: formData.notas,
-        direccion_entrega: formData.direccion_entrega,
+        direccion_entrega: esRetiroLocalCheckout ? null : formData.direccion_entrega,
         telefono_contacto: formData.telefono_contacto,
         metodo_pago: paymentMethod,
         costo_envio: costoEnvio,
-        barrio_id: barrioIdEnviar,
+        barrio_id: esRetiroLocalCheckout ? null : barrioIdEnviar,
         // Sin autocompletado de mapa en el cliente: latitud/longitud las
         // genera el restaurante al ver el pedido (AddressMapPreview.jsx
         // geocodifica el texto en el iframe de embed).
@@ -514,9 +522,9 @@ export default function CheckoutPage() {
           Confirmar Pedido
         </h1>
 
-        {/* Aviso de modalidad: si el restaurante desactivó domicilios después de
-            que el cliente agregó items al carrito, mostramos este aviso arriba
-            y deshabilitamos el botón "Confirmar Pedido" más abajo. */}
+        {/* Banner informativo: si el restaurante es "solo retiro en mostrador",
+            el pedido se retira en el local. NO es un bloqueo: el cliente
+            puede confirmar el pedido sin dirección de envío. */}
         {restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)) && (
           <div
             className="mb-6 p-4 rounded-xl flex items-start gap-3"
@@ -528,16 +536,11 @@ export default function CheckoutPage() {
           >
             <Store size={20} className="flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold">Este local solo ofrece retiro en local</p>
+              <p className="font-bold">Este pedido es para retirar en el mostrador del local</p>
               <p className="text-sm opacity-90">
-                No podemos procesar tu pedido a domicilio. Limpia el carrito o elige otro local.
+                No hace falta dirección de envío. Te avisaremos cuando esté listo
+                para que pases a buscarlo.
               </p>
-              <Link
-                to="/"
-                className="inline-block mt-2 text-sm font-semibold underline hover:opacity-80"
-              >
-                Ver otros locales
-              </Link>
             </div>
           </div>
         )}
@@ -756,10 +759,7 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={
-                  loading ||
-                  (restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)))
-                }
+                disabled={loading}
                 className="btn btn-primary btn-lg btn-block min-h-[48px] w-full"
               >
                 {loading ? (
