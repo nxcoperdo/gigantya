@@ -93,10 +93,14 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrd
             <p className="text-[color:var(--text-secondary)]">Cliente: <span className="font-semibold text-[color:var(--text-primary)]">{order.cliente_nombre || 'Sin nombre'}</span></p>
             <p className="text-[color:var(--text-secondary)]">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
           </div>
-          {/* Indicador de modalidad del pedido (se deduce del flag del local):
-              - ofrece_domicilio = 0  → "Retira en local" (badge verde)
-              - ofrece_domicilio = 1  → muestra dirección de envío + costo */}
-          {(order.ofrece_domicilio === false || Number(order.ofrece_domicilio) === 0) ? (
+          {/* Indicador de modalidad del pedido (persistido en
+              pedidos.es_retiro_local al momento de crear el pedido):
+              - es_retiro_local = 1  → "Retira en local" (badge verde)
+              - es_retiro_local = 0  → muestra dirección de envío + costo
+              Usamos la columna persistida en lugar del flag actual del
+              local para que el badge siga siendo correcto aunque el local
+              cambie su flag de domicilios después de tomar el pedido. */}
+          {(order.es_retiro_local === true || Number(order.es_retiro_local) === 1) ? (
             <span
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border w-fit"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-border)' }}

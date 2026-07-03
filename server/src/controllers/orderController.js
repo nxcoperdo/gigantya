@@ -366,17 +366,21 @@ export async function updateOrderStatus(req, res) {
     try {
       const pedidoActualizado = await OrderModel.getOrderById(id);
 
-      // Determinar la modalidad del pedido a partir del flag del local
-      // (mismo cálculo que en createOrder: un local con ofrece_domicilio=0
-      // implica que el pedido es de retiro en mostrador). Lo usamos para
-      // customizar el texto de la notificación cuando el local marca el
-      // pedido como "Listo" (en ese caso el cliente debe retirar, no
-      // esperar un envío).
-      const restauranteNotif = await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id);
-      const ofreceDomicilioNotif = restauranteNotif?.ofrece_domicilio === undefined
-        ? true
-        : Boolean(Number(restauranteNotif.ofrece_domicilio));
-      const esRetiroLocalNotif = !ofreceDomicilioNotif;
+      // La modalidad del pedido (envío vs. retiro en mostrador) está
+      // persistida en `pedidos.es_retiro_local` al momento de crear el
+      // pedido. Usamos esa columna en lugar de consultar el flag actual
+      // del local: si el local cambió a ofrecer domicilios después de
+      // tomar un pedido de retiro, el cliente aún así debe recibir la
+      // notificación de "Listo para retirar" (la modalidad no cambia
+      // retroactivamente).
+      const esRetiroLocalNotif = Boolean(Number(pedidoActualizado.es_retiro_local));
+
+      // Si el pedido es de retiro y el estado es "Listo", también
+      // incluimos el nombre del local en el mensaje (lo necesitamos
+      // tanto para la notificación interna como para el email).
+      const restauranteNotif = esRetiroLocalNotif
+        ? await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id)
+        : null;
 
       // Notificación interna (base de datos)
       // Si es retiro y el estado es "Listo", customizamos el mensaje y el
@@ -404,13 +408,19 @@ export async function updateOrderStatus(req, res) {
         // Obtener datos completos para la notificación
         const cliente = await RestaurantModel.getUserById(pedidoActualizado.usuario_id);
 
+        // Reusamos restauranteNotif si ya lo consultamos arriba; si no,
+        // lo consultamos ahora. Esto evita una query extra en el caso
+        // común (Listo + retiro).
+        const restauranteData = restauranteNotif
+          || await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id);
+
         const pedidoParaNotificar = {
           ...pedidoActualizado,
           cliente_email: cliente?.email,
           cliente_telefono: cliente?.telefono,
           cliente_nombre: cliente?.nombre,
-          restaurante_email: restauranteNotif?.usuario_email,
-          restaurante_nombre: restauranteNotif?.nombre,
+          restaurante_email: restauranteData?.usuario_email,
+          restaurante_nombre: restauranteData?.nombre,
           // Flag que usa notificationService para elegir el template
           // "orderReadyPickup" cuando aplica (Listo + retiro en mostrador).
           esRetiroLocal: esRetiroLocalNotif

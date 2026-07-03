@@ -395,8 +395,9 @@ export async function createOrderWithItems(orderData) {
           longitud,
           direccion_formateada,
           place_id,
+          es_retiro_local,
           creado_en
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         usuario_id,
@@ -416,6 +417,10 @@ export async function createOrderWithItems(orderData) {
         insertLongitud,
         insertDireccionFormateada,
         insertPlaceId,
+        // Persistimos la modalidad al momento de crear el pedido. Esto
+        // sobrevive a cambios posteriores del flag `ofrece_domicilio` del
+        // local, así el dashboard siempre sabe si el pedido fue un retiro.
+        esRetiroLocal ? 1 : 0,
       ]
     );
 
