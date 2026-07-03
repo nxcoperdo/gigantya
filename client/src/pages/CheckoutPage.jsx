@@ -339,21 +339,28 @@ export default function CheckoutPage() {
 
       // Primer intento: buscar el cupón en el local actual.
       // (Cupones de local, asignados a este restaurante_id.)
-      let response = await couponService.validate(code, restaurante_id, total);
-
-      // Fallback: si el cupón no matcheó con el local, puede ser un
-      // cupón GLOBAL de plataforma. Reintentamos forzando la búsqueda
-      // global (es_carrito_multi_local=1 en backend). Ver
-      // `couponService.validateGlobal`.
-      if (!response.data?.valido) {
-        const primerError = response.data?.error || '';
-        const esErrorDeLocal = primerError.includes('no disponible para este restaurante');
-        if (esErrorDeLocal) {
+      //
+      // IMPORTANTE: el backend responde 400 cuando el cupón no existe /
+      // no aplica para este local. Axios interpreta 4xx como error y
+      // salta al catch, así que el `try/catch` interno es obligatorio
+      // para poder hacer el fallback a validateGlobal sin abortar el flujo.
+      let response;
+      try {
+        response = await couponService.validate(code, restaurante_id, total);
+      } catch (errPrimerIntento) {
+        const primerError = errPrimerIntento.response?.data?.error || '';
+        // Si el backend dice "no disponible para este restaurante",
+        // puede ser un cupón GLOBAL: reintentamos con la búsqueda forzada.
+        if (primerError.includes('no disponible para este restaurante')) {
           response = await couponService.validateGlobal(code, total);
+        } else {
+          // Otro motivo (expirado, agotado, monto mínimo, etc.):
+          // propagamos para mostrar el mensaje al usuario.
+          throw errPrimerIntento;
         }
       }
 
-      if (response.data.valido) {
+      if (response.data?.valido) {
         const cupon = response.data.cupon;
         setAppliedCoupon(cupon);
         setCouponError('');
