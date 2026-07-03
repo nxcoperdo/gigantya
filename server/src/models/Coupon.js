@@ -240,13 +240,29 @@ export async function validateCoupon(codigo, restaurante_id, total_pedido, optio
     `;
     params = [codigo.toUpperCase()];
   } else {
+    // FIX: la búsqueda unificada por código. Antes filtrábamos
+    // `WHERE codigo = ? AND restaurante_id = ?` lo que excluía los
+    // cupones globales (cuyo `restaurante_id` es NULL) cuando el
+    // cliente llamaba a validate con un restaurante_id concreto.
+    //
+    // Ahora: busca por código y acepta el cupón si es global O si
+    // es del restaurante del caller. Priorizamos el del local con
+    // `ORDER BY es_global ASC` por si en el futuro hubiera un
+    // choque de códigos (improbable por el UNIQUE constraint, pero
+    // defensa explícita).
     sql = `
       SELECT * FROM cupones
-      WHERE codigo = ? AND restaurante_id = ? AND activo = 1
+      WHERE codigo = ? AND activo = 1
       AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURDATE())
       AND (usos_maximos IS NULL OR usos_actuales < usos_maximos)
+      AND (
+        es_global = 1
+        OR (es_global = 0 AND restaurante_id = ?)
+      )
+      ORDER BY es_global ASC
+      LIMIT 1
     `;
-    params = [codigo.toUpperCase(), restaurante_id];
+    params = [codigo.toUpperCase(), Number(restaurante_id)];
   }
 
   const cupon = await queryOne(sql, params);
