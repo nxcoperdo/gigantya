@@ -17,6 +17,10 @@ export async function createRestaurant(restaurantData) {
     // Unificamos para evitar inconsistencias al filtrar por ciudad.
     ciudad = 'Gigante, Huila',
     ofrece_domicilio = true,
+    // Flag de modalidad "consumo en el local" (comer en la mesa). El
+    // admin lo activa desde el panel admin. Default FALSE: los locales
+    // nuevos no ofrecen esta opción hasta que el admin la habilite.
+    ofrece_consumo_en_local = false,
     // Flags de nicho. Default conservador para locales nuevos: "es
     // restaurante" en TRUE (caso más común), los otros dos en FALSE. El
     // admin los cambia desde el dashboard con los toggles correspondientes.
@@ -39,11 +43,12 @@ export async function createRestaurant(restaurantData) {
       estado,
       aprobado,
       ofrece_domicilio,
+      ofrece_consumo_en_local,
       es_restaurante,
       es_mercado_abarrotes,
       es_comida_rapida,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, ?, ?, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, ?, ?, ?, ?, NOW())
   `;
 
   try {
@@ -61,6 +66,7 @@ export async function createRestaurant(restaurantData) {
       // boolean nativo; la coerción a 0/1 la hacemos nosotros para no
       // depender del driver.
       ofrece_domicilio ? 1 : 0,
+      ofrece_consumo_en_local ? 1 : 0,
       es_restaurante ? 1 : 0,
       es_mercado_abarrotes ? 1 : 0,
       es_comida_rapida ? 1 : 0,
@@ -401,6 +407,11 @@ export async function updateRestaurant(id, updateData) {
     // - true  → "Ofrece servicio a domicilio"
     // - false → "Solo retiro en local"
     'ofrece_domicilio',
+    // Modalidad "consumo en el local" (comer en la mesa). El admin lo
+    // activa desde el panel admin (`/admin/restaurants/:id/ofrece-consumo-en-local`).
+    // - true  → el cliente puede elegir "Consumo en el local" en el checkout
+    // - false → el botón aparece deshabilitado en el checkout
+    'ofrece_consumo_en_local',
     // Tipo de negocio "Restaurante" (switch en el dashboard admin). Default
     // TRUE al crear locales nuevos: un local recién creado participa del
     // nicho restaurante salvo que el admin explícitamente lo desactive
@@ -435,7 +446,7 @@ export async function updateRestaurant(id, updateData) {
   // Campos booleanos que la columna MySQL guarda como INT/TINYINT (0/1).
   // El frontend los manda como boolean JS → al serializar a JSON se vuelven 'true'/'false',
   // lo que MySQL rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD. Normalizamos a 0/1 antes de bind.
-  const booleanIntFields = new Set(['ofrece_domicilio', 'es_restaurante', 'es_mercado_abarrotes', 'es_comida_rapida']);
+  const booleanIntFields = new Set(['ofrece_domicilio', 'ofrece_consumo_en_local', 'es_restaurante', 'es_mercado_abarrotes', 'es_comida_rapida']);
 
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';

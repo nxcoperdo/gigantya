@@ -684,6 +684,51 @@ export async function updateRestaurantDomicilio(req, res) {
 }
 
 /**
+ * Cambiar el flag "Ofrece consumo en el local" de un restaurante desde
+ * el dashboard admin. Cuando está activo, el cliente puede elegir la
+ * modalidad "Consumo en el local" (comer en la mesa) en el checkout.
+ *
+ * Réplica de `updateRestaurantDomicilio` para mantener consistencia
+ * con el resto de los endpoints dedicados. Mismo patrón de validación
+ * y logging.
+ */
+export async function updateRestaurantConsumoEnLocal(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar esta modalidad' });
+    }
+
+    const { id } = req.params;
+    const { ofrece_consumo_en_local } = req.body;
+
+    if (ofrece_consumo_en_local === undefined || ofrece_consumo_en_local === null) {
+      return res.status(400).json({ error: 'El campo "ofrece_consumo_en_local" es requerido' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Local no encontrado' });
+    }
+
+    // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
+    const nuevoValor = Boolean(ofrece_consumo_en_local);
+
+    await RestaurantModel.updateRestaurant(id, { ofrece_consumo_en_local: nuevoValor });
+
+    logger.info(`Admin ${req.user.id} cambió modalidad del restaurante ${id} a ofrece_consumo_en_local=${nuevoValor}`);
+
+    res.json({
+      mensaje: 'Modalidad de consumo en el local actualizada',
+      restaurante_id: id,
+      ofrece_consumo_en_local: nuevoValor,
+    });
+  } catch (error) {
+    console.error('Error actualizando modalidad de consumo en local:', error);
+    res.status(500).json({ error: 'Error actualizando modalidad', detalles: error.message });
+  }
+}
+
+/**
  * Cambiar el flag "Mercado y abarrotes" de un restaurante desde el dashboard
  * admin. Endpoint dedicado (en vez de un genérico PUT) para mantener
  * consistencia con /ofrece-domicilio, /plan y /config y para registrar el
@@ -850,6 +895,7 @@ export default {
   getRestaurantSubscriptionHistory,
   updateRestaurantConfig,
   updateRestaurantDomicilio,
+  updateRestaurantConsumoEnLocal,
   updateRestaurantEsMercado,
   updateRestaurantEsComidaRapida,
   updateRestaurantEsRestaurante,

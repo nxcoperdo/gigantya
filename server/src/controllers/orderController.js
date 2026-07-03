@@ -74,6 +74,20 @@ export async function createOrder(req, res) {
       || req.body.es_retiro_local === '1'
       || req.body.es_retiro_local === 'true';
 
+    // Modalidad "consumo en el local" (comer en la mesa). El cliente la
+    // elige en el checkout, pero el backend solo la respeta si el local
+    // la ofrece. Si el local no la tiene activa, se ignora el flag del
+    // body aunque el cliente lo mande.
+    const ofreceConsumoEnLocal = restaurante.ofrece_consumo_en_local === undefined
+      ? false
+      : Boolean(Number(restaurante.ofrece_consumo_en_local));
+    const esConsumoEnLocal = ofreceConsumoEnLocal
+      && !esRetiroLocal  // mutually exclusive: si el local solo retira, el cliente no puede elegir consumo
+      && (req.body.es_consumo_en_local === true
+        || req.body.es_consumo_en_local === 1
+        || req.body.es_consumo_en_local === '1'
+        || req.body.es_consumo_en_local === 'true');
+
     // Validar método de pago
     const validPaymentMethods = ['contra_entrega', 'nequi', 'daviplata', 'bre_b'];
     const paymentMethod = metodo_pago || 'contra_entrega';
@@ -149,6 +163,10 @@ export async function createOrder(req, res) {
       // Modalidad del pedido: si el local es solo retiro, el modelo ignora
       // dirección/barrio/sector y fuerza costo_envio=0 aunque el body los traiga.
       esRetiroLocal,
+      // Modalidad "consumo en el local" (comer en la mesa). Si está activa,
+      // el modelo también ignora dirección/barrio/sector y costo_envio.
+      // Persiste en pedidos.es_consumo_en_local.
+      esConsumoEnLocal,
       total: (typeof totalFromFrontend === 'number' && totalFromFrontend > 0) ? totalFromFrontend : null
     });
 
@@ -371,40 +389,51 @@ export async function updateOrderStatus(req, res) {
     try {
       const pedidoActualizado = await OrderModel.getOrderById(id);
 
-      // La modalidad del pedido (envío vs. retiro en mostrador) está
-      // persistida en `pedidos.es_retiro_local` al momento de crear el
-      // pedido. Usamos esa columna en lugar de consultar el flag actual
-      // del local: si el local cambió a ofrecer domicilios después de
-      // tomar un pedido de retiro, el cliente aún así debe recibir la
-      // notificación de "Listo para retirar" (la modalidad no cambia
-      // retroactivamente).
+      // Las modalidades del pedido están persistidas en
+      // `pedidos.es_retiro_local` y `pedidos.es_consumo_en_local` al
+      // momento de crear el pedido. Las usamos (en lugar del flag
+      // actual del restaurante) para que un cambio de flag posterior
+      // no afecte las notificaciones de pedidos históricos.
       const esRetiroLocalNotif = Boolean(Number(pedidoActualizado.es_retiro_local));
+      const esConsumoEnLocalNotif = Boolean(Number(pedidoActualizado.es_consumo_en_local));
 
-      // Si el pedido es de retiro y el estado es "Listo", también
-      // incluimos el nombre del local en el mensaje (lo necesitamos
-      // tanto para la notificación interna como para el email).
-      const restauranteNotif = esRetiroLocalNotif
+      // Si el pedido es de retiro o consumo en local y el estado es
+      // "Listo", necesitamos el nombre del local para el mensaje.
+      const necesitaNombreLocal = matchedState === 'Listo'
+        && (esRetiroLocalNotif || esConsumoEnLocalNotif);
+      const restauranteNotif = necesitaNombreLocal
         ? await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id)
         : null;
 
       // Notificación interna (base de datos)
-      // Si es retiro y el estado es "Listo", customizamos el mensaje y el
-      // título para que el cliente entienda que tiene que ir a buscar el
-      // pedido al local (no que lo van a enviar).
-      const esNotifRetiroListo = esRetiroLocalNotif && matchedState === 'Listo';
-      const notifTitulo = esNotifRetiroListo
-        ? '🛍️ ¡Tu pedido está listo para retirar!'
-        : 'Actualización de Pedido';
-      const notifMensaje = esNotifRetiroListo
-        ? `Tu pedido #${id} ya está listo en ${restauranteNotif?.nombre || 'el local'}. Pasá a retirarlo por el mostrador.`
-        : `Tu pedido #${id} ahora está en estado: ${matchedState}`;
+      // Customizamos el mensaje y el título según la modalidad:
+      // - Consumo en el local + Listo → "te lo llevamos a la mesa"
+      // - Retiro en mostrador  + Listo → "pasá a retirarlo por el mostrador"
+      // - Otro estado o modalidad → mensaje genérico
+      const esListoConsumo = esConsumoEnLocalNotif && matchedState === 'Listo';
+      const esListoRetiro = esRetiroLocalNotif && matchedState === 'Listo';
+      const notifTitulo = esListoConsumo
+        ? '🍽️ ¡Tu pedido está listo, te lo llevamos a la mesa!'
+        : esListoRetiro
+          ? '🛍️ ¡Tu pedido está listo para retirar!'
+          : 'Actualización de Pedido';
+      const notifMensaje = esListoConsumo
+        ? `Tu pedido #${id} está listo en ${restauranteNotif?.nombre || 'el local'}. Avisale a la mesera con tu número de pedido y te lo llevamos a la mesa.`
+        : esListoRetiro
+          ? `Tu pedido #${id} ya está listo en ${restauranteNotif?.nombre || 'el local'}. Pasá a retirarlo por el mostrador.`
+          : `Tu pedido #${id} ahora está en estado: ${matchedState}`;
 
       await NotificationModel.createNotification({
         usuario_id: pedidoActualizado.usuario_id,
         tipo: 'pedido',
         titulo: notifTitulo,
         mensaje: notifMensaje,
-        data: { pedido_id: id, estado: matchedState, es_retiro_local: esRetiroLocalNotif }
+        data: {
+          pedido_id: id,
+          estado: matchedState,
+          es_retiro_local: esRetiroLocalNotif,
+          es_consumo_en_local: esConsumoEnLocalNotif
+        }
       });
 
       // Notificación externa (email/SMS) - solo para ciertos estados
@@ -415,7 +444,7 @@ export async function updateOrderStatus(req, res) {
 
         // Reusamos restauranteNotif si ya lo consultamos arriba; si no,
         // lo consultamos ahora. Esto evita una query extra en el caso
-        // común (Listo + retiro).
+        // común (Listo + retiro/consumo).
         const restauranteData = restauranteNotif
           || await RestaurantModel.getRestaurantById(pedidoActualizado.restaurante_id);
 
@@ -426,9 +455,10 @@ export async function updateOrderStatus(req, res) {
           cliente_nombre: cliente?.nombre,
           restaurante_email: restauranteData?.usuario_email,
           restaurante_nombre: restauranteData?.nombre,
-          // Flag que usa notificationService para elegir el template
-          // "orderReadyPickup" cuando aplica (Listo + retiro en mostrador).
-          esRetiroLocal: esRetiroLocalNotif
+          // Flags que usa notificationService para elegir el template de
+          // email correcto cuando el estado es "Listo".
+          esRetiroLocal: esRetiroLocalNotif,
+          esConsumoEnLocal: esConsumoEnLocalNotif
         };
 
         notificationService.notifyOrderStatusChange({

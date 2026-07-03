@@ -46,6 +46,8 @@ export default function AdminDashboardPage() {
   const [updatingEsComidaRapidaId, setUpdatingEsComidaRapidaId] = useState(null);
   // ID del restaurante cuyo toggle de "Es restaurante" se está actualizando.
   const [updatingEsRestauranteId, setUpdatingEsRestauranteId] = useState(null);
+  // ID del restaurante cuyo toggle de "Ofrece consumo en el local" se está actualizando.
+  const [updatingConsumoEnLocalId, setUpdatingConsumoEnLocalId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -209,6 +211,26 @@ export default function AdminDashboardPage() {
       setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
     } finally {
       setUpdatingEsRestauranteId(null);
+    }
+  };
+
+  // Cambia en línea si un restaurante ofrece "consumo en el local"
+  // (modalidad "comer en la mesa"). Réplica de los otros toggles de
+  // modalidad. Cuando se activa, el cliente puede elegir esa opción
+  // en el checkout; cuando se desactiva, el botón aparece deshabilitado.
+  const handleToggleConsumoEnLocal = async (restaurantId, currentValue) => {
+    const nuevoValor = !currentValue;
+    const snapshot = restaurants;
+    setRestaurants(prev => prev.map(r => r.id === restaurantId ? { ...r, ofrece_consumo_en_local: nuevoValor ? 1 : 0 } : r));
+    setUpdatingConsumoEnLocalId(restaurantId);
+    try {
+      setError('');
+      await adminService.updateRestaurantConsumoEnLocal(restaurantId, nuevoValor);
+    } catch (err) {
+      setRestaurants(snapshot);
+      setError(err.response?.data?.error || 'Error al cambiar la modalidad de consumo en el local');
+    } finally {
+      setUpdatingConsumoEnLocalId(null);
     }
   };
 
@@ -574,6 +596,13 @@ export default function AdminDashboardPage() {
                           ? true
                           : Boolean(Number(res.es_restaurante));
                         const isUpdatingEsRestaurante = updatingEsRestauranteId === res.id;
+                        // Normalizar `ofrece_consumo_en_local` (comer en la mesa).
+                        // Default FALSE: locales existentes no ofrecen esta modalidad
+                        // hasta que el admin la active explícitamente.
+                        const ofreceConsumoEnLocal = res.ofrece_consumo_en_local === undefined
+                          ? false
+                          : Boolean(Number(res.ofrece_consumo_en_local));
+                        const isUpdatingConsumoEnLocal = updatingConsumoEnLocalId === res.id;
                         return (
                           <tr key={res.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
                             <td className="px-6 py-4">
@@ -759,6 +788,47 @@ export default function AdminDashboardPage() {
                                   ) : (
                                     <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
                                       <Zap size={12} /> No es comida rápida
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+
+                              {/* Cuarto toggle del bloque: modalidad "Ofrece consumo
+                                  en el local" (comer en la mesa). Independiente de
+                                  los flags de nicho y del toggle de modalidad de
+                                  arriba. Cuando está activo, el cliente puede
+                                  elegir "Consumo en el local" en el checkout y
+                                  la mesera lleva el pedido a la mesa. No se cobra
+                                  envío. Cuando está inactivo, el botón aparece
+                                  deshabilitado con candado en el checkout. */}
+                              <div className="inline-flex items-center gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={ofreceConsumoEnLocal}
+                                  disabled={isUpdatingConsumoEnLocal}
+                                  onClick={() => handleToggleConsumoEnLocal(res.id, ofreceConsumoEnLocal)}
+                                  title={ofreceConsumoEnLocal
+                                    ? 'Acepta pedidos para consumir en el local'
+                                    : 'No ofrece consumo en el local'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                    ofreceConsumoEnLocal ? 'bg-orange-500' : 'bg-[color:var(--border-default)]'
+                                  } ${isUpdatingConsumoEnLocal ? 'opacity-50 cursor-wait' : ''}`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      ofreceConsumoEnLocal ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-semibold text-[color:var(--text-secondary)] whitespace-nowrap">
+                                  {ofreceConsumoEnLocal ? (
+                                    <span className="inline-flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                                      <UtensilsCrossed size={12} /> Consumo en local
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                                      <UtensilsCrossed size={12} /> No consume en local
                                     </span>
                                   )}
                                 </span>

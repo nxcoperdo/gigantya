@@ -203,6 +203,36 @@ const EmailTemplates = {
     </div>
   `,
 
+  // Cliente: Pedido listo para consumir en el local (comer en la mesa)
+  // (variante del template de pickup usada cuando el cliente eligió
+  //  consumo en el local. La mesera lleva el pedido a la mesa.)
+  orderReadyConsumoLocal: (pedido) => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">🍽️ ¡Tu pedido está listo, lo llevamos a tu mesa!</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 16px; color: #333;">Hola <strong>${pedido.cliente_nombre}</strong>,</p>
+        <p style="font-size: 16px; color: #555;">Tu pedido en <strong>${pedido.restaurante_nombre}</strong> ya está listo. Avisale a la mesera con tu número de pedido y te lo llevamos a la mesa.</p>
+
+        <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <p><strong>Pedido #${pedido.id}</strong></p>
+          <p><strong>Local:</strong> ${pedido.restaurante_nombre}</p>
+          <p><strong>Estado:</strong> <span style="color: #f5576c; font-weight: bold;">Listo en mesa</span></p>
+        </div>
+
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff9800;">
+          <p style="margin: 0; font-size: 14px;"><strong>📣 ¿Qué hago ahora?</strong></p>
+          <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">Cuando la mesera diga tu número de pedido, respondele "AQUÍ". Te llevamos todo a la mesa.</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+          <p style="font-size: 14px; color: #999;">GigantYA - Consumo en el local</p>
+        </div>
+      </div>
+    </div>
+  `,
+
   // Cliente: Pedido entregado
   orderDelivered: (pedido) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -358,6 +388,7 @@ function getSubjectForTemplate(template, pedido) {
     orderPreparing: `🍳 Pedido #${pedido.id} en preparación - GigantYA`,
     orderReady: `✅ Pedido #${pedido.id} listo - GigantYA`,
     orderReadyPickup: `🛍️ Pedido #${pedido.id} listo para retirar - GigantYA`,
+    orderReadyConsumoLocal: `🍽️ Pedido #${pedido.id} listo en la mesa - GigantYA`,
     orderDelivered: `🎉 Pedido #${pedido.id} entregado - GigantYA`,
     newOrderRestaurant: `🔔 Nuevo Pedido #${pedido.id} - GigantYA`,
     paymentApproved: `✅ Pago aprobado - Pedido #${pedido.id}`,
@@ -511,16 +542,20 @@ export async function notifyOrderStatusChange({
 
   // Notificar al cliente
   if (notifyCustomer && pedido.cliente_email) {
-    // Si el pedido es para retirar en mostrador y el estado es "Listo",
-    // usamos el template específico de pickup. El flag esRetiroLocal llega
-    // desde el controller derivado del flag del local (ofrece_domicilio=0).
+    // Si el estado es "Listo", elegimos el template según la modalidad
+    // del pedido. Precedencia (de más específica a más genérica):
+    //   - esConsumoEnLocal → orderReadyConsumoLocal (mesa)
+    //   - esRetiroLocal    → orderReadyPickup (mostrador)
+    //   - caso contrario   → orderReady (envío a domicilio)
+    // Los flags llegan del controller (orderController.js), leídos de
+    // las columnas persistidas pedidos.es_retiro_local /
+    // pedidos.es_consumo_en_local al momento de crear el pedido.
+    const isTrue = (v) => v === true || v === 1 || v === '1' || v === 'true';
     let template = customerTemplates[nuevoEstado];
-    if (
-      template === 'orderReady' &&
-      (pedido.esRetiroLocal === true ||
-       pedido.esRetiroLocal === 1 ||
-       pedido.esRetiroLocal === '1' ||
-       pedido.esRetiroLocal === 'true')
+    if (nuevoEstado === 'Listo' && isTrue(pedido.esConsumoEnLocal)) {
+      template = 'orderReadyConsumoLocal';
+    } else if (
+      template === 'orderReady' && isTrue(pedido.esRetiroLocal)
     ) {
       template = 'orderReadyPickup';
     }

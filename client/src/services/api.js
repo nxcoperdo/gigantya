@@ -157,6 +157,8 @@ export const adminService = {
   updateRestaurantPlan: (id, payload) => api.put(`/admin/restaurants/${id}/plan`, payload),
   updateRestaurantDomicilio: (id, ofrece_domicilio) =>
     api.put(`/admin/restaurants/${id}/ofrece-domicilio`, { ofrece_domicilio }),
+  updateRestaurantConsumoEnLocal: (id, ofrece_consumo_en_local) =>
+    api.put(`/admin/restaurants/${id}/ofrece-consumo-en-local`, { ofrece_consumo_en_local }),
   updateRestaurantEsMercado: (id, es_mercado_abarrotes) =>
     api.put(`/admin/restaurants/${id}/es-mercado-abarrotes`, { es_mercado_abarrotes }),
   updateRestaurantEsComidaRapida: (id, es_comida_rapida) =>

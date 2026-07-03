@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api, { paymentService, couponService, addressService, zonaService, restaurantService } from '../services/api';
-import { CheckCircle, MapPin, Plus, Tag, X, Store, Truck } from 'lucide-react';
+import { CheckCircle, MapPin, Plus, Tag, X, Store, Truck, UtensilsCrossed } from 'lucide-react';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import ErrorMessageModal from '../components/ErrorMessageModal';
 // Sin AddressAutocomplete: el usuario escribe la dirección como texto libre.
@@ -165,12 +165,22 @@ export default function CheckoutPage() {
         setTaxConfig(tax);
         setShippingConfig(shipping);
         setRestaurante(restaurant);
-        // Si el local NO ofrece domicilio, la modalidad queda forzada a
-        // retiro y el cliente no puede cambiarla. Si ofrece, default = envio.
-        const ofrece = restaurant.ofrece_domicilio === undefined
+        // Modalidad default: prioridad envio > consumo_local > retiro.
+        // - Si el local ofrece domicilio, default = envio.
+        // - Si no ofrece domicilio pero sí consumo en local, default = consumo_local.
+        // - Si no ofrece ninguna de las dos, default = retiro (forzado).
+        const ofreceDomicilio = restaurant.ofrece_domicilio === undefined
           ? true
           : Boolean(Number(restaurant.ofrece_domicilio));
-        setModalidad(ofrece ? 'envio' : 'retiro');
+        const ofreceConsumoLocal = restaurant.ofrece_consumo_en_local !== undefined
+          && Boolean(Number(restaurant.ofrece_consumo_en_local));
+        let defaultModalidad = 'retiro';
+        if (ofreceDomicilio) {
+          defaultModalidad = 'envio';
+        } else if (ofreceConsumoLocal) {
+          defaultModalidad = 'consumo_local';
+        }
+        setModalidad(defaultModalidad);
         setModalidadInicializada(true);
         setConfigLoaded(true);
       } catch (error) {
@@ -232,24 +242,29 @@ export default function CheckoutPage() {
     ? subtotalConDescuento * (taxConfig.porcentaje / 100)
     : 0;
 
-  // La modalidad del pedido la elige el cliente en este paso (si el local
-  // ofrece domicilio). Si el local NO ofrece domicilio, modalidad queda
-  // forzada a 'retiro' desde el useEffect que carga la config.
+  // La modalidad del pedido la elige el cliente en este paso. Hay 3
+  // opciones: 'envio', 'retiro', 'consumo_local'. Si el local no
+  // ofrece domicilio ni consumo en local, modalidad queda forzada a
+  // 'retiro' desde el useEffect que carga la config.
   const esRetiroLocal = modalidad === 'retiro';
+  const esConsumoEnLocal = modalidad === 'consumo_local';
+  // "Sin envío": retiro en mostrador o consumo en el local. Ambas
+  // modalidades NO cobran envío, NO piden dirección ni barrio.
+  const esModalidadSinEnvio = esRetiroLocal || esConsumoEnLocal;
 
   // Determinar el costo de envío efectivo:
-  // - Si es retiro en local → 0
+  // - Si es modalidad sin envío (retiro o consumo) → 0
   // - Si hay envioInfo (barrio resuelto) → usar su costo
   // - Si no, fallback al costo_fijo global
   // - Si envío gratis está activo y el subtotalConDescuento lo supera → 0
-  const envioGratisCorresponde = !esRetiroLocal && (
+  const envioGratisCorresponde = !esModalidadSinEnvio && (
     shippingConfig.activo &&
     shippingConfig.envio_gratis_activo === true &&
     Number(shippingConfig.envio_gratis_desde) > 0 &&
     subtotalConDescuento > Number(shippingConfig.envio_gratis_desde)
   );
 
-  const calculatedShippingAmount = esRetiroLocal
+  const calculatedShippingAmount = esModalidadSinEnvio
     ? 0
     : envioGratisCorresponde
       ? 0
@@ -371,13 +386,14 @@ export default function CheckoutPage() {
       // Si el usuario eligió una dirección guardada, listo. Si está tipeando
       // una nueva, basta con que el campo de dirección no esté vacío.
 
-      // Modalidad del pedido: si el restaurante es "solo retiro en mostrador"
-      // (ofrece_domicilio=0), NO exigimos dirección ni barrio y enviamos
+      // Modalidad del pedido: si la modalidad es sin envío (retiro o
+      // consumo en el local), NO exigimos dirección ni barrio y enviamos
       // costo_envio=0. El backend igual va a forzar los nulls aunque el
       // body los traiga poblados, pero los mandamos limpios desde acá para
       // evitar inconsistencias y para que el cliente no vea formularios
       // que no aplican.
-      // (esRetiroLocal ya está calculado al tope del componente)
+      // (esRetiroLocal / esConsumoEnLocal / esModalidadSinEnvio están
+      // calculados al tope del componente)
 
       const restaurante_id = cart[0].restaurante_id || 1;
       setRestauranteId(restaurante_id);
@@ -391,11 +407,11 @@ export default function CheckoutPage() {
       // Determinar barrio_id a enviar al backend. Sin autocompletado de mapa:
       // las coordenadas las genera el restaurante al ver el pedido
       // (AddressMapPreview.jsx geocodifica el texto).
-      // Para pedidos de retiro en mostrador, no se necesita dirección
-      // ni barrio: el cliente retira en el mostrador del local.
+      // Para modalidades sin envío (retiro / consumo en el local), no se
+      // necesita dirección ni barrio: el cliente no recibe envío a domicilio.
       let barrioIdEnviar = null;
 
-      if (!esRetiroLocal) {
+      if (!esModalidadSinEnvio) {
         if (!useNewAddress && selectedAddressId) {
           const addr = addresses.find(a => a.id === selectedAddressId);
           if (addr && addr.barrio_id) barrioIdEnviar = Number(addr.barrio_id);
@@ -405,8 +421,8 @@ export default function CheckoutPage() {
       }
 
       // Para que el backend pueda calcular el envío, la dirección debe tener
-      // barrio_id (catálogo de zonas). Esto NO aplica a pedidos de retiro.
-      if (!esRetiroLocal && !barrioIdEnviar) {
+      // barrio_id (catálogo de zonas). Esto NO aplica a modalidades sin envío.
+      if (!esModalidadSinEnvio && !barrioIdEnviar) {
         const mensaje = useNewAddress
           ? 'Para calcular el envío, elegí un sector y barrio de la lista.'
           : 'La dirección seleccionada no tiene barrio. Edítala para precisar la ubicación.';
@@ -423,18 +439,19 @@ export default function CheckoutPage() {
         ? subtotalConDescuentoOrder * (taxConfig.porcentaje / 100)
         : 0;
 
-      const envioGratisOrder = !esRetiroLocal && (
+      const envioGratisOrder = !esModalidadSinEnvio && (
         shippingConfig.activo &&
         shippingConfig.envio_gratis_activo === true &&
         Number(shippingConfig.envio_gratis_desde) > 0 &&
         subtotalConDescuentoOrder > Number(shippingConfig.envio_gratis_desde)
       );
 
-      // Para pedidos de retiro en mostrador el envío siempre es 0, sin
-      // importar la config de `shippingConfig` del local (la config
-      // sigue activa porque el local la configuró por si en algún
-      // momento futuro ofrece domicilios, pero no aplica al retiro).
-      const costoEnvio = esRetiroLocal
+      // Para modalidades sin envío (retiro o consumo en el local) el envío
+      // siempre es 0, sin importar la config de `shippingConfig` del local
+      // (la config sigue activa porque el local la configuró por si en
+      // algún momento futuro ofrece domicilios, pero no aplica al
+      // retiro ni al consumo en el local).
+      const costoEnvio = esModalidadSinEnvio
         ? 0
         : envioGratisOrder
           ? 0
@@ -444,9 +461,12 @@ export default function CheckoutPage() {
 
       const totalOrder = subtotalConDescuentoOrder + taxAmountOrder + costoEnvio;
 
-      // En pedidos de retiro mandamos dirección/barrio/coordenadas null
-      // y costo_envio=0. El backend igual los va a forzar nulls, pero
-      // los mandamos limpios para que el payload refleje la intención.
+      // En modalidades sin envío mandamos dirección/barrio/coordenadas
+      // null y costo_envio=0. El backend igual los va a forzar nulls,
+      // pero los mandamos limpios para que el payload refleje la intención.
+      // Las columnas `es_retiro_local` y `es_consumo_en_local` se persisten
+      // a nivel de pedido para que el flag del local (que puede cambiar)
+      // no afecte pedidos ya creados.
       const orderData = {
         restaurante_id,
         items: cart.map(item => ({
@@ -456,11 +476,11 @@ export default function CheckoutPage() {
         })),
         cupon_codigo: appliedCoupon?.codigo || null,
         notas: formData.notas,
-        direccion_entrega: esRetiroLocal ? null : formData.direccion_entrega,
+        direccion_entrega: esModalidadSinEnvio ? null : formData.direccion_entrega,
         telefono_contacto: formData.telefono_contacto,
         metodo_pago: paymentMethod,
         costo_envio: costoEnvio,
-        barrio_id: esRetiroLocal ? null : barrioIdEnviar,
+        barrio_id: esModalidadSinEnvio ? null : barrioIdEnviar,
         // Sin autocompletado de mapa en el cliente: latitud/longitud las
         // genera el restaurante al ver el pedido (AddressMapPreview.jsx
         // geocodifica el texto en el iframe de embed).
@@ -468,11 +488,10 @@ export default function CheckoutPage() {
         longitud: null,
         direccion_formateada: null,
         place_id: null,
-        // El cliente eligió la modalidad en el checkout (si el local
-        // ofrece domicilio). Si no, viene forzada a true desde la carga
-        // de la config del restaurante. El backend lo persiste en
-        // pedidos.es_retiro_local.
+        // Modalidad persistida en el pedido (sobrevive a cambios del flag
+        // del local). Ambas columnas son TINYINT(1) en la BD.
         es_retiro_local: esRetiroLocal,
+        es_consumo_en_local: esConsumoEnLocal,
         total: totalOrder,
       };
 
@@ -547,34 +566,47 @@ export default function CheckoutPage() {
           Confirmar Pedido
         </h1>
 
-        {/* Selector de modalidad: visible solo si el local ofrece
-            domicilio. Si el local es solo-retiro (ofrece_domicilio=0),
-            la modalidad ya queda forzada a 'retiro' y este bloque
-            no se renderiza. */}
-        {restaurante && restaurante.ofrece_domicilio !== undefined && Boolean(Number(restaurante.ofrece_domicilio)) && (
+        {/* Selector de modalidad: visible cuando el local ofrece al
+            menos una opción elegible (envío o consumo en local).
+            El botón de "Retiro en mostrador" siempre está disponible.
+            Si el local es solo-retiro (ofrece_domicilio=0 y
+            ofrece_consumo_en_local=0), la modalidad queda forzada a
+            'retiro' y este bloque no se renderiza. */}
+        {restaurante && (
+          restaurante.ofrece_domicilio !== undefined
+            ? Boolean(Number(restaurante.ofrece_domicilio)) ||
+              Boolean(Number(restaurante.ofrece_consumo_en_local))
+            : true
+        ) && (
           <div className="mb-6 card-lg">
             <h2 className="text-lg font-heading font-bold text-[color:var(--text-primary)] mb-3">
               ¿Cómo querés recibir tu pedido?
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setModalidad('envio')}
-                className={`p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] ${
-                  modalidad === 'envio'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-[color:var(--border-default)] hover:border-primary/50'
-                }`}
-                style={modalidad === 'envio' ? { backgroundColor: 'var(--primary-bg)' } : undefined}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Truck size={20} className="text-primary" />
-                  <span className="font-bold text-[color:var(--text-primary)]">Envío a domicilio</span>
-                </div>
-                <p className="text-sm text-[color:var(--text-secondary)]">
-                  Te lo llevamos a la dirección que indiques. Tiene costo de envío.
-                </p>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Botón de envío: visible solo si el local ofrece domicilio. */}
+              {restaurante && restaurante.ofrece_domicilio !== undefined
+                && Boolean(Number(restaurante.ofrece_domicilio)) && (
+                <button
+                  type="button"
+                  onClick={() => setModalidad('envio')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] ${
+                    modalidad === 'envio'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-[color:var(--border-default)] hover:border-primary/50'
+                  }`}
+                  style={modalidad === 'envio' ? { backgroundColor: 'var(--primary-bg)' } : undefined}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Truck size={20} className="text-primary" />
+                    <span className="font-bold text-[color:var(--text-primary)]">Envío a domicilio</span>
+                  </div>
+                  <p className="text-sm text-[color:var(--text-secondary)]">
+                    Te lo llevamos a la dirección que indiques. Tiene costo de envío.
+                  </p>
+                </button>
+              )}
+
+              {/* Botón de retiro en mostrador: siempre habilitado. */}
               <button
                 type="button"
                 onClick={() => setModalidad('retiro')}
@@ -593,12 +625,55 @@ export default function CheckoutPage() {
                   Pasás a buscarlo al local cuando esté listo. Sin costo de envío.
                 </p>
               </button>
+
+              {/* Botón de consumo en el local: deshabilitado con candado
+                  si el local no lo activó. El candado es solo decorativo
+                  (el atributo `disabled` del botón bloquea el click). */}
+              {(() => {
+                const permiteConsumo = restaurante
+                  && restaurante.ofrece_consumo_en_local !== undefined
+                  && Boolean(Number(restaurante.ofrece_consumo_en_local));
+                return (
+                  <button
+                    type="button"
+                    onClick={() => permiteConsumo && setModalidad('consumo_local')}
+                    disabled={!permiteConsumo}
+                    title={!permiteConsumo
+                      ? 'Este local no ofrece consumo en el local'
+                      : undefined}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                      !permiteConsumo
+                        ? 'opacity-50 cursor-not-allowed border-[color:var(--border-default)]'
+                        : modalidad === 'consumo_local'
+                          ? 'border-primary active:scale-[0.98]'
+                          : 'border-[color:var(--border-default)] hover:border-primary/50 active:scale-[0.98]'
+                    }`}
+                    style={modalidad === 'consumo_local' && permiteConsumo
+                      ? { backgroundColor: 'var(--primary-bg)' }
+                      : undefined}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <UtensilsCrossed size={20} className={permiteConsumo ? 'text-primary' : 'text-[color:var(--text-muted)]'} />
+                      <span className="font-bold text-[color:var(--text-primary)]">
+                        Consumo en el local
+                        {!permiteConsumo && ' 🔒'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[color:var(--text-secondary)]">
+                      {permiteConsumo
+                        ? 'Comés en una mesa del local. La mesera te lleva el pedido. Sin costo de envío.'
+                        : 'Este local no tiene habilitada esta modalidad.'}
+                    </p>
+                  </button>
+                );
+              })()}
             </div>
           </div>
         )}
 
-        {/* Banner informativo: si la modalidad elegida es retiro, se lo
-            recordamos al cliente. NO es un bloqueo. */}
+        {/* Banner informativo: si la modalidad elegida es "retiro en
+            mostrador" o "consumo en el local", se lo recordamos al
+            cliente. NO es un bloqueo. */}
         {esRetiroLocal && (
           <div
             className="mb-6 p-4 rounded-xl flex items-start gap-3"
@@ -614,6 +689,25 @@ export default function CheckoutPage() {
               <p className="text-sm opacity-90">
                 No hace falta dirección de envío. Te avisaremos cuando esté listo
                 para que pases a buscarlo.
+              </p>
+            </div>
+          </div>
+        )}
+        {esConsumoEnLocal && (
+          <div
+            className="mb-6 p-4 rounded-xl flex items-start gap-3"
+            style={{
+              backgroundColor: 'var(--warning-bg)',
+              border: '1px solid var(--warning-border)',
+              color: 'var(--warning-text)',
+            }}
+          >
+            <UtensilsCrossed size={20} className="flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-bold">Este pedido es para consumir en una mesa del local</p>
+              <p className="text-sm opacity-90">
+                No hace falta dirección de envío. Cuando esté listo, avisale a la
+                mesera con tu número de pedido y te lo llevamos a la mesa.
               </p>
             </div>
           </div>
@@ -951,12 +1045,18 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
-                  <span>{esRetiroLocal ? 'Retiro en mostrador:' : `Envío${envioInfo && envioInfo.sector_nombre ? ` (${envioInfo.sector_nombre})` : ''}:`}</span>
+                  <span>
+                    {esConsumoEnLocal
+                      ? 'Consumo en el local:'
+                      : esRetiroLocal
+                        ? 'Retiro en mostrador:'
+                        : `Envío${envioInfo && envioInfo.sector_nombre ? ` (${envioInfo.sector_nombre})` : ''}:`}
+                  </span>
                   <span
                     className={calculatedShippingAmount === 0 ? 'font-semibold' : ''}
                     style={calculatedShippingAmount === 0 ? { color: 'var(--success-text)' } : undefined}
                   >
-                    {esRetiroLocal
+                    {esModalidadSinEnvio
                       ? 'Gratis'
                       : envioGratisCorresponde
                         ? 'Gratis'

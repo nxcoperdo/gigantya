@@ -217,6 +217,11 @@ export async function createOrderWithItems(orderData) {
     // el cliente. El default false mantiene compatibilidad con callers
     // que todavía no pasan este flag.
     esRetiroLocal = false,
+    // Misma idea que esRetiroLocal, pero para la modalidad "consumo en
+    // el local" (comer en la mesa). También es sin envío, sin dirección,
+    // sin barrio. La modalidad la decide el cliente en el checkout, y
+    // el backend la respeta solo si el local la ofrece.
+    esConsumoEnLocal = false,
     total: totalFromRequest = null // Total enviado desde el frontend (opcional)
   } = orderData;
 
@@ -363,17 +368,20 @@ export async function createOrderWithItems(orderData) {
       ? ORDER_STATES.PENDIENTE
       : ORDER_STATES.COMPROBANTE_ENVIADO;
 
-    // En pedidos de retiro en mostrador, dirección y zonas quedan null
-    // (override de lo que haya llegado en el body). El costo de envío
-    // también queda en 0 aunque el frontend haya enviado algo distinto.
-    const insertDireccionEntrega = esRetiroLocal ? null : (direccion_entrega ?? null);
-    const insertBarrioId = esRetiroLocal ? null : (barrio_id ? Number(barrio_id) : null);
-    const insertSectorId = esRetiroLocal ? null : resolvedSectorId;
-    const insertCostoEnvio = esRetiroLocal ? 0 : resolvedCostoEnvio;
-    const insertLatitud = esRetiroLocal ? null : (latitud !== null && latitud !== undefined ? Number(latitud) : null);
-    const insertLongitud = esRetiroLocal ? null : (longitud !== null && longitud !== undefined ? Number(longitud) : null);
-    const insertDireccionFormateada = esRetiroLocal ? null : (direccion_formateada || null);
-    const insertPlaceId = esRetiroLocal ? null : (place_id || null);
+    // En pedidos sin envío (retiro en mostrador o consumo en el local),
+    // dirección y zonas quedan null (override de lo que haya llegado en
+    // el body). El costo de envío también queda en 0 aunque el frontend
+    // haya enviado algo distinto. Ambas modalidades comparten este path
+    // porque ninguna requiere envío ni dirección.
+    const esModalidadSinEnvio = esRetiroLocal || esConsumoEnLocal;
+    const insertDireccionEntrega = esModalidadSinEnvio ? null : (direccion_entrega ?? null);
+    const insertBarrioId = esModalidadSinEnvio ? null : (barrio_id ? Number(barrio_id) : null);
+    const insertSectorId = esModalidadSinEnvio ? null : resolvedSectorId;
+    const insertCostoEnvio = esModalidadSinEnvio ? 0 : resolvedCostoEnvio;
+    const insertLatitud = esModalidadSinEnvio ? null : (latitud !== null && latitud !== undefined ? Number(latitud) : null);
+    const insertLongitud = esModalidadSinEnvio ? null : (longitud !== null && longitud !== undefined ? Number(longitud) : null);
+    const insertDireccionFormateada = esModalidadSinEnvio ? null : (direccion_formateada || null);
+    const insertPlaceId = esModalidadSinEnvio ? null : (place_id || null);
 
     const [orderResult] = await connection.query(
       `
@@ -396,8 +404,9 @@ export async function createOrderWithItems(orderData) {
           direccion_formateada,
           place_id,
           es_retiro_local,
+          es_consumo_en_local,
           creado_en
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         usuario_id,
@@ -417,10 +426,12 @@ export async function createOrderWithItems(orderData) {
         insertLongitud,
         insertDireccionFormateada,
         insertPlaceId,
-        // Persistimos la modalidad al momento de crear el pedido. Esto
-        // sobrevive a cambios posteriores del flag `ofrece_domicilio` del
-        // local, así el dashboard siempre sabe si el pedido fue un retiro.
+        // Persistimos las modalidades al momento de crear el pedido.
+        // Estas columnas sobreviven a cambios posteriores de los flags
+        // del local (ofrece_domicilio, ofrece_consumo_en_local), así el
+        // dashboard siempre sabe cómo fue tomado cada pedido.
         esRetiroLocal ? 1 : 0,
+        esConsumoEnLocal ? 1 : 0,
       ]
     );
 

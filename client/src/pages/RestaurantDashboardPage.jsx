@@ -94,13 +94,26 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrd
             <p className="text-[color:var(--text-secondary)]">Teléfono: {order.cliente_telefono || 'No disponible'}</p>
           </div>
           {/* Indicador de modalidad del pedido (persistido en
-              pedidos.es_retiro_local al momento de crear el pedido):
-              - es_retiro_local = 1  → "Retira en local" (badge verde)
-              - es_retiro_local = 0  → muestra dirección de envío + costo
-              Usamos la columna persistida en lugar del flag actual del
-              local para que el badge siga siendo correcto aunque el local
-              cambie su flag de domicilios después de tomar el pedido. */}
-          {(order.es_retiro_local === true || Number(order.es_retiro_local) === 1) ? (
+              pedidos.es_retiro_local / pedidos.es_consumo_en_local al
+              momento de crear el pedido):
+              - es_consumo_en_local = 1 → "Consumo en el local" (badge)
+              - es_retiro_local = 1     → "Retira en local" (badge)
+              - ambos = 0                → muestra dirección de envío + costo
+              Precedencia: consumo en local > retiro > envío (un pedido
+              no puede ser de las 2 modalidades sin envío a la vez, pero
+              por las dudas validamos la primera primero).
+              Usamos las columnas persistidas en lugar del flag actual
+              del local para que el badge siga siendo correcto aunque
+              el local cambie sus flags después de tomar el pedido. */}
+          {(order.es_consumo_en_local === true || Number(order.es_consumo_en_local) === 1) ? (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border w-fit"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-border)' }}
+            >
+              <UtensilsCrossed size={12} />
+              Consumo en el local
+            </span>
+          ) : (order.es_retiro_local === true || Number(order.es_retiro_local) === 1) ? (
             <span
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border w-fit"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-border)' }}
