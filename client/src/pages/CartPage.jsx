@@ -63,27 +63,29 @@ export default function CartPage() {
     }
   }, [cart]);
 
-  // Calcular impuestos y envío
-  // El carrito muestra SIEMPRE el costo_fijo configurado por el restaurante
-  // (sin aplicar envío gratis por umbral). El envío gratis y el cálculo
-  // por sector del barrio se evalúan únicamente en el Checkout, donde ya
-  // se conoce la dirección del usuario. Mostrar "Gratis" aquí generaba
-  // inconsistencia: el cliente veía envío gratis en el carrito pero al
-  // pasar al checkout (con su barrio/sector) le aparecía el costo real.
-  // Si el local es de SOLO RETIRO (ofrece_domicilio=0), el envío es
-  // siempre 0 sin importar la configuracion_envios del restaurante.
+  // Calcular impuestos y envío.
+  // - Impuestos: se muestran tal cual los configura el restaurante
+  //   (son un % del subtotal, no dependen de la dirección).
+  // - Envío: SIEMPRE 0 en el carrito. El costo real se calcula en el
+  //   checkout cuando ya sabemos la dirección del cliente (y, si el
+  //   local tiene envíos por sector, el barrio elegido). Mostrar el
+  //   `costo_fijo` global acá generaba confusión: el cliente veía un
+  //   número y al pasar al checkout (con su barrio/sector) le aparecía
+  //   otro, distinto, dependiendo del sector. Por eso la línea de
+  //   "Envío" en el cart dice "Gratis (se calcula en el checkout)"
+  //   cuando el local ofrece envío, y "Gratis (retiro en local)" o
+  //   "Gratis (consumo en el local)" cuando el local es solo-retiro o
+  //   solo-consumo.
+  // - Si el local es de SOLO RETIRO o SOLO CONSUMO en el local
+  //   (ofrece_domicilio=0), el envío es 0 sin importar la
+  //   configuracion_envios del restaurante.
   const esRetiroLocalCart = restaurante && restaurante.ofrece_domicilio !== undefined
     && !Boolean(Number(restaurante.ofrece_domicilio));
 
-  const shippingAmount = useMemo(() => {
-    if (esRetiroLocalCart) {
-      return 0;
-    }
-    if (!shippingConfig.activo) {
-      return 0;
-    }
-    return Number(shippingConfig.costo_fijo) || 0;
-  }, [shippingConfig, esRetiroLocalCart]);
+  // En el cart no sabemos todavía si el cliente va a elegir envío,
+  // retiro o consumo en el local. Como en cualquier caso el cálculo
+  // final del envío pasa en el checkout, acá siempre mostramos 0.
+  const shippingAmount = 0;
 
   const taxAmount = useMemo(() => {
     const amount = taxConfig.activo && taxConfig.porcentaje > 0
@@ -225,9 +227,7 @@ export default function CartPage() {
                   <span className="font-medium">
                     {esRetiroLocalCart
                       ? 'Gratis (retiro en local)'
-                      : !shippingConfig.activo
-                        ? 'Gratis'
-                        : formatCurrency(shippingAmount)}
+                      : 'Gratis (se calcula en el checkout)'}
                   </span>
                 </div>
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
