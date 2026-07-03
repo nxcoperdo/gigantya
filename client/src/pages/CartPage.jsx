@@ -227,7 +227,7 @@ export default function CartPage() {
                   <span className="font-medium">
                     {esRetiroLocalCart
                       ? 'Gratis (retiro en local)'
-                      : 'Gratis (se calcula en el checkout)'}
+                      : '(se calcula en el checkout)'}
                   </span>
                 </div>
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
