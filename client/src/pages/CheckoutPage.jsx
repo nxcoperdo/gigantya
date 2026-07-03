@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api, { paymentService, couponService, addressService, zonaService, restaurantService } from '../services/api';
-import { CheckCircle, MapPin, Plus, Tag, X, Store } from 'lucide-react';
+import { CheckCircle, MapPin, Plus, Tag, X, Store, Truck } from 'lucide-react';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import ErrorMessageModal from '../components/ErrorMessageModal';
 // Sin AddressAutocomplete: el usuario escribe la dirección como texto libre.
@@ -55,6 +55,14 @@ export default function CheckoutPage() {
     sector_id: '',
     barrio_id: '',
   });
+
+  // Modalidad del pedido: 'envio' (a domicilio) o 'retiro' (en mostrador).
+  // - Si el local NO ofrece domicilio (ofrece_domicilio=0), la modalidad
+  //   queda forzada a 'retiro' y no se muestra el selector.
+  // - Si el local SÍ ofrece domicilio, el cliente elige en este paso.
+  //   Default: 'envio' (lo más común).
+  const [modalidad, setModalidad] = useState('envio');
+  const [modalidadInicializada, setModalidadInicializada] = useState(false);
 
   // Carga inicial: direcciones y sectores
   useEffect(() => {
@@ -157,6 +165,13 @@ export default function CheckoutPage() {
         setTaxConfig(tax);
         setShippingConfig(shipping);
         setRestaurante(restaurant);
+        // Si el local NO ofrece domicilio, la modalidad queda forzada a
+        // retiro y el cliente no puede cambiarla. Si ofrece, default = envio.
+        const ofrece = restaurant.ofrece_domicilio === undefined
+          ? true
+          : Boolean(Number(restaurant.ofrece_domicilio));
+        setModalidad(ofrece ? 'envio' : 'retiro');
+        setModalidadInicializada(true);
         setConfigLoaded(true);
       } catch (error) {
         console.error('Error cargando configuración del restaurante:', error);
@@ -217,14 +232,10 @@ export default function CheckoutPage() {
     ? subtotalConDescuento * (taxConfig.porcentaje / 100)
     : 0;
 
-  // Determinar la modalidad del pedido a partir del flag del local.
-  // Si el local es de SOLO RETIRO (ofrece_domicilio=0), el envío es 0
-  // sin importar shippingConfig. Se usa tanto para el cálculo del total
-  // visible al cliente como para forzar costo_envio=0 en el payload.
-  const ofreceDomicilioCheckout = restaurante?.ofrece_domicilio === undefined
-    ? true
-    : Boolean(Number(restaurante.ofrece_domicilio));
-  const esRetiroLocal = !ofreceDomicilioCheckout;
+  // La modalidad del pedido la elige el cliente en este paso (si el local
+  // ofrece domicilio). Si el local NO ofrece domicilio, modalidad queda
+  // forzada a 'retiro' desde el useEffect que carga la config.
+  const esRetiroLocal = modalidad === 'retiro';
 
   // Determinar el costo de envío efectivo:
   // - Si es retiro en local → 0
@@ -457,6 +468,11 @@ export default function CheckoutPage() {
         longitud: null,
         direccion_formateada: null,
         place_id: null,
+        // El cliente eligió la modalidad en el checkout (si el local
+        // ofrece domicilio). Si no, viene forzada a true desde la carga
+        // de la config del restaurante. El backend lo persiste en
+        // pedidos.es_retiro_local.
+        es_retiro_local: esRetiroLocal,
         total: totalOrder,
       };
 
@@ -531,10 +547,59 @@ export default function CheckoutPage() {
           Confirmar Pedido
         </h1>
 
-        {/* Banner informativo: si el restaurante es "solo retiro en mostrador",
-            el pedido se retira en el local. NO es un bloqueo: el cliente
-            puede confirmar el pedido sin dirección de envío. */}
-        {restaurante && restaurante.ofrece_domicilio !== undefined && !Boolean(Number(restaurante.ofrece_domicilio)) && (
+        {/* Selector de modalidad: visible solo si el local ofrece
+            domicilio. Si el local es solo-retiro (ofrece_domicilio=0),
+            la modalidad ya queda forzada a 'retiro' y este bloque
+            no se renderiza. */}
+        {restaurante && restaurante.ofrece_domicilio !== undefined && Boolean(Number(restaurante.ofrece_domicilio)) && (
+          <div className="mb-6 card-lg">
+            <h2 className="text-lg font-heading font-bold text-[color:var(--text-primary)] mb-3">
+              ¿Cómo querés recibir tu pedido?
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setModalidad('envio')}
+                className={`p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] ${
+                  modalidad === 'envio'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-[color:var(--border-default)] hover:border-primary/50'
+                }`}
+                style={modalidad === 'envio' ? { backgroundColor: 'var(--primary-bg)' } : undefined}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Truck size={20} className="text-primary" />
+                  <span className="font-bold text-[color:var(--text-primary)]">Envío a domicilio</span>
+                </div>
+                <p className="text-sm text-[color:var(--text-secondary)]">
+                  Te lo llevamos a la dirección que indiques. Tiene costo de envío.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalidad('retiro')}
+                className={`p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] ${
+                  modalidad === 'retiro'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-[color:var(--border-default)] hover:border-primary/50'
+                }`}
+                style={modalidad === 'retiro' ? { backgroundColor: 'var(--primary-bg)' } : undefined}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Store size={20} className="text-primary" />
+                  <span className="font-bold text-[color:var(--text-primary)]">Retiro en mostrador</span>
+                </div>
+                <p className="text-sm text-[color:var(--text-secondary)]">
+                  Pasás a buscarlo al local cuando esté listo. Sin costo de envío.
+                </p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Banner informativo: si la modalidad elegida es retiro, se lo
+            recordamos al cliente. NO es un bloqueo. */}
+        {esRetiroLocal && (
           <div
             className="mb-6 p-4 rounded-xl flex items-start gap-3"
             style={{

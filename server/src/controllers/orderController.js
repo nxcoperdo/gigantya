@@ -57,17 +57,22 @@ export async function createOrder(req, res) {
       });
     }
 
-    // Determinar la modalidad del pedido a partir del flag del local.
-    // - ofrece_domicilio = 1 → envío a domicilio (como hasta hoy)
-    // - ofrece_domicilio = 0 → retiro en mostrador (no se requiere dirección
-    //   de envío). El frontend muestra un banner informativo cuando el
-    //   cliente entra al checkout con un carrito de este tipo de local;
-    //   el modelo `createOrderWithItems` se encarga de forzar nulls en
-    //   dirección/barrio/sector y costo_envio=0.
+    // Determinar la modalidad del pedido.
+    // - Si el local NO ofrece domicilio (ofrece_domicilio=0), se fuerza
+    //   retiro en mostrador. El cliente no tiene opción: el local no hace
+    //   envíos, así que el pedido se retira sí o sí.
+    // - Si el local SÍ ofrece domicilio (ofrece_domicilio=1), el cliente
+    //   puede elegir entre envío a domicilio y retiro en mostrador desde
+    //   el checkout. Respetamos lo que el frontend mandó en `es_retiro_local`.
+    //   Default: false (envío) si el frontend no lo envía.
     const ofreceDomicilio = restaurante.ofrece_domicilio === undefined
       ? true
       : Boolean(Number(restaurante.ofrece_domicilio));
-    const esRetiroLocal = !ofreceDomicilio;
+    const esRetiroLocal = !ofreceDomicilio
+      || req.body.es_retiro_local === true
+      || req.body.es_retiro_local === 1
+      || req.body.es_retiro_local === '1'
+      || req.body.es_retiro_local === 'true';
 
     // Validar método de pago
     const validPaymentMethods = ['contra_entrega', 'nequi', 'daviplata', 'bre_b'];
