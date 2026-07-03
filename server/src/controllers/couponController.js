@@ -201,6 +201,28 @@ export async function adminListCoupons(req, res) {
 }
 
 /**
+ * Listar todos los USOS (redenciones) de cupones (admin).
+ * Devuelve una fila por pedido que tuvo cupón, con info del cupón,
+ * el cliente, el local (NULL si el cupón era global), el subtotal
+ * de los items, el descuento aplicado (recalculado) y el total.
+ *
+ * Query params:
+ *   - cupon_id: filtra por un cupón específico
+ *   - restaurante_id: filtra por un local
+ *   - es_global: 1/0
+ *   - fecha_desde, fecha_hasta: rango (YYYY-MM-DD)
+ *   - limit (default 100, max 500), offset: paginación
+ */
+export async function adminGetCouponUsages(req, res) {
+  try {
+    const usos = await CouponModel.getCouponUsagesForAdmin(req.query || {});
+    res.json({ total: usos.length, usos });
+  } catch (error) {
+    res.status(500).json({ error: 'Error listando usos de cupones', detalles: error.message });
+  }
+}
+
+/**
  * Crear cupón como admin. Puede ser:
  *   - es_global: true  → cupón de plataforma (restaurante_id = NULL).
  *   - es_global: false → cupón de un local específico (admin lo crea
@@ -332,6 +354,7 @@ export default {
   updateCoupon,
   deleteCoupon,
   adminListCoupons,
+  adminGetCouponUsages,
   adminCreateCoupon,
   adminGetCoupon,
   adminUpdateCoupon,

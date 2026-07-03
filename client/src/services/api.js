@@ -173,6 +173,9 @@ export const adminService = {
   getCoupon: (id) => api.get(`/admin/coupons/${id}`),
   updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
   deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
+  // Lista cada uso real de un cupón (cada pedido que aplicó un cupón).
+  // Filtros: cupon_id, restaurante_id, es_global, fecha_desde, fecha_hasta, limit, offset.
+  getCouponUsages: (params = {}) => api.get('/admin/coupons/usages', { params }),
 };
 
 // ========== NOTIFICACIONES ==========

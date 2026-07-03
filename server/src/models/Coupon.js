@@ -353,6 +353,123 @@ export async function updateCoupon(id, updateData) {
 }
 
 /**
+ * Listar todos los USOS (redenciones) de cupones de la plataforma (admin).
+ *
+ * Devuelve una fila por pedido que tuvo un cupón aplicado, con info
+ * del cupón usado, el cliente, el local (NULL si fue cupón global),
+ * el subtotal de los items y el total cobrado. El descuento aplicado
+ * se recalcula en JS a partir del cupón (porcentaje o monto) y el
+ * subtotal — coherente con la lógica de `Order.getOrderById`.
+ *
+ * Filtros opcionales:
+ *   - cupon_id: filtra por un cupón específico
+ *   - restaurante_id: filtra por un local (ignora los cupones globales
+ *                     salvo que es_global=1; útil para "qué se usó en mi local")
+ *   - es_global: 1/0 — solo cupones globales, o solo de local
+ *   - fecha_desde, fecha_hasta: rango de fechas sobre pedidos.creado_en
+ *   - limit, offset: paginación
+ *
+ * Nota: pedidos cuyo cupón fue eliminado (cupon_id → SET NULL) NO
+ * aparecen acá porque la query hace `JOIN cupones`, que excluye filas
+ * con cupon_id NULL. Es el comportamiento correcto: un cupón borrado
+ * no tiene "usos" visibles para el admin.
+ */
+export async function getCouponUsagesForAdmin(filtros = {}) {
+  const where = ['p.cupon_id IS NOT NULL'];
+  const params = [];
+
+  if (filtros.cupon_id !== undefined && filtros.cupon_id !== null && filtros.cupon_id !== '') {
+    where.push('c.id = ?');
+    params.push(Number(filtros.cupon_id));
+  }
+
+  if (filtros.es_global !== undefined && filtros.es_global !== null && filtros.es_global !== '') {
+    where.push('c.es_global = ?');
+    params.push(filtros.es_global === true || filtros.es_global === 1 || filtros.es_global === '1' ? 1 : 0);
+  }
+
+  if (filtros.restaurante_id !== undefined && filtros.restaurante_id !== null && filtros.restaurante_id !== '') {
+    where.push('p.restaurante_id = ?');
+    params.push(Number(filtros.restaurante_id));
+  }
+
+  if (filtros.fecha_desde) {
+    where.push('p.creado_en >= ?');
+    params.push(`${filtros.fecha_desde} 00:00:00`);
+  }
+
+  if (filtros.fecha_hasta) {
+    where.push('p.creado_en <= ?');
+    params.push(`${filtros.fecha_hasta} 23:59:59`);
+  }
+
+  const whereClause = `WHERE ${where.join(' AND ')}`;
+
+  const limit = Math.max(0, Math.min(Number(filtros.limit) || 100, 500));
+  const offset = Math.max(0, Number(filtros.offset) || 0);
+
+  const sql = `
+    SELECT
+      p.id AS pedido_id,
+      p.creado_en AS pedido_creado_en,
+      p.total AS pedido_total,
+      p.estado AS pedido_estado,
+      p.costo_envio AS pedido_costo_envio,
+      u.id AS cliente_id,
+      u.nombre AS cliente_nombre,
+      u.email AS cliente_email,
+      r.id AS restaurante_id,
+      r.nombre AS restaurante_nombre,
+      c.id AS cupon_id,
+      c.codigo AS cupon_codigo,
+      c.tipo_descuento AS cupon_tipo_descuento,
+      c.descuento AS cupon_descuento,
+      c.es_global AS cupon_es_global,
+      c.min_compra AS cupon_min_compra,
+      COALESCE(
+        (SELECT SUM(ip.subtotal) FROM items_pedido ip WHERE ip.pedido_id = p.id),
+        0
+      ) AS subtotal
+    FROM pedidos p
+    JOIN cupones c ON p.cupon_id = c.id
+    LEFT JOIN usuarios u ON p.usuario_id = u.id
+    LEFT JOIN restaurantes r ON p.restaurante_id = r.id
+    ${whereClause}
+    ORDER BY p.creado_en DESC
+    LIMIT ? OFFSET ?
+  `;
+  params.push(limit, offset);
+
+  const rows = await query(sql, params);
+
+  // Calcular el descuento aplicado en JS para cada fila, replicando
+  // la lógica de Order.calculateOrderTotal (líneas 82-90 de Order.js)
+  // y Order.getOrderById (líneas 549-565). Se hace en JS porque la
+  // fórmula depende de tipo_descuento y es trivial.
+  return rows.map((row) => {
+    const subtotal = Number(row.subtotal) || 0;
+    const descuentoCfg = Number(row.cupon_descuento) || 0;
+    let descuentoAplicado = 0;
+    if (row.cupon_tipo_descuento === 'porcentaje') {
+      descuentoAplicado = subtotal * (descuentoCfg / 100);
+    } else {
+      // tipo_descuento === 'monto' (o 'fijo' según el CHECK, ambos cubiertos)
+      descuentoAplicado = descuentoCfg;
+    }
+    // El descuento no puede superar el subtotal (mismo clamp que el checkout)
+    descuentoAplicado = Math.min(descuentoAplicado, subtotal);
+
+    return {
+      ...row,
+      // Devolvemos como string consistente con mysql2 (DECIMAL → string)
+      // pero también exponemos un Number para que la UI no tenga que parsear.
+      subtotal: Number(subtotal.toFixed(2)),
+      descuento_aplicado: Number(descuentoAplicado.toFixed(2)),
+    };
+  });
+}
+
+/**
  * Eliminar cupón. No chequea ownership (eso lo hace el controller).
  */
 export async function deleteCoupon(id) {
@@ -386,6 +503,7 @@ export default {
   getCouponsByRestaurant,
   getAllCouponsForAdmin,
   getCouponById,
+  getCouponUsagesForAdmin,
   validateCoupon,
   recordCouponUsage,
   updateCoupon,

@@ -178,6 +178,10 @@ router.delete('/categorias/:id', verifyToken, requireAdmin, categoryController.d
  */
 router.get('/coupons', verifyToken, requireAdmin, couponController.adminListCoupons);
 router.post('/coupons', verifyToken, requireAdmin, couponController.adminCreateCoupon);
+// IMPORTANTE: esta ruta debe ir ANTES de /coupons/:id para que Express
+// no capture "usages" como un id. Si se pone después, adminGetCoupon
+// recibe req.params.id = "usages" y devuelve 404.
+router.get('/coupons/usages', verifyToken, requireAdmin, couponController.adminGetCouponUsages);
 router.get('/coupons/:id', verifyToken, requireAdmin, couponController.adminGetCoupon);
 router.put('/coupons/:id', verifyToken, requireAdmin, couponController.adminUpdateCoupon);
 router.delete('/coupons/:id', verifyToken, requireAdmin, couponController.adminDeleteCoupon);
