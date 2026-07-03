@@ -32,15 +32,33 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       try {
         const res = await categoryService.getAll();
         const all = res.data.categorias || [];
-        // Filtrar por el tipo de negocio del restaurante del usuario.
-        // Si el modal se usa sin restaurante (ej. admin), no filtramos.
-        // Prioridad: comida_rapida → mercado → restaurante (defensa si el admin
-        // llegara a marcar ambos flags, categoría de comida rápida gana).
-        const tipo = restaurante?.es_comida_rapida
-          ? 'comida_rapida'
-          : (restaurante?.es_mercado_abarrotes ? 'mercado' : 'restaurante');
-        const filtradas = restaurante
-          ? all.filter(c => (c.tipo_negocio || 'restaurante') === tipo)
+        // Filtrar categorías por el/los namespace(s) del local. El admin
+        // puede combinar flags ("restaurante + comida rápida"), así que el
+        // conjunto de namespaces visibles no es único.
+        //   - Local mercado: solo categorías de tipo 'mercado' (mercado
+        //     sigue siendo nicho excluyente).
+        //   - Local combo (es_restaurante=1, es_comida_rapida=1): ambos
+        //     namespaces, para que el admin pueda elegir dónde catalogar
+        //     cada producto.
+        //   - Local solo comida rápida: solo categorías 'comida_rapida'.
+        //   - Local solo restaurante: solo categorías 'restaurante'.
+        // Si el modal se usa sin restaurante (ej. admin sin contexto), no
+        // filtramos.
+        let tiposVisibles;
+        if (!restaurante) {
+          tiposVisibles = null; // null = sin filtro
+        } else if (restaurante.es_mercado_abarrotes) {
+          tiposVisibles = ['mercado'];
+        } else if (restaurante.es_restaurante && restaurante.es_comida_rapida) {
+          // Combo restaurante + comida rápida: mostrar ambos catálogos.
+          tiposVisibles = ['restaurante', 'comida_rapida'];
+        } else if (restaurante.es_comida_rapida) {
+          tiposVisibles = ['comida_rapida'];
+        } else {
+          tiposVisibles = ['restaurante'];
+        }
+        const filtradas = tiposVisibles
+          ? all.filter(c => tiposVisibles.includes(c.tipo_negocio || 'restaurante'))
           : all;
         // Orden alfabético A→Z para que el <select> sea fácil de navegar.
         filtradas.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));

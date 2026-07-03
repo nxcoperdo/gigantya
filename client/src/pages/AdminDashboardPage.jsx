@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
@@ -44,6 +44,8 @@ export default function AdminDashboardPage() {
   const [updatingEsMercadoId, setUpdatingEsMercadoId] = useState(null);
   // ID del restaurante cuyo toggle de "Comida rápida" se está actualizando.
   const [updatingEsComidaRapidaId, setUpdatingEsComidaRapidaId] = useState(null);
+  // ID del restaurante cuyo toggle de "Es restaurante" se está actualizando.
+  const [updatingEsRestauranteId, setUpdatingEsRestauranteId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -187,6 +189,26 @@ export default function AdminDashboardPage() {
       setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
     } finally {
       setUpdatingEsComidaRapidaId(null);
+    }
+  };
+
+  // Cambia en línea si un restaurante es de tipo "Es restaurante".
+  // Mismo patrón que los otros toggles de nicho. Activar este toggle junto
+  // al de Comida rápida hace que el local aparezca en ambos feeds
+  // (Restaurantes + Comida rápida).
+  const handleToggleEsRestaurante = async (restaurantId, currentValue) => {
+    const nuevoValor = !currentValue;
+    const snapshot = restaurants;
+    setRestaurants(prev => prev.map(r => r.id === restaurantId ? { ...r, es_restaurante: nuevoValor ? 1 : 0 } : r));
+    setUpdatingEsRestauranteId(restaurantId);
+    try {
+      setError('');
+      await adminService.updateRestaurantEsRestaurante(restaurantId, nuevoValor);
+    } catch (err) {
+      setRestaurants(snapshot);
+      setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
+    } finally {
+      setUpdatingEsRestauranteId(null);
     }
   };
 
@@ -542,6 +564,16 @@ export default function AdminDashboardPage() {
                           ? false
                           : Boolean(Number(res.es_comida_rapida));
                         const isUpdatingEsComidaRapida = updatingEsComidaRapidaId === res.id;
+                        // Normalizar `es_restaurante` que llega como 1/0/true/false/undefined.
+                        // El default es TRUE: los locales existentes (anteriores a la
+                        // migración 20260702000001_add_es_restaurante_to_restaurantes.js)
+                        // arrancan como restaurantes, salvo los que fueron migrados a
+                        // es_restaurante=0 por la data migration (los que ya tenían
+                        // es_comida_rapida=1 pre-existente).
+                        const esRestaurante = res.es_restaurante === undefined
+                          ? true
+                          : Boolean(Number(res.es_restaurante));
+                        const isUpdatingEsRestaurante = updatingEsRestauranteId === res.id;
                         return (
                           <tr key={res.id} className="hover:bg-[color:var(--bg-subtle)] transition-colors">
                             <td className="px-6 py-4">
@@ -606,8 +638,62 @@ export default function AdminDashboardPage() {
                                 </span>
                               </div>
 
-                              {/* Segundo toggle: tipo de negocio "Mercado y abarrotes".
-                                  Independiente del toggle de modalidad de arriba. */}
+                              {/* Bloque "Tipo de negocio": agrupa los tres switches
+                                  de nicho (Es restaurante, Mercado y Comida rápida).
+                                  Cada flag es independiente: un local puede estar
+                                  marcado en ninguno, uno, dos, o los tres a la vez.
+                                  En el feed del cliente, los combos se reflejan
+                                  haciendo que el local aparezca en cada filtro de
+                                  nicho que coincida con un flag activo. Por
+                                  ejemplo, activar "Es restaurante" + "Comida
+                                  rápida" hace que el local salga tanto en el feed
+                                  "Restaurantes" como en "Comida rápida". */}
+                              <div className="mt-3 pt-2 border-t border-dashed border-[color:var(--border-subtle)]">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--text-muted)] mb-1.5">
+                                  Tipo de negocio
+                                </p>
+
+                              {/* Primer toggle del bloque: tipo de negocio "Es restaurante".
+                                  Default TRUE para locales nuevos. Desactivarlo hace
+                                  que el local deje de aparecer en el feed
+                                  "Restaurantes" (típico: hamburguesería registrada
+                                  como "solo comida rápida"). Combinable con el
+                                  toggle de Comida rápida para el caso combo. */}
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={esRestaurante}
+                                  disabled={isUpdatingEsRestaurante}
+                                  onClick={() => handleToggleEsRestaurante(res.id, esRestaurante)}
+                                  title={esRestaurante ? 'Es un local de tipo restaurante' : 'No es un restaurante'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                    esRestaurante ? 'bg-primary' : 'bg-[color:var(--border-default)]'
+                                  } ${isUpdatingEsRestaurante ? 'opacity-50 cursor-wait' : ''}`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      esRestaurante ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-semibold text-[color:var(--text-secondary)] whitespace-nowrap">
+                                  {esRestaurante ? (
+                                    <span className="inline-flex items-center gap-1 text-primary">
+                                      <UtensilsCrossed size={12} /> Es restaurante
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                                      <UtensilsCrossed size={12} /> No es restaurante
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+
+                              {/* Segundo toggle del bloque: tipo de negocio "Mercado y abarrotes".
+                                  Independiente del toggle de modalidad de arriba.
+                                  Mutuamente excluyente con los toggles de restaurante
+                                  y comida rápida: un mercado no puede combinar. */}
                               <div className="inline-flex items-center gap-2 mt-2">
                                 <button
                                   type="button"
@@ -639,11 +725,14 @@ export default function AdminDashboardPage() {
                                 </span>
                               </div>
 
-                              {/* Tercer toggle: tipo de negocio "Comida rápida".
-                                  Mismo patrón que los dos anteriores: switch inline
+                              {/* Tercer toggle del bloque: tipo de negocio "Comida rápida".
+                                  Mismo patrón que el toggle de mercado: switch inline
                                   que actualiza el flag `es_comida_rapida` en la BD.
                                   Color amber-500 para diferenciarlo visualmente de
-                                  mercado (verde) y domicilio (primary). */}
+                                  mercado (verde), restaurante (primary) y domicilio.
+                                  Activar este toggle junto al de "Es restaurante"
+                                  hace que el local sea "restaurante + comida rápida"
+                                  (combo) y aparezca en ambos filtros de la home. */}
                               <div className="inline-flex items-center gap-2 mt-2">
                                 <button
                                   type="button"
@@ -673,6 +762,8 @@ export default function AdminDashboardPage() {
                                     </span>
                                   )}
                                 </span>
+                              </div>
+
                               </div>
                             </td>
                             <td className="px-6 py-4">

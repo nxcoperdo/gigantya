@@ -71,9 +71,16 @@ export async function listRestaurants(req, res) {
     // Filtro de tipo de negocio (toggle EXCLUSIVO en la home).
     // Acepta: 'restaurante' | 'comida_rapida' | 'mercado'.
     // Ausente o cualquier otro valor → no filtra por nicho (los tres
-    // conviven en el listado). Este toggle reemplaza al antiguo
-    // `es_mercado_abarrotes` que era acumulable; ahora cada nicho se
-    // selecciona con un único botón y se excluye mutuamente.
+    // conviven en el listado). Cada valor matchea por presencia del flag
+    // correspondiente en `restaurantes`:
+    //   - 'restaurante'   → es_restaurante=1
+    //   - 'comida_rapida' → es_comida_rapida=1
+    //   - 'mercado'       → es_mercado_abarrotes=1
+    // El flag `es_restaurante` (migración
+    // 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícito
+    // el nicho restaurante, lo que permite combos restaurante+comida
+    // rápida (un local con ambos flags en 1 aparece en los dos feeds).
+    // `es_mercado_abarrotes` sigue siendo mutuamente excluyente.
     if (tipo_negocio !== undefined && tipo_negocio !== null && tipo_negocio !== '') {
       const t = String(tipo_negocio).toLowerCase();
       if (['restaurante', 'comida_rapida', 'mercado'].includes(t)) {

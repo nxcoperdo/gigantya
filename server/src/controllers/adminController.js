@@ -768,6 +768,54 @@ export async function updateRestaurantEsComidaRapida(req, res) {
 }
 
 /**
+ * Cambiar el flag "Es restaurante" de un restaurante desde el dashboard
+ * admin. Réplica de `updateRestaurantEsMercado` / `updateRestaurantEsComidaRapida`
+ * para mantener consistencia con /ofrece-domicilio, /plan y /config. Mismo
+ * patrón de validación, logging y respuesta.
+ *
+ * El flag `es_restaurante` (migración
+ * 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícito el
+ * nicho restaurante. Combinado con `es_comida_rapida` permite combos
+ * (1,1) → el local aparece tanto en el feed "Restaurantes" como en
+ * "Comida rápida".
+ */
+export async function updateRestaurantEsRestaurante(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar el tipo de negocio' });
+    }
+
+    const { id } = req.params;
+    const { es_restaurante } = req.body;
+
+    if (es_restaurante === undefined || es_restaurante === null) {
+      return res.status(400).json({ error: 'El campo "es_restaurante" es requerido' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Local no encontrado' });
+    }
+
+    // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
+    const nuevoValor = Boolean(es_restaurante);
+
+    await RestaurantModel.updateRestaurant(id, { es_restaurante: nuevoValor });
+
+    logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_restaurante=${nuevoValor}`);
+
+    res.json({
+      mensaje: 'Tipo de negocio actualizado',
+      restaurante_id: id,
+      es_restaurante: nuevoValor,
+    });
+  } catch (error) {
+    console.error('Error actualizando tipo de negocio:', error);
+    res.status(500).json({ error: 'Error actualizando tipo de negocio', detalles: error.message });
+  }
+}
+
+/**
  * Historial de suscripciones de un restaurante.
  */
 export async function getRestaurantSubscriptionHistory(req, res) {
@@ -804,4 +852,5 @@ export default {
   updateRestaurantDomicilio,
   updateRestaurantEsMercado,
   updateRestaurantEsComidaRapida,
+  updateRestaurantEsRestaurante,
 };

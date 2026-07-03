@@ -136,9 +136,24 @@ export async function getAllProducts(filtros = {}) {
   // Filtro por tipo de negocio (toggle exclusivo en la home).
   // Mismo patrón que `RestaurantModel.getRestaurants`:
   //   - 'comida_rapida' → solo productos de locales con es_comida_rapida=1
+  //                       (locales "solo comida rápida" Y combos restaurante
+  //                        + comida rápida aparecen aquí)
   //   - 'mercado'       → solo productos de locales con es_mercado_abarrotes=1
-  //   - 'restaurante'   → locales con AMBOS flags en 0
+  //                       (sin participar de restaurante ni comida rápida —
+  //                        un mercado sigue siendo nicho excluyente)
+  //   - 'restaurante'   → solo productos de locales con es_restaurante=1
+  //                       (locales "solo restaurante" Y combos restaurante
+  //                        + comida rápida aparecen aquí; los "solo comida
+  //                        rápida" quedan fuera)
   //   - undefined/null  → no filtra por nicho (los tres conviven en el feed)
+  //
+  // El flag `es_restaurante` (agregado en la migración
+  // 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícita
+  // la participación del local en el nicho restaurante. Combinado con
+  // `es_comida_rapida` permite combos: (1,1) → el local sale en ambos
+  // feeds. Combinado con `es_mercado_abarrotes` (que sigue siendo
+  // excluyente) un mercado nunca aparece en 'restaurante' ni
+  // 'comida_rapida'.
   //
   // Antes de esta migración el feed ocultaba los mercados por defecto; eso
   // cambió para que el cliente vea los tres nichos mezclados por defecto y
@@ -148,7 +163,11 @@ export async function getAllProducts(filtros = {}) {
   } else if (filtros.tipo_negocio === 'mercado') {
     sql += ' AND r.es_mercado_abarrotes = 1';
   } else if (filtros.tipo_negocio === 'restaurante') {
-    sql += ' AND r.es_comida_rapida = 0 AND r.es_mercado_abarrotes = 0';
+    // "Restaurante" se modela como presencia del flag dedicado
+    // (es_restaurante=1), no como ausencia de los otros. Esto distingue
+    // "solo restaurante" de "solo comida rápida" — algo que el modelo
+    // anterior (ausencia de los otros dos) no podía expresar.
+    sql += ' AND r.es_restaurante = 1';
   }
   // Si filtros.tipo_negocio no llega, no se aplica ningún filtro por nicho
   // y los tres tipos de locales aparecen en el feed.

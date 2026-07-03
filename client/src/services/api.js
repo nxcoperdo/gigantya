@@ -161,6 +161,8 @@ export const adminService = {
     api.put(`/admin/restaurants/${id}/es-mercado-abarrotes`, { es_mercado_abarrotes }),
   updateRestaurantEsComidaRapida: (id, es_comida_rapida) =>
     api.put(`/admin/restaurants/${id}/es-comida-rapida`, { es_comida_rapida }),
+  updateRestaurantEsRestaurante: (id, es_restaurante) =>
+    api.put(`/admin/restaurants/${id}/es-restaurante`, { es_restaurante }),
   getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
   updateRestaurantConfig: (id, payload) => api.put(`/admin/restaurants/${id}/config`, payload),
   // Coupon management (admin) — cupones globales y de cualquier local

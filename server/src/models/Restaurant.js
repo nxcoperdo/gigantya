@@ -17,6 +17,12 @@ export async function createRestaurant(restaurantData) {
     // Unificamos para evitar inconsistencias al filtrar por ciudad.
     ciudad = 'Gigante, Huila',
     ofrece_domicilio = true,
+    // Flags de nicho. Default conservador para locales nuevos: "es
+    // restaurante" en TRUE (caso más común), los otros dos en FALSE. El
+    // admin los cambia desde el dashboard con los toggles correspondientes.
+    es_restaurante = true,
+    es_mercado_abarrotes = false,
+    es_comida_rapida = false,
   } = restaurantData;
 
   const sql = `
@@ -33,8 +39,11 @@ export async function createRestaurant(restaurantData) {
       estado,
       aprobado,
       ofrece_domicilio,
+      es_restaurante,
+      es_mercado_abarrotes,
+      es_comida_rapida,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, ?, ?, ?, NOW())
   `;
 
   try {
@@ -48,7 +57,13 @@ export async function createRestaurant(restaurantData) {
       horario_cierre,
       imagen_url,
       ciudad,
-      ofrece_domicilio ? 1 : 0
+      // MySQL TINYINT(1): pasamos 1/0 directamente. Boolean() ya nos da un
+      // boolean nativo; la coerción a 0/1 la hacemos nosotros para no
+      // depender del driver.
+      ofrece_domicilio ? 1 : 0,
+      es_restaurante ? 1 : 0,
+      es_mercado_abarrotes ? 1 : 0,
+      es_comida_rapida ? 1 : 0,
     ]);
     return result.insertId;
   } catch (error) {
@@ -74,6 +89,12 @@ export async function createRestaurantWithConnection(restaurantData, connection)
     // (los restaurantes existentes en BD quedan con `ofrece_domicilio = 1`).
     // Al crear uno nuevo desde el admin se respeta lo que el admin haya elegido.
     ofrece_domicilio = true,
+    // Flags de nicho. Mismos defaults que `createRestaurant`: es_restaurante
+    // en TRUE (caso común), los otros en FALSE. Se respetan los valores
+    // que el admin haya pasado en el payload.
+    es_restaurante = true,
+    es_mercado_abarrotes = false,
+    es_comida_rapida = false,
   } = restaurantData;
 
   const sql = `
@@ -90,8 +111,11 @@ export async function createRestaurantWithConnection(restaurantData, connection)
       estado,
       aprobado,
       ofrece_domicilio,
+      es_restaurante,
+      es_mercado_abarrotes,
+      es_comida_rapida,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, ?, ?, ?, ?, NOW())
   `;
 
   try {
@@ -106,8 +130,12 @@ export async function createRestaurantWithConnection(restaurantData, connection)
       imagen_url,
       ciudad,
       // MySQL TINYINT(1): pasamos 1/0 directamente. Boolean() ya nos da un
-      // boolean nativo; la coerción a 1/0 la hace el driver en el INSERT.
-      ofrece_domicilio ? 1 : 0
+      // boolean nativo; la coerción a 1/0 la hacemos nosotros para no
+      // depender del driver.
+      ofrece_domicilio ? 1 : 0,
+      es_restaurante ? 1 : 0,
+      es_mercado_abarrotes ? 1 : 0,
+      es_comida_rapida ? 1 : 0,
     ]);
     return result.insertId;
   } catch (error) {
@@ -205,18 +233,34 @@ export async function getRestaurants(filtros = {}) {
 
   // Filtro por tipo de negocio (toggle exclusivo en la home pública).
   // Acepta: 'restaurante' | 'comida_rapida' | 'mercado'.
-  //   - 'restaurante'   → solo locales con es_comida_rapida=0 Y es_mercado_abarrotes=0
+  //   - 'restaurante'   → solo locales con es_restaurante=1
+  //                       (locales "solo restaurante" Y combos restaurante
+  //                        + comida rápida aparecen aquí; los "solo comida
+  //                        rápida" quedan fuera)
   //   - 'comida_rapida' → solo locales con es_comida_rapida=1
+  //                       (locales "solo comida rápida" Y combos restaurante
+  //                        + comida rápida aparecen aquí)
   //   - 'mercado'       → solo locales con es_mercado_abarrotes=1
+  //                       (nicho excluyente: un mercado nunca participa de
+  //                        los feeds 'restaurante' ni 'comida_rapida')
   //   - undefined/null  → NO filtra por nicho (los tres conviven en el listado)
+  //
+  // El flag `es_restaurante` (agregado en la migración
+  // 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícita
+  // la participación del local en el nicho restaurante. Sin este flag el
+  // modelo no podía distinguir "solo restaurante" de "solo comida rápida"
+  // — los dos compartían el mismo estado booleano. La rama "combo" (1,1)
+  // sale en los dos feeds, que es el caso de uso que motivó este cambio.
   if (filtros.tipo_negocio === 'comida_rapida') {
     sql += ' AND r.es_comida_rapida = 1';
   } else if (filtros.tipo_negocio === 'mercado') {
     sql += ' AND r.es_mercado_abarrotes = 1';
   } else if (filtros.tipo_negocio === 'restaurante') {
-    // Restaurante "normal" = NO es comida rápida Y NO es mercado.
-    // Esta rama mantiene la separación clara entre los tres nichos.
-    sql += ' AND r.es_comida_rapida = 0 AND r.es_mercado_abarrotes = 0';
+    // "Restaurante" se modela como presencia del flag dedicado
+    // (es_restaurante=1), no como ausencia de los otros. Esto distingue
+    // "solo restaurante" de "solo comida rápida" — algo que el modelo
+    // anterior (ausencia de los otros dos) no podía expresar.
+    sql += ' AND r.es_restaurante = 1';
   }
   // Si no llega tipo_negocio, no se agrega ningún filtro por nicho y los
   // tres tipos de locales aparecen en el resultado (visibilidad compartida).
@@ -357,6 +401,11 @@ export async function updateRestaurant(id, updateData) {
     // - true  → "Ofrece servicio a domicilio"
     // - false → "Solo retiro en local"
     'ofrece_domicilio',
+    // Tipo de negocio "Restaurante" (switch en el dashboard admin). Default
+    // TRUE al crear locales nuevos: un local recién creado participa del
+    // nicho restaurante salvo que el admin explícitamente lo desactive
+    // (caso típico: registrar una hamburguesería como "solo comida rápida").
+    'es_restaurante',
     // Tipo de negocio "Mercado y abarrotes" (switch en el dashboard admin).
     // Acumulable con `ofrece_domicilio`: un mercado puede ofrecer domicilio
     // o no, en cualquier combinación.
@@ -365,7 +414,8 @@ export async function updateRestaurant(id, updateData) {
     // Mismo patrón que `es_mercado_abarrotes`. Mutuamente excluyente en
     // la UI (un restaurante no puede ser comida rápida Y mercado a la vez),
     // pero ambos flags persisten independientes en la BD para permitir
-    // transiciones sin pérdida de datos.
+    // transiciones sin pérdida de datos. Combinable con `es_restaurante`
+    // para el caso "restaurante + comida rápida" (combo).
     'es_comida_rapida',
   ];
 
@@ -385,7 +435,7 @@ export async function updateRestaurant(id, updateData) {
   // Campos booleanos que la columna MySQL guarda como INT/TINYINT (0/1).
   // El frontend los manda como boolean JS → al serializar a JSON se vuelven 'true'/'false',
   // lo que MySQL rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD. Normalizamos a 0/1 antes de bind.
-  const booleanIntFields = new Set(['ofrece_domicilio', 'es_mercado_abarrotes', 'es_comida_rapida']);
+  const booleanIntFields = new Set(['ofrece_domicilio', 'es_restaurante', 'es_mercado_abarrotes', 'es_comida_rapida']);
 
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';
