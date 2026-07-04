@@ -436,6 +436,11 @@ export async function updateRestaurant(id, updateData) {
     // transiciones sin pérdida de datos. Combinable con `es_restaurante`
     // para el caso "restaurante + comida rápida" (combo).
     'es_comida_rapida',
+    // Cuarto nicho (agregado en la migración
+    // 20260703000001_add_panaderia_pasteleria_nicho.js). Combinable con
+    // `es_restaurante` y `es_comida_rapida`. Mutuamente excluyente con
+    // `es_mercado_abarrotes` (esa exclusión se valida solo en la UI).
+    'es_panaderia_pasteleria',
   ];
 
   if (!updateData || typeof updateData !== 'object') {
@@ -454,7 +459,7 @@ export async function updateRestaurant(id, updateData) {
   // Campos booleanos que la columna MySQL guarda como INT/TINYINT (0/1).
   // El frontend los manda como boolean JS → al serializar a JSON se vuelven 'true'/'false',
   // lo que MySQL rechaza con ER_TRUNCATED_WRONG_VALUE_FOR_FIELD. Normalizamos a 0/1 antes de bind.
-  const booleanIntFields = new Set(['ofrece_domicilio', 'ofrece_consumo_en_local', 'es_restaurante', 'es_mercado_abarrotes', 'es_comida_rapida']);
+  const booleanIntFields = new Set(['ofrece_domicilio', 'ofrece_consumo_en_local', 'es_restaurante', 'es_mercado_abarrotes', 'es_comida_rapida', 'es_panaderia_pasteleria']);
 
   fields.forEach((field, index) => {
     if (index > 0) sql += ', ';
