@@ -37,9 +37,15 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         // conjunto de namespaces visibles no es único.
         //   - Local mercado: solo categorías de tipo 'mercado' (mercado
         //     sigue siendo nicho excluyente).
+        //   - Local panadería (solo): solo categorías 'panaderia_pasteleria'.
         //   - Local combo (es_restaurante=1, es_comida_rapida=1): ambos
         //     namespaces, para que el admin pueda elegir dónde catalogar
         //     cada producto.
+        //   - Local combo (es_restaurante=1, es_panaderia_pasteleria=1):
+        //     namespaces 'restaurante' + 'panaderia_pasteleria'.
+        //   - Local combo (es_comida_rapida=1, es_panaderia_pasteleria=1):
+        //     namespaces 'comida_rapida' + 'panaderia_pasteleria'.
+        //   - Local combo triple: los tres namespaces.
         //   - Local solo comida rápida: solo categorías 'comida_rapida'.
         //   - Local solo restaurante: solo categorías 'restaurante'.
         // Si el modal se usa sin restaurante (ej. admin sin contexto), no
@@ -48,10 +54,25 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         if (!restaurante) {
           tiposVisibles = null; // null = sin filtro
         } else if (restaurante.es_mercado_abarrotes) {
+          // Mercado sigue siendo nicho excluyente: aunque tuviera panadería
+          // activada por error en la UI, acá solo mostramos categorías de
+          // mercado.
           tiposVisibles = ['mercado'];
+        } else if (restaurante.es_restaurante && restaurante.es_comida_rapida && restaurante.es_panaderia_pasteleria) {
+          // Combo triple: restaurante + comida rápida + panadería.
+          tiposVisibles = ['restaurante', 'comida_rapida', 'panaderia_pasteleria'];
         } else if (restaurante.es_restaurante && restaurante.es_comida_rapida) {
           // Combo restaurante + comida rápida: mostrar ambos catálogos.
           tiposVisibles = ['restaurante', 'comida_rapida'];
+        } else if (restaurante.es_restaurante && restaurante.es_panaderia_pasteleria) {
+          // Combo restaurante + panadería.
+          tiposVisibles = ['restaurante', 'panaderia_pasteleria'];
+        } else if (restaurante.es_comida_rapida && restaurante.es_panaderia_pasteleria) {
+          // Combo comida rápida + panadería.
+          tiposVisibles = ['comida_rapida', 'panaderia_pasteleria'];
+        } else if (restaurante.es_panaderia_pasteleria) {
+          // Solo panadería.
+          tiposVisibles = ['panaderia_pasteleria'];
         } else if (restaurante.es_comida_rapida) {
           tiposVisibles = ['comida_rapida'];
         } else {
