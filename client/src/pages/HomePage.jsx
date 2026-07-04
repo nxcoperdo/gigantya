@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, ShoppingBasket, Clock, Truck, Zap, UtensilsCrossed, ChevronUp, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, ShoppingBasket, Clock, Truck, Zap, UtensilsCrossed, ChevronUp, ArrowRight, Croissant } from 'lucide-react';
 import { restaurantService, preferenceService, categoryService, productService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, IMAGE_DEFAULT_ATTRS } from '../utils/imageHelper';
@@ -270,11 +270,14 @@ export default function HomePage() {
   //   'sin_domicilio'   → muestra solo locales con ofrece_domicilio = 0
   const [domicilioFilter, setDomicilioFilter] = useState('con_domicilio');
   // Filtro EXCLUSIVO de tipo de negocio (toggle que reemplaza al antiguo
-  // `mercadoFilter` acumulable). Cuatro valores mutuamente excluyentes:
-  //   'todos'          → muestra los tres nichos mezclados (default)
-  //   'restaurante'    → solo locales con es_comida_rapida=0 Y es_mercado_abarrotes=0
-  //   'comida_rapida'  → solo locales con es_comida_rapida=1
-  //   'mercado'        → solo locales con es_mercado_abarrotes=1
+  // `mercadoFilter` acumulable). Cinco valores mutuamente excluyentes:
+  //   'todos'               → muestra los cuatro nichos mezclados (default)
+  //   'restaurante'         → solo locales con es_restaurante=1
+  //   'comida_rapida'       → solo locales con es_comida_rapida=1
+  //   'mercado'             → solo locales con es_mercado_abarrotes=1
+  //   'panaderia_pasteleria'→ solo locales con es_panaderia_pasteleria=1
+  //                            (nuevo nicho, agregable vía migración
+  //                             20260703000001_add_panaderia_pasteleria_nicho)
   const [tipoNegocioFilter, setTipoNegocioFilter] = useState('todos');
   // Estado del colapso de chips de categorías. Solo aplica a la vista
   // 'Todos': cuando hay muchos catálogos mezclados, mostramos los N más
@@ -705,6 +708,27 @@ export default function HomePage() {
             <span className="sm:hidden">Mercado</span>
             <span className="hidden sm:inline">Mercado y abarrotes</span>
           </button>
+          {/* Filtro "Panadería/Pastelería" (cuarto nicho, agregable vía
+              migración 20260703000001_add_panaderia_pasteleria_nicho). Mismo
+              patrón visual que los otros chips: activo = fondo rose-500 y
+              texto blanco; inactivo = texto rose-500 al pasar el mouse.
+              Coherente con el color del toggle del admin dashboard. */}
+          <button
+            key="tipo-panaderia-pasteleria"
+            type="button"
+            onClick={() => handleChangeTipoNegocio('panaderia_pasteleria')}
+            aria-pressed={tipoNegocioFilter === 'panaderia_pasteleria'}
+            title="Panadería y pastelería"
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-sm sm:text-base font-semibold transition-all duration-300 ${
+              tipoNegocioFilter === 'panaderia_pasteleria'
+                ? 'bg-rose-500 text-white shadow filter-pill-active'
+                : 'text-[color:var(--text-secondary)] hover:text-rose-500'
+            }`}
+          >
+            <Croissant size={16} />
+            <span className="sm:hidden">Panadería</span>
+            <span className="hidden sm:inline">Panadería y Pastelería</span>
+          </button>
             </div>
           </div>
         </div>
@@ -722,9 +746,11 @@ export default function HomePage() {
               ? 'Mercados y Abarrotes'
               : tipoNegocioFilter === 'comida_rapida'
                 ? 'Comida Rápida'
-                : domicilioFilter === 'sin_domicilio'
-                  ? 'Retiro en Local'
-                  : 'Locales Destacados'}
+                : tipoNegocioFilter === 'panaderia_pasteleria'
+                  ? 'Panadería y Pastelería'
+                  : domicilioFilter === 'sin_domicilio'
+                    ? 'Retiro en Local'
+                    : 'Locales Destacados'}
           </h2>
           <div className="w-20 sm:w-24 h-1 bg-gradient-primary rounded-full"></div>
           <p className="mt-4 sm:mt-5 text-[color:var(--text-secondary)] text-base sm:text-lg md:text-xl max-w-3xl leading-relaxed">
@@ -732,9 +758,11 @@ export default function HomePage() {
               ? 'Mercados y abarrotes disponibles para que recojas tus productos directamente en el local.'
               : tipoNegocioFilter === 'comida_rapida'
                 ? 'Hamburguesas, perros, pizzas, combos y más — entrega rápida a tu puerta.'
-                : domicilioFilter === 'sin_domicilio'
-                  ? 'Locales que solo reciben pedidos para retiro en su mostrador — sin entrega a domicilio.'
-                  : 'Ordena con confianza desde los mejores locales del pueblo'}
+                : tipoNegocioFilter === 'panaderia_pasteleria'
+                  ? 'Panaderías y pastelerías con panes, tortas, postres y delicias recién hechas.'
+                  : domicilioFilter === 'sin_domicilio'
+                    ? 'Locales que solo reciben pedidos para retiro en su mostrador — sin entrega a domicilio.'
+                    : 'Ordena con confianza desde los mejores locales del pueblo'}
           </p>
         </div>
 
@@ -832,13 +860,17 @@ export default function HomePage() {
                   ? 'var(--success-bg)'
                   : tipoNegocioFilter === 'comida_rapida'
                     ? 'var(--warning-bg)'
-                    : 'var(--bg-muted)',
+                    : tipoNegocioFilter === 'panaderia_pasteleria'
+                      ? 'var(--info-bg)'
+                      : 'var(--bg-muted)',
               borderColor:
                 tipoNegocioFilter === 'mercado'
                   ? 'var(--success-border)'
                   : tipoNegocioFilter === 'comida_rapida'
                     ? 'var(--warning-border)' // amber — filetea el banner del nicho rápido
-                    : 'var(--border-default)',
+                    : tipoNegocioFilter === 'panaderia_pasteleria'
+                      ? 'var(--info-border)'
+                      : 'var(--border-default)',
             }}
           >
             <div className="px-5 sm:px-8 py-5 sm:py-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
@@ -851,13 +883,17 @@ export default function HomePage() {
                       ? 'var(--success-text)'
                       : tipoNegocioFilter === 'comida_rapida'
                         ? 'var(--warning-text)' // amber-700/800
-                        : 'var(--text-secondary)',
+                        : tipoNegocioFilter === 'panaderia_pasteleria'
+                          ? 'var(--info-text)'
+                          : 'var(--text-secondary)',
                 }}
               >
                 {tipoNegocioFilter === 'mercado' ? (
                   <ShoppingBasket size={28} />
                 ) : tipoNegocioFilter === 'comida_rapida' ? (
                   <Zap size={28} />
+                ) : tipoNegocioFilter === 'panaderia_pasteleria' ? (
+                  <Croissant size={28} />
                 ) : (
                   <UtensilsCrossed size={28} />
                 )}
@@ -869,7 +905,9 @@ export default function HomePage() {
                       ? 'Mercados y abarrotes cerca de ti'
                       : tipoNegocioFilter === 'comida_rapida'
                         ? 'Comida rápida cerca de ti'
-                        : 'Restaurantes cerca de ti'}
+                        : tipoNegocioFilter === 'panaderia_pasteleria'
+                          ? 'Panaderías y pastelerías cerca de ti'
+                          : 'Restaurantes cerca de ti'}
                   </h3>
                   <span
                     className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full uppercase tabular-nums"
@@ -880,13 +918,17 @@ export default function HomePage() {
                           ? 'var(--success-text)'
                           : tipoNegocioFilter === 'comida_rapida'
                             ? 'var(--warning-text)'
-                            : 'var(--text-secondary)',
+                            : tipoNegocioFilter === 'panaderia_pasteleria'
+                              ? 'var(--info-text)'
+                              : 'var(--text-secondary)',
                       border:
                         tipoNegocioFilter === 'mercado'
                           ? '1px solid var(--success-border)'
                           : tipoNegocioFilter === 'comida_rapida'
                             ? '1px solid var(--warning-border)'
-                            : '1px solid var(--border-default)',
+                            : tipoNegocioFilter === 'panaderia_pasteleria'
+                              ? '1px solid var(--info-border)'
+                              : '1px solid var(--border-default)',
                     }}
                   >
                     {filteredRestaurants.length}{' '}
@@ -894,7 +936,9 @@ export default function HomePage() {
                       ? (filteredRestaurants.length === 1 ? 'mercado' : 'mercados')
                       : tipoNegocioFilter === 'comida_rapida'
                         ? (filteredRestaurants.length === 1 ? 'local' : 'locales')
-                        : (filteredRestaurants.length === 1 ? 'restaurante' : 'restaurantes')}
+                        : tipoNegocioFilter === 'panaderia_pasteleria'
+                          ? (filteredRestaurants.length === 1 ? 'local' : 'locales')
+                          : (filteredRestaurants.length === 1 ? 'restaurante' : 'restaurantes')}
                   </span>
                 </div>
                 <p className="text-[color:var(--text-secondary)] text-sm sm:text-base">
@@ -902,7 +946,9 @@ export default function HomePage() {
                     ? 'Estos locales son de tipo mercado y abarrotes: encuentra productos de despensa, frescos y más. Consulta su catálogo y acércate directamente al local.'
                     : tipoNegocioFilter === 'comida_rapida'
                       ? 'Estos locales son de comida rápida: hamburguesas, perros, pizzas, combos y más. Pedidos listos para entrega a domicilio o retiro en el local.'
-                      : 'Estos locales son restaurantes: almuerzos, platos a la carta, comida casera y más. Pide a domicilio o retira en el local.'}
+                      : tipoNegocioFilter === 'panaderia_pasteleria'
+                        ? 'Estos locales son panaderías y pastelerías: panes frescos, tortas, postres y delicias recién hechas. Pide a domicilio o retira en el local.'
+                        : 'Estos locales son restaurantes: almuerzos, platos a la carta, comida casera y más. Pide a domicilio o retira en el local.'}
                 </p>
               </div>
               {/* Botón para volver a "Todos" — atajo visual */}
@@ -1068,9 +1114,11 @@ export default function HomePage() {
                       ? 'Aún no hay mercados y abarrotes registrados'
                       : tipoNegocioFilter === 'comida_rapida'
                         ? 'Aún no hay locales de comida rápida registrados'
-                        : domicilioFilter === 'sin_domicilio'
-                          ? 'Aún no hay locales con modalidad solo retiro en local'
-                          : 'No hay locales disponibles'}
+                        : tipoNegocioFilter === 'panaderia_pasteleria'
+                          ? 'Aún no hay panaderías o pastelerías registradas'
+                          : domicilioFilter === 'sin_domicilio'
+                            ? 'Aún no hay locales con modalidad solo retiro en local'
+                            : 'No hay locales disponibles'}
               </h3>
               <p className="text-[color:var(--text-secondary)] text-sm sm:text-base mb-6 leading-relaxed">
                 {searchTerm
@@ -1081,9 +1129,11 @@ export default function HomePage() {
                       ? 'Vuelve pronto, o explora el resto de locales disponibles.'
                       : tipoNegocioFilter === 'comida_rapida'
                         ? 'Vuelve pronto, o explora el resto de locales disponibles.'
-                        : domicilioFilter === 'sin_domicilio'
-                          ? 'Vuelve pronto, o explora los locales con domicilios.'
-                          : 'Vuelve pronto para más opciones'}
+                        : tipoNegocioFilter === 'panaderia_pasteleria'
+                          ? 'Vuelve pronto, o explora el resto de locales disponibles.'
+                          : domicilioFilter === 'sin_domicilio'
+                            ? 'Vuelve pronto, o explora los locales con domicilios.'
+                            : 'Vuelve pronto para más opciones'}
               </p>
               {domicilioFilter === 'sin_domicilio' && !searchTerm && !selectedCategory && (
                 <button
@@ -1095,13 +1145,17 @@ export default function HomePage() {
                   Ver locales con domicilios
                 </button>
               )}
-              {(tipoNegocioFilter === 'mercado' || tipoNegocioFilter === 'comida_rapida') && !searchTerm && !selectedCategory && (
+              {(tipoNegocioFilter === 'mercado' || tipoNegocioFilter === 'comida_rapida' || tipoNegocioFilter === 'panaderia_pasteleria') && !searchTerm && !selectedCategory && (
                 <button
                   type="button"
                   onClick={() => handleChangeTipoNegocio('todos')}
                   className="btn btn-primary inline-flex items-center gap-2"
                 >
-                  {tipoNegocioFilter === 'mercado' ? <ShoppingBasket size={16} /> : <Zap size={16} />}
+                  {tipoNegocioFilter === 'mercado'
+                    ? <ShoppingBasket size={16} />
+                    : tipoNegocioFilter === 'comida_rapida'
+                      ? <Zap size={16} />
+                      : <Croissant size={16} />}
                   Ver todos los locales
                 </button>
               )}

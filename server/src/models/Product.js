@@ -135,17 +135,22 @@ export async function getAllProducts(filtros = {}) {
 
   // Filtro por tipo de negocio (toggle exclusivo en la home).
   // Mismo patrón que `RestaurantModel.getRestaurants`:
-  //   - 'comida_rapida' → solo productos de locales con es_comida_rapida=1
-  //                       (locales "solo comida rápida" Y combos restaurante
-  //                        + comida rápida aparecen aquí)
-  //   - 'mercado'       → solo productos de locales con es_mercado_abarrotes=1
-  //                       (sin participar de restaurante ni comida rápida —
-  //                        un mercado sigue siendo nicho excluyente)
-  //   - 'restaurante'   → solo productos de locales con es_restaurante=1
-  //                       (locales "solo restaurante" Y combos restaurante
-  //                        + comida rápida aparecen aquí; los "solo comida
-  //                        rápida" quedan fuera)
-  //   - undefined/null  → no filtra por nicho (los tres conviven en el feed)
+  //   - 'comida_rapida'        → solo productos de locales con es_comida_rapida=1
+  //                              (locales "solo comida rápida" Y combos restaurante
+  //                               + comida rápida aparecen aquí)
+  //   - 'mercado'              → solo productos de locales con es_mercado_abarrotes=1
+  //                              (sin participar de restaurante ni comida rápida —
+  //                               un mercado sigue siendo nicho excluyente)
+  //   - 'restaurante'          → solo productos de locales con es_restaurante=1
+  //                              (locales "solo restaurante" Y combos restaurante
+  //                               + comida rápida aparecen aquí; los "solo comida
+  //                               rápida" quedan fuera)
+  //   - 'panaderia_pasteleria' → solo productos de locales con es_panaderia_pasteleria=1
+  //                              (nuevo nicho, agregable vía migración
+  //                               20260703000001_add_panaderia_pasteleria_nicho.
+  //                               Combinable con restaurante y comida rápida;
+  //                               excluyente con mercado).
+  //   - undefined/null         → no filtra por nicho (los cuatro conviven en el feed)
   //
   // El flag `es_restaurante` (agregado en la migración
   // 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícita
@@ -168,9 +173,11 @@ export async function getAllProducts(filtros = {}) {
     // "solo restaurante" de "solo comida rápida" — algo que el modelo
     // anterior (ausencia de los otros dos) no podía expresar.
     sql += ' AND r.es_restaurante = 1';
+  } else if (filtros.tipo_negocio === 'panaderia_pasteleria') {
+    sql += ' AND r.es_panaderia_pasteleria = 1';
   }
   // Si filtros.tipo_negocio no llega, no se aplica ningún filtro por nicho
-  // y los tres tipos de locales aparecen en el feed.
+  // y los cuatro tipos de locales aparecen en el feed.
 
   // Mismo orden que la lista de restaurantes: premium → profesional → basico.
   // Dentro de cada plan, los productos más recientes primero.

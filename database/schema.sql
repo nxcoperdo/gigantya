@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS restaurantes (
   -- Configuración de impuestos y envíos
   configuracion_impuestos JSON DEFAULT NULL,
   configuracion_envios JSON DEFAULT NULL,
+  -- Flags de nicho del local. Se controlan desde el dashboard admin
+  -- y se usan para segmentar el feed del cliente.
+  -- Migración: 20260629000002 (mercado) → 20260701000001 (comida rápida)
+  --          → 20260702000001 (es_restaurante) → 20260703000001 (panadería/pastelería).
+  -- Combinables entre sí excepto `es_mercado_abarrotes` (nicho único).
+  es_mercado_abarrotes TINYINT(1) NOT NULL DEFAULT 0,
+  es_comida_rapida TINYINT(1) NOT NULL DEFAULT 0,
+  es_restaurante TINYINT(1) NOT NULL DEFAULT 1,
+  es_panaderia_pasteleria TINYINT(1) NOT NULL DEFAULT 0,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -67,6 +76,10 @@ CREATE TABLE IF NOT EXISTS categorias (
   nombre VARCHAR(100) NOT NULL,
   descripcion TEXT,
   orden INT DEFAULT 0,
+  -- Namespace de la categoría. Define para qué nicho aplica la categoría.
+  -- Migraciones: 20260630000002 (enum inicial) → 20260701000001
+  -- (comida_rapida) → 20260703000001 (panaderia_pasteleria).
+  tipo_negocio ENUM('restaurante', 'mercado', 'comida_rapida', 'panaderia_pasteleria') NOT NULL DEFAULT 'restaurante',
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
   UNIQUE KEY uk_restaurante_categoria (restaurante_id, nombre),

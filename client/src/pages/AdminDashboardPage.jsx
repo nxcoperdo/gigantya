@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
@@ -46,6 +46,8 @@ export default function AdminDashboardPage() {
   const [updatingEsComidaRapidaId, setUpdatingEsComidaRapidaId] = useState(null);
   // ID del restaurante cuyo toggle de "Es restaurante" se está actualizando.
   const [updatingEsRestauranteId, setUpdatingEsRestauranteId] = useState(null);
+  // ID del restaurante cuyo toggle de "Es panadería/pastelería" se está actualizando.
+  const [updatingEsPanaderiaPasteleriaId, setUpdatingEsPanaderiaPasteleriaId] = useState(null);
   // ID del restaurante cuyo toggle de "Ofrece consumo en el local" se está actualizando.
   const [updatingConsumoEnLocalId, setUpdatingConsumoEnLocalId] = useState(null);
 
@@ -211,6 +213,27 @@ export default function AdminDashboardPage() {
       setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
     } finally {
       setUpdatingEsRestauranteId(null);
+    }
+  };
+
+  // Cambia en línea si un restaurante es de tipo "Panadería/pastelería".
+  // Mismo patrón que los otros toggles de nicho. Es combinable con
+  // `es_restaurante` y `es_comida_rapida`, y mutuamente excluyente con
+  // `es_mercado_abarrotes` (esa exclusión se valida solo en la UI, no
+  // a nivel DB).
+  const handleToggleEsPanaderiaPasteleria = async (restaurantId, currentValue) => {
+    const nuevoValor = !currentValue;
+    const snapshot = restaurants;
+    setRestaurants(prev => prev.map(r => r.id === restaurantId ? { ...r, es_panaderia_pasteleria: nuevoValor ? 1 : 0 } : r));
+    setUpdatingEsPanaderiaPasteleriaId(restaurantId);
+    try {
+      setError('');
+      await adminService.updateRestaurantEsPanaderiaPasteleria(restaurantId, nuevoValor);
+    } catch (err) {
+      setRestaurants(snapshot);
+      setError(err.response?.data?.error || 'Error al cambiar el tipo de negocio');
+    } finally {
+      setUpdatingEsPanaderiaPasteleriaId(null);
     }
   };
 
@@ -596,6 +619,15 @@ export default function AdminDashboardPage() {
                           ? true
                           : Boolean(Number(res.es_restaurante));
                         const isUpdatingEsRestaurante = updatingEsRestauranteId === res.id;
+                        // Normalizar `es_panaderia_pasteleria` que llega como 1/0/true/false/undefined.
+                        // El default es FALSE (locales existentes no son panaderías).
+                        // Es combinable con `es_restaurante` y `es_comida_rapida`, y
+                        // mutuamente excluyente con `es_mercado_abarrotes` (esa
+                        // exclusión se valida solo en la UI, no a nivel DB).
+                        const esPanaderiaPasteleria = res.es_panaderia_pasteleria === undefined
+                          ? false
+                          : Boolean(Number(res.es_panaderia_pasteleria));
+                        const isUpdatingEsPanaderiaPasteleria = updatingEsPanaderiaPasteleriaId === res.id;
                         // Normalizar `ofrece_consumo_en_local` (comer en la mesa).
                         // Default FALSE: locales existentes no ofrecen esta modalidad
                         // hasta que el admin la active explícitamente.
@@ -667,16 +699,18 @@ export default function AdminDashboardPage() {
                                 </span>
                               </div>
 
-                              {/* Bloque "Tipo de negocio": agrupa los tres switches
-                                  de nicho (Es restaurante, Mercado y Comida rápida).
-                                  Cada flag es independiente: un local puede estar
-                                  marcado en ninguno, uno, dos, o los tres a la vez.
-                                  En el feed del cliente, los combos se reflejan
-                                  haciendo que el local aparezca en cada filtro de
-                                  nicho que coincida con un flag activo. Por
-                                  ejemplo, activar "Es restaurante" + "Comida
-                                  rápida" hace que el local salga tanto en el feed
-                                  "Restaurantes" como en "Comida rápida". */}
+                              {/* Bloque "Tipo de negocio": agrupa los cuatro switches
+                                  de nicho (Es restaurante, Mercado, Comida rápida,
+                                  Panadería/Pastelería). Cada flag es independiente:
+                                  un local puede estar marcado en ninguno, uno, dos,
+                                  tres, o los cuatro a la vez. En el feed del cliente,
+                                  los combos se reflejan haciendo que el local
+                                  aparezca en cada filtro de nicho que coincida con
+                                  un flag activo. Por ejemplo, activar "Es
+                                  restaurante" + "Comida rápida" hace que el local
+                                  salga tanto en el feed "Restaurantes" como en
+                                  "Comida rápida". "Mercado" sigue siendo
+                                  mutuamente excluyente con el resto. */}
                               <div className="mt-3 pt-2 border-t border-dashed border-[color:var(--border-subtle)]">
                                 <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--text-muted)] mb-1.5">
                                   Tipo de negocio
@@ -788,6 +822,48 @@ export default function AdminDashboardPage() {
                                   ) : (
                                     <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
                                       <Zap size={12} /> No es comida rápida
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+
+                              {/* Cuarto toggle del bloque: tipo de negocio
+                                  "Panadería/pastelería". Mismo patrón que los
+                                  toggles de mercado y comida rápida: switch
+                                  inline que actualiza el flag
+                                  `es_panaderia_pasteleria` en la BD. Color
+                                  rose-500 para diferenciarlo visualmente de
+                                  los otros (mercado verde, restaurante primary,
+                                  comida rápida amber). Es combinable con
+                                  restaurante y comida rápida; mutuamente
+                                  excluyente con mercado (esa exclusión se
+                                  valida solo en la UI). */}
+                              <div className="inline-flex items-center gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={esPanaderiaPasteleria}
+                                  disabled={isUpdatingEsPanaderiaPasteleria}
+                                  onClick={() => handleToggleEsPanaderiaPasteleria(res.id, esPanaderiaPasteleria)}
+                                  title={esPanaderiaPasteleria ? 'Es panadería/pastelería' : 'No es panadería/pastelería'}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                                    esPanaderiaPasteleria ? 'bg-rose-500' : 'bg-[color:var(--border-default)]'
+                                  } ${isUpdatingEsPanaderiaPasteleria ? 'opacity-50 cursor-wait' : ''}`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      esPanaderiaPasteleria ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-semibold text-[color:var(--text-secondary)] whitespace-nowrap">
+                                  {esPanaderiaPasteleria ? (
+                                    <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                                      <Croissant size={12} /> Panadería/Pastelería
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                                      <Croissant size={12} /> No es panadería
                                     </span>
                                   )}
                                 </span>

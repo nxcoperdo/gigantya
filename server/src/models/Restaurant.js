@@ -238,18 +238,24 @@ export async function getRestaurants(filtros = {}) {
   }
 
   // Filtro por tipo de negocio (toggle exclusivo en la home pública).
-  // Acepta: 'restaurante' | 'comida_rapida' | 'mercado'.
-  //   - 'restaurante'   → solo locales con es_restaurante=1
-  //                       (locales "solo restaurante" Y combos restaurante
-  //                        + comida rápida aparecen aquí; los "solo comida
-  //                        rápida" quedan fuera)
-  //   - 'comida_rapida' → solo locales con es_comida_rapida=1
-  //                       (locales "solo comida rápida" Y combos restaurante
-  //                        + comida rápida aparecen aquí)
-  //   - 'mercado'       → solo locales con es_mercado_abarrotes=1
-  //                       (nicho excluyente: un mercado nunca participa de
-  //                        los feeds 'restaurante' ni 'comida_rapida')
-  //   - undefined/null  → NO filtra por nicho (los tres conviven en el listado)
+  // Acepta: 'restaurante' | 'comida_rapida' | 'mercado' | 'panaderia_pasteleria'.
+  //   - 'restaurante'           → solo locales con es_restaurante=1
+  //                               (locales "solo restaurante" Y combos restaurante
+  //                                + comida rápida aparecen aquí; los "solo comida
+  //                                rápida" quedan fuera)
+  //   - 'comida_rapida'         → solo locales con es_comida_rapida=1
+  //                               (locales "solo comida rápida" Y combos restaurante
+  //                                + comida rápida aparecen aquí)
+  //   - 'mercado'               → solo locales con es_mercado_abarrotes=1
+  //                               (nicho excluyente: un mercado nunca participa de
+  //                                los feeds 'restaurante' ni 'comida_rapida')
+  //   - 'panaderia_pasteleria'  → solo locales con es_panaderia_pasteleria=1
+  //                               (nuevo nicho, agregable vía migración
+  //                                20260703000001_add_panaderia_pasteleria_nicho.
+  //                                Combinable con restaurante y comida rápida;
+  //                                excluyente con mercado).
+  //   - undefined/null          → NO filtra por nicho (los cuatro conviven
+  //                               en el listado)
   //
   // El flag `es_restaurante` (agregado en la migración
   // 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícita
@@ -267,9 +273,11 @@ export async function getRestaurants(filtros = {}) {
     // "solo restaurante" de "solo comida rápida" — algo que el modelo
     // anterior (ausencia de los otros dos) no podía expresar.
     sql += ' AND r.es_restaurante = 1';
+  } else if (filtros.tipo_negocio === 'panaderia_pasteleria') {
+    sql += ' AND r.es_panaderia_pasteleria = 1';
   }
   // Si no llega tipo_negocio, no se agrega ningún filtro por nicho y los
-  // tres tipos de locales aparecen en el resultado (visibilidad compartida).
+  // cuatro tipos de locales aparecen en el resultado (visibilidad compartida).
 
   sql += ' GROUP BY r.id ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
 

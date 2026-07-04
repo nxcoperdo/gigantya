@@ -122,6 +122,7 @@ router.put('/restaurants/:id/ofrece-consumo-en-local', verifyToken, requireAdmin
 router.put('/restaurants/:id/es-mercado-abarrotes', verifyToken, requireAdmin, adminController.updateRestaurantEsMercado);
 router.put('/restaurants/:id/es-comida-rapida', verifyToken, requireAdmin, adminController.updateRestaurantEsComidaRapida);
 router.put('/restaurants/:id/es-restaurante', verifyToken, requireAdmin, adminController.updateRestaurantEsRestaurante);
+router.put('/restaurants/:id/es-panaderia-pasteleria', verifyToken, requireAdmin, adminController.updateRestaurantEsPanaderiaPasteleria);
 
 /**
  * Rutas de Costos de Envío por Sector (por restaurante)

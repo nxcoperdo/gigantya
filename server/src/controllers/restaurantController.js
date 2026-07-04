@@ -69,21 +69,25 @@ export async function listRestaurants(req, res) {
     }
 
     // Filtro de tipo de negocio (toggle EXCLUSIVO en la home).
-    // Acepta: 'restaurante' | 'comida_rapida' | 'mercado'.
-    // Ausente o cualquier otro valor → no filtra por nicho (los tres
+    // Acepta: 'restaurante' | 'comida_rapida' | 'mercado' | 'panaderia_pasteleria'.
+    // Ausente o cualquier otro valor → no filtra por nicho (los cuatro
     // conviven en el listado). Cada valor matchea por presencia del flag
     // correspondiente en `restaurantes`:
-    //   - 'restaurante'   → es_restaurante=1
-    //   - 'comida_rapida' → es_comida_rapida=1
-    //   - 'mercado'       → es_mercado_abarrotes=1
+    //   - 'restaurante'          → es_restaurante=1
+    //   - 'comida_rapida'        → es_comida_rapida=1
+    //   - 'mercado'              → es_mercado_abarrotes=1
+    //   - 'panaderia_pasteleria' → es_panaderia_pasteleria=1
+    //                              (nuevo nicho, agregable vía migración
+    //                               20260703000001_add_panaderia_pasteleria_nicho)
     // El flag `es_restaurante` (migración
     // 20260702000001_add_es_restaurante_to_restaurantes.js) hace explícito
     // el nicho restaurante, lo que permite combos restaurante+comida
     // rápida (un local con ambos flags en 1 aparece en los dos feeds).
-    // `es_mercado_abarrotes` sigue siendo mutuamente excluyente.
+    // `es_mercado_abarrotes` sigue siendo mutuamente excluyente; panadería
+    // y pastelería es combinable con restaurante y comida rápida.
     if (tipo_negocio !== undefined && tipo_negocio !== null && tipo_negocio !== '') {
       const t = String(tipo_negocio).toLowerCase();
-      if (['restaurante', 'comida_rapida', 'mercado'].includes(t)) {
+      if (['restaurante', 'comida_rapida', 'mercado', 'panaderia_pasteleria'].includes(t)) {
         filtros.tipo_negocio = t;
       }
     }

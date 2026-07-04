@@ -861,6 +861,56 @@ export async function updateRestaurantEsRestaurante(req, res) {
 }
 
 /**
+ * Cambiar el flag "Es panadería/pastelería" de un restaurante desde el
+ * dashboard admin. Réplica de `updateRestaurantEsComidaRapida` para
+ * mantener consistencia con /ofrece-domicilio, /plan y /config. Mismo
+ * patrón de validación, logging y respuesta.
+ *
+ * El flag `es_panaderia_pasteleria` (migración
+ * 20260703000001_add_panaderia_pasteleria_nicho.js) identifica a las
+ * panaderías y pastelerías. Es combinable con `es_restaurante` y
+ * `es_comida_rapida` (un local puede ser restaurante + panadería, o
+ * comida rápida + panadería) y mutuamente excluyente con
+ * `es_mercado_abarrotes` (mercado es nicho único). Esta exclusión NO
+ * se enforce a nivel DB — se valida en la UI admin al activar el toggle.
+ */
+export async function updateRestaurantEsPanaderiaPasteleria(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar el tipo de negocio' });
+    }
+
+    const { id } = req.params;
+    const { es_panaderia_pasteleria } = req.body;
+
+    if (es_panaderia_pasteleria === undefined || es_panaderia_pasteleria === null) {
+      return res.status(400).json({ error: 'El campo "es_panaderia_pasteleria" es requerido' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantById(id);
+    if (!restaurante) {
+      return res.status(404).json({ error: 'Local no encontrado' });
+    }
+
+    // Normalizar a boolean — aceptar 1/0, 'true'/'false', true/false.
+    const nuevoValor = Boolean(es_panaderia_pasteleria);
+
+    await RestaurantModel.updateRestaurant(id, { es_panaderia_pasteleria: nuevoValor });
+
+    logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_panaderia_pasteleria=${nuevoValor}`);
+
+    res.json({
+      mensaje: 'Tipo de negocio actualizado',
+      restaurante_id: id,
+      es_panaderia_pasteleria: nuevoValor,
+    });
+  } catch (error) {
+    console.error('Error actualizando tipo de negocio:', error);
+    res.status(500).json({ error: 'Error actualizando tipo de negocio', detalles: error.message });
+  }
+}
+
+/**
  * Historial de suscripciones de un restaurante.
  */
 export async function getRestaurantSubscriptionHistory(req, res) {
@@ -899,4 +949,5 @@ export default {
   updateRestaurantEsMercado,
   updateRestaurantEsComidaRapida,
   updateRestaurantEsRestaurante,
+  updateRestaurantEsPanaderiaPasteleria,
 };
