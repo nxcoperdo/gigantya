@@ -519,8 +519,10 @@ export default function HomePage() {
 
   const handleChangeTipoNegocio = useCallback((value) => {
     if (value === tipoNegocioFilter) return;
-    // Whitelist defensiva: aceptamos solo los 4 valores del toggle exclusivo.
-    if (!['todos', 'restaurante', 'comida_rapida', 'mercado'].includes(value)) return;
+    // Whitelist defensiva: aceptamos solo los 5 valores del toggle exclusivo
+    // (4 nichos + 'todos'). Cualquier otro valor se ignora silenciosamente
+    // para no contaminar el state con basura de querystring / localStorage.
+    if (!['todos', 'restaurante', 'comida_rapida', 'mercado', 'panaderia_pasteleria'].includes(value)) return;
     setTipoNegocioFilter(value);
     // Al alternar entre nichos, la categoría seleccionada deja de tener
     // sentido: los catálogos no se solapan. La reseteamos a null para
