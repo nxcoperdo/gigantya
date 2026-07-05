@@ -441,6 +441,12 @@ export async function updateRestaurant(id, updateData) {
     // `es_restaurante` y `es_comida_rapida`. Mutuamente excluyente con
     // `es_mercado_abarrotes` (esa exclusión se valida solo en la UI).
     'es_panaderia_pasteleria',
+    // Tiempo estimado de preparación del pedido en minutos (input en
+    // `RestaurantModal.jsx`, mostrado en el header de
+    // `RestaurantDetailsPage.jsx`). Es un entero positivo o `null` para
+    // indicar "no configurado" (el frontend no muestra nada en ese caso).
+    // Migración: 20260705000001_add_tiempo_preparacion_minutos_to_restaurantes.js
+    'tiempo_preparacion_minutos',
   ];
 
   if (!updateData || typeof updateData !== 'object') {

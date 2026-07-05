@@ -14,6 +14,9 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
     // Modalidad de servicio: true → ofrece domicilios, false → solo retiro en local.
     // Default true para mantener compatibilidad con restaurantes existentes.
     ofrece_domicilio: true,
+    // Tiempo estimado de preparación en minutos (opcional). Vacío = null en la BD
+    // = no se muestra el badge en RestaurantDetailsPage.
+    tiempo_preparacion_minutos: '',
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
@@ -38,6 +41,9 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         ofrece_domicilio: restaurant.ofrece_domicilio === undefined
           ? true
           : Boolean(Number(restaurant.ofrece_domicilio)),
+        // Entero positivo o null. El input de tipo number necesita string,
+        // por eso lo dejamos como string vacío si la API devuelve null/undefined.
+        tiempo_preparacion_minutos: restaurant.tiempo_preparacion_minutos ?? '',
       });
       setImagePreview(restaurant.imagen_url || '');
       setBannerPreview(restaurant.banner_url || '');
@@ -54,6 +60,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
         imagen_url: '',
         banner_url: '',
         ofrece_domicilio: true,
+        tiempo_preparacion_minutos: '',
       });
       setImagePreview('');
       setBannerPreview('');
@@ -269,6 +276,27 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                   className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                 />
               </div>
+            </div>
+
+            {/* Tiempo estimado de preparación (opcional). Se muestra en el header
+                de RestaurantDetailsPage. Vacío = no se muestra nada al cliente. */}
+            <div>
+              <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-1">
+                Tiempo estimado de preparación (minutos)
+              </label>
+              <input
+                type="number"
+                name="tiempo_preparacion_minutos"
+                value={formData.tiempo_preparacion_minutos}
+                onChange={handleInputChange}
+                min="1"
+                step="1"
+                placeholder="Opcional — ej. 30"
+                className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
+              />
+              <p className="text-xs text-[color:var(--text-muted)] mt-1">
+                Déjalo vacío si no querés mostrar un tiempo estimado. Se mostrará a los clientes en la página del local.
+              </p>
             </div>
 
             {/* Modalidad de servicio: switch accesible para ofrecer o no domicilios. */}

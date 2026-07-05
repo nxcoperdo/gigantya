@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { Star, MapPin, Clock, Phone, Plus, Minus, User, Facebook, Instagram, Store, Maximize2 } from 'lucide-react';
+import { Star, MapPin, Clock, Clock3, Phone, Plus, Minus, User, Facebook, Instagram, Store, Maximize2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { isRestaurantOpen } from '../utils/scheduleHelper';
@@ -250,7 +250,7 @@ export default function RestaurantDetailsPage() {
              {restaurante.descripcion}
            </p>
 
-           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 px-2">
+           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 px-2">
              <div className="flex items-start gap-2 sm:gap-3">
                <Star className="mt-0.5 sm:mt-1 flex-shrink-0" size={18} style={{ color: 'var(--color-primary)' }} />
                <div className="min-w-0">
@@ -290,6 +290,18 @@ export default function RestaurantDetailsPage() {
                  <p className="text-sm sm:text-lg font-semibold text-[color:var(--text-primary)] truncate">{restaurante.ciudad}</p>
                </div>
              </div>
+
+             {restaurante.tiempo_preparacion_minutos && Number(restaurante.tiempo_preparacion_minutos) > 0 && (
+               <div className="flex items-start gap-2 sm:gap-3">
+                 <Clock3 className="mt-0.5 sm:mt-1 flex-shrink-0" size={18} style={{ color: 'var(--color-primary)' }} />
+                 <div className="min-w-0">
+                   <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">Tiempo de preparación</p>
+                   <p className="text-sm sm:text-lg font-semibold text-[color:var(--text-primary)]">
+                     ~{restaurante.tiempo_preparacion_minutos} min
+                   </p>
+                 </div>
+               </div>
+             )}
            </div>
 
            {/* Redes Sociales (solo Premium, si tiene URLs configuradas) */}
