@@ -249,7 +249,10 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                 <label className="block text-sm font-semibold mb-2 text-[color:var(--text-primary)]">
                   Porcentaje de impuesto (%)
                 </label>
-                <div className="relative">
+                <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)]">
+                  <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                    <Percent size={16} />
+                  </span>
                   <input
                     type="number"
                     step="0.1"
@@ -258,9 +261,8 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     value={taxConfig.porcentaje}
                     onChange={(e) => setTaxConfig({ ...taxConfig, porcentaje: e.target.value })}
                     disabled={!taxConfig.activo}
-                    className="input pl-12 disabled:bg-[color:var(--bg-muted)]"
+                    className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                   />
-                  <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
                 <p className="text-xs text-[color:var(--text-muted)] mt-1">
                   Ej: 8 para 8%, 0 para no cobrar impuestos
@@ -307,7 +309,10 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                 <label className="block text-sm font-semibold mb-2 text-[color:var(--text-primary)]">
                   Costo fijo de envío ($)
                 </label>
-                <div className="relative">
+                <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)]">
+                  <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                    <DollarSign size={16} />
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -315,9 +320,8 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     value={shippingConfig.costo_fijo}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, costo_fijo: e.target.value })}
                     disabled={!shippingConfig.activo}
-                    className="input pl-10 disabled:bg-[color:var(--bg-muted)]"
+                    className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                   />
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
               </div>
 
@@ -339,7 +343,10 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                 <label className="block text-sm font-semibold mb-2 text-[color:var(--text-primary)]">
                   Envío gratis desde ($)
                 </label>
-                <div className="relative">
+                <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)]">
+                  <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                    <Truck size={16} />
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -347,9 +354,8 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     value={shippingConfig.envio_gratis_desde}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, envio_gratis_desde: e.target.value })}
                     disabled={!shippingConfig.activo || !shippingConfig.envio_gratis_activo}
-                    className="input pl-10 disabled:bg-[color:var(--bg-muted)]"
+                    className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                   />
-                  <Truck className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
               </div>
 
@@ -414,7 +420,10 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                         <label className="text-sm font-semibold text-[color:var(--text-primary)] sm:col-span-2">
                           {s.nombre}
                         </label>
-                        <div className="relative">
+                        <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)] disabled:opacity-60">
+                          <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                            <DollarSign size={16} />
+                          </span>
                           <input
                             type="number"
                             min="0"
@@ -423,9 +432,8 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                             onChange={(e) => handleCostoSectorChange(s.id, e.target.value)}
                             disabled={!shippingConfig.activo}
                             placeholder="0"
-                            className="input pl-10 disabled:bg-[color:var(--bg-muted)] disabled:opacity-60"
+                            className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                           />
-                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)]" size={18} />
                         </div>
                       </div>
                       {(autorNombre || autorFecha) && (

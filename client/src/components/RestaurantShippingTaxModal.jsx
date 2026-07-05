@@ -253,7 +253,10 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                 <label className="block text-sm font-semibold mb-2 text-[color:var(--text-primary)]">
                   Costo fijo de envío ($)
                 </label>
-                <div className="relative">
+                <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)]">
+                  <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                    <DollarSign size={16} />
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -261,9 +264,8 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                     value={shippingConfig.costo_fijo}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, costo_fijo: e.target.value })}
                     disabled={!shippingConfig.activo}
-                    className="input pl-10 disabled:bg-[color:var(--bg-muted)]"
+                    className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                   />
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
               </div>
 
@@ -285,7 +287,10 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                 <label className="block text-sm font-semibold mb-2 text-[color:var(--text-primary)]">
                   Envío gratis desde ($)
                 </label>
-                <div className="relative">
+                <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)]">
+                  <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                    <Truck size={16} />
+                  </span>
                   <input
                     type="number"
                     min="0"
@@ -293,9 +298,8 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                     value={shippingConfig.envio_gratis_desde}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, envio_gratis_desde: e.target.value })}
                     disabled={!shippingConfig.activo || !shippingConfig.envio_gratis_activo}
-                    className="input pl-10 disabled:bg-[color:var(--bg-muted)]"
+                    className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                   />
-                  <Truck className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
               </div>
             </div>
@@ -348,7 +352,10 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                         <label className="text-sm font-semibold text-[color:var(--text-primary)] sm:col-span-2">
                           {s.nombre}
                         </label>
-                        <div className="relative">
+                        <div className="input flex items-stretch p-0 overflow-hidden disabled:bg-[color:var(--bg-muted)] disabled:opacity-60">
+                          <span className="flex items-center justify-center px-3 text-[color:var(--text-subtle)] bg-[color:var(--bg-subtle)] border-r border-[color:var(--border-default)]">
+                            <DollarSign size={16} />
+                          </span>
                           <input
                             type="number"
                             min="0"
@@ -357,9 +364,8 @@ export default function RestaurantShippingTaxModal({ isOpen, onClose, onSucceede
                             onChange={(e) => handleCostoSectorChange(s.id, e.target.value)}
                             disabled={!shippingConfig.activo}
                             placeholder="0"
-                            className="input pl-10 disabled:bg-[color:var(--bg-muted)] disabled:opacity-60"
+                            className="flex-1 bg-transparent px-3 py-3 outline-none disabled:cursor-not-allowed"
                           />
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                         </div>
                       </div>
                       {(autorNombre || autorFecha) && (
