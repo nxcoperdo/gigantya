@@ -27,6 +27,9 @@ export default function AdminDashboardPage() {
   // `loadData()` y se refresca cada 30s con `setInterval` para mantener
   // la vista "en vivo" sin que el admin tenga que recargar.
   const [onlineUsers, setOnlineUsers] = useState([]);
+  // Filtro de rol para la sección "Usuarios Online". Solo cliente/filtrado
+  // local, no vuelve a llamar al endpoint. "todos" muestra los 3 roles.
+  const [onlineFilter, setOnlineFilter] = useState('todos');
 
   // UI States
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -481,117 +484,178 @@ export default function AdminDashboardPage() {
 
           {/* TAB: OVERVIEW */}
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-fadeIn">
-              <div className="xl:col-span-2 space-y-8">
-                <section className="card-lg">
-                  <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Pendientes de Aprobación</h2>
-                    <AlertCircle className="text-primary" size={24} />
-                  </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {pendingRestaurants.length === 0 ? (
-                      <div className="col-span-2 py-10 text-center text-[color:var(--text-muted)]">No hay solicitudes pendientes.</div>
-                    ) : (
-                      pendingRestaurants.map((res) => (
-                        <div key={res.id} className="border border-[color:var(--border-default)] rounded-2xl p-4 bg-[color:var(--bg-elevated)] space-y-3">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-bold text-[color:var(--text-primary)]">{res.nombre}</h3>
-                            <span
-                              className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
-                              style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
-                            >Pendiente</span>
-                          </div>
-                          <p className="text-xs text-[color:var(--text-secondary)]">{res.descripcion || 'Sin descripción'}</p>
-                          <div className="flex gap-2">
-                            <button onClick={() => handleApprove(res.id)} className="btn btn-primary btn-small flex-1 py-1 text-xs">Aprobar</button>
-                            <button
-                              onClick={() => handleReject(res.id)}
-                              className="btn btn-outline btn-small flex-1 py-1 text-xs"
-                              style={{ color: 'var(--danger-text)' }}
-                            >Rechazar</button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
-              </div>
-              <aside className="space-y-6">
-                <section className="card-lg p-6">
-                  <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-4">Resumen Rápido</h3>
-                  <div className="space-y-3 text-sm">
-                    <InfoRow label="Pendientes" value={pendingCount} />
-                    <InfoRow label="Aprobados" value={stats?.restaurantes_aprobados ?? 0} />
-                    <InfoRow label="Total Usuarios" value={stats?.usuarios_totales ?? 0} />
-                  </div>
-                </section>
+            <div className="space-y-8 animate-fadeIn">
 
-                {/* Usuarios Online — vista lateral compacta. Auto-refresca cada 30s */}
-                <section className="card-lg overflow-hidden">
-                  <div className="p-4 border-b border-[color:var(--border-subtle)] flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <h3 className="text-base font-bold text-[color:var(--text-primary)] truncate">Usuarios Online</h3>
-                      <span
-                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full whitespace-nowrap"
-                        style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
-                        title="Activos en los últimos 5 minutos"
+              {/* Usuarios Online — sección grande full-width con filtro por rol.
+                  Se carga al inicio y se auto-refresca cada 30s (loadOnlineUsers). */}
+              <section className="card-lg overflow-hidden">
+                <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Usuarios Online</h2>
+                    <span
+                      className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full whitespace-nowrap"
+                      style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
+                      title="Activos en los últimos 5 minutos"
+                    >
+                      {onlineUsers.length} en línea
+                    </span>
+                  </div>
+                  <Activity className="text-primary flex-shrink-0" size={24} />
+                </div>
+
+                {/* Chips de filtro por rol. Solo filtran en cliente, no
+                    llaman al endpoint de nuevo. "todos" muestra los 3 roles. */}
+                <div className="px-6 pt-4 flex flex-wrap gap-2">
+                  {[
+                    { id: 'todos', label: 'Todos' },
+                    { id: 'cliente', label: 'Clientes' },
+                    { id: 'restaurante', label: 'Restaurantes' },
+                    { id: 'admin', label: 'Admins' },
+                  ].map((f) => {
+                    const active = onlineFilter === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setOnlineFilter(f.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          active
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-base)]'
+                        }`}
                       >
-                        {onlineUsers.length} en línea
-                      </span>
-                    </div>
-                    <Activity className="text-primary flex-shrink-0" size={20} />
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {onlineUsers.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-sm text-[color:var(--text-muted)]">
-                        Nadie conectado en los últimos 5 minutos.
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-6">
+                  {(() => {
+                    // Filtrado local. Si no hay usuarios o el filtro deja la lista vacía,
+                    // mensaje amable. La lista filtrada se memoiza con el array de
+                    // usuarios y el filtro seleccionado.
+                    const filtrados = onlineFilter === 'todos'
+                      ? onlineUsers
+                      : onlineUsers.filter((u) => u.tipo_usuario === onlineFilter);
+
+                    if (onlineUsers.length === 0) {
+                      return (
+                        <div className="py-10 text-center text-[color:var(--text-muted)]">
+                          Nadie conectado en los últimos 5 minutos.
+                        </div>
+                      );
+                    }
+                    if (filtrados.length === 0) {
+                      return (
+                        <div className="py-10 text-center text-[color:var(--text-muted)]">
+                          No hay usuarios de este rol conectados ahora mismo.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
+                            <tr>
+                              <th className="px-4 py-3">Usuario</th>
+                              <th className="px-4 py-3">Rol</th>
+                              <th className="px-4 py-3 text-right">Hace</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[color:var(--border-subtle)]">
+                            {filtrados.map((u) => {
+                              const rol = u.tipo_usuario;
+                              const hace = Number(u.hace_segundos) || 0;
+                              const haceLabel =
+                                hace < 60
+                                  ? `${hace}s`
+                                  : hace < 3600
+                                  ? `${Math.floor(hace / 60)}m`
+                                  : `${Math.floor(hace / 3600)}h`;
+                              const rolStyle =
+                                rol === 'admin'
+                                  ? { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
+                                  : rol === 'restaurante'
+                                  ? { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
+                                  : { backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' };
+                              return (
+                                <tr key={u.id} className="hover:bg-[color:var(--bg-muted)]/40 transition-colors">
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                                        {(u.nombre || '?').charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-semibold text-sm text-[color:var(--text-primary)] truncate">{u.nombre}</p>
+                                        <p className="text-xs text-[color:var(--text-muted)] truncate">{u.email}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span
+                                      className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full whitespace-nowrap"
+                                      style={rolStyle}
+                                    >
+                                      {rol}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-xs text-[color:var(--text-muted)] whitespace-nowrap">
+                                    hace {haceLabel}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    ) : (
-                      <ul className="divide-y divide-[color:var(--border-subtle)]">
-                        {onlineUsers.map((u) => {
-                          const rol = u.tipo_usuario;
-                          const hace = Number(u.hace_segundos) || 0;
-                          const haceLabel =
-                            hace < 60
-                              ? `hace ${hace}s`
-                              : hace < 3600
-                              ? `hace ${Math.floor(hace / 60)}m`
-                              : `hace ${Math.floor(hace / 3600)}h`;
-                          // Chip de color por rol para identificar de un vistazo
-                          const rolStyle =
-                            rol === 'admin'
-                              ? { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
-                              : rol === 'restaurante'
-                              ? { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
-                              : { backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' };
-                          return (
-                            <li key={u.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-[color:var(--bg-muted)]/40 transition-colors">
-                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
-                                {(u.nombre || '?').charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <p className="font-semibold text-sm text-[color:var(--text-primary)] truncate">{u.nombre}</p>
-                                  <span
-                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                    style={rolStyle}
-                                  >
-                                    {rol}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-[color:var(--text-muted)] truncate">{u.email}</p>
-                              </div>
-                              <span className="text-[10px] text-[color:var(--text-muted)] whitespace-nowrap flex-shrink-0">
-                                {haceLabel}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                </section>
-              </aside>
+                    );
+                  })()}
+                </div>
+              </section>
+
+              {/* Pendientes de Aprobación — full-width, ya no comparte fila */}
+              <section className="card-lg">
+                <div className="p-6 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Pendientes de Aprobación</h2>
+                  <AlertCircle className="text-primary" size={24} />
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingRestaurants.length === 0 ? (
+                    <div className="col-span-2 py-10 text-center text-[color:var(--text-muted)]">No hay solicitudes pendientes.</div>
+                  ) : (
+                    pendingRestaurants.map((res) => (
+                      <div key={res.id} className="border border-[color:var(--border-default)] rounded-2xl p-4 bg-[color:var(--bg-elevated)] space-y-3">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-bold text-[color:var(--text-primary)]">{res.nombre}</h3>
+                          <span
+                            className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
+                          >Pendiente</span>
+                        </div>
+                        <p className="text-xs text-[color:var(--text-secondary)]">{res.descripcion || 'Sin descripción'}</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleApprove(res.id)} className="btn btn-primary btn-small flex-1 py-1 text-xs">Aprobar</button>
+                          <button
+                            onClick={() => handleReject(res.id)}
+                            className="btn btn-outline btn-small flex-1 py-1 text-xs"
+                            style={{ color: 'var(--danger-text)' }}
+                          >Rechazar</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              {/* Resumen Rápido — antes estaba en el aside, ahora full-width abajo */}
+              <section className="card-lg p-6">
+                <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-4">Resumen Rápido</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <InfoRow label="Pendientes" value={pendingCount} />
+                  <InfoRow label="Aprobados" value={stats?.restaurantes_aprobados ?? 0} />
+                  <InfoRow label="Total Usuarios" value={stats?.usuarios_totales ?? 0} />
+                </div>
+              </section>
             </div>
           )}
 
