@@ -260,7 +260,7 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     disabled={!taxConfig.activo}
                     className="input pl-12 disabled:bg-[color:var(--bg-muted)]"
                   />
-                  <Percent className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)]" size={18} />
+                  <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
                 <p className="text-xs text-[color:var(--text-muted)] mt-1">
                   Ej: 8 para 8%, 0 para no cobrar impuestos
@@ -315,9 +315,9 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     value={shippingConfig.costo_fijo}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, costo_fijo: e.target.value })}
                     disabled={!shippingConfig.activo}
-                    className="input pl-12 disabled:bg-[color:var(--bg-muted)]"
+                    className="input pl-10 disabled:bg-[color:var(--bg-muted)]"
                   />
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)]" size={18} />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
               </div>
 
@@ -347,9 +347,9 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                     value={shippingConfig.envio_gratis_desde}
                     onChange={(e) => setShippingConfig({ ...shippingConfig, envio_gratis_desde: e.target.value })}
                     disabled={!shippingConfig.activo || !shippingConfig.envio_gratis_activo}
-                    className="input pl-12 disabled:bg-[color:var(--bg-muted)]"
+                    className="input pl-10 disabled:bg-[color:var(--bg-muted)]"
                   />
-                  <Truck className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)]" size={18} />
+                  <Truck className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)] pointer-events-none" size={16} />
                 </div>
               </div>
 
@@ -422,8 +422,8 @@ export default function TaxShippingConfigModal({ isOpen, onClose, onSucceeded, r
                             value={costosPorSector[s.id] ?? 0}
                             onChange={(e) => handleCostoSectorChange(s.id, e.target.value)}
                             disabled={!shippingConfig.activo}
-                            placeholder="$0"
-                            className="input pl-12 disabled:bg-[color:var(--bg-muted)] disabled:opacity-60"
+                            placeholder="0"
+                            className="input pl-10 disabled:bg-[color:var(--bg-muted)] disabled:opacity-60"
                           />
                           <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-subtle)]" size={18} />
                         </div>
