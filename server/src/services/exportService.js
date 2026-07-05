@@ -62,7 +62,7 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
     const chunks = [];
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 50, bottom: 60, left: 40, right: 40 },
+      margins: { top: 50, bottom: 50, left: PAGE_LEFT, right: PAGE_RIGHT },
       bufferPages: true, // para numerar al final
     });
 
@@ -73,27 +73,41 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
     const restNombre = restaurante?.nombre || 'Local';
     const subtitle = buildSubtitle(restaurante);
 
-    // ---- Encabezado ----
-    doc.fillColor(COLOR_PRIMARY).fontSize(22).font('Helvetica-Bold')
-      .text('GigantYa — Reporte de Estadísticas', { align: 'center' });
+    // ---- Encabezado (portada) ----
+    // Banda superior naranja a ancho completo
+    doc.rect(0, 0, 595, 90).fillColor(COLOR_PRIMARY).fill();
 
-    doc.fillColor(COLOR_TEXT).fontSize(13).font('Helvetica')
-      .text(restNombre, { align: 'center' });
+    doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold')
+      .text('Reporte de Estadísticas', PAGE_LEFT, 22, { width: PAGE_WIDTH, align: 'left' });
+    doc.fillColor('#FFFFFF').fontSize(14).font('Helvetica')
+      .text('GigantYa', PAGE_LEFT, 50, { width: PAGE_WIDTH, align: 'left' });
+
+    // Banda inferior: nombre del local + metadata
+    let y = 110;
+    doc.fillColor(COLOR_TEXT).fontSize(15).font('Helvetica-Bold')
+      .text(restNombre, PAGE_LEFT, y);
+    y = doc.y + 4;
 
     if (subtitle) {
-      doc.fillColor(COLOR_MUTED).fontSize(9)
-        .text(subtitle, { align: 'center' });
+      doc.fillColor(COLOR_MUTED).fontSize(9).font('Helvetica')
+        .text(subtitle, PAGE_LEFT, y);
+      y = doc.y + 2;
     }
 
-    doc.fillColor(COLOR_MUTED).fontSize(9)
-      .text(`Período: ${dateRange}`, { align: 'center' })
-      .text(`Emitido: ${fmtDateTime()}`, { align: 'center' });
+    doc.fillColor(COLOR_MUTED).fontSize(9).font('Helvetica')
+      .text(`Período: ${dateRange}`, PAGE_LEFT, y);
+    y = doc.y + 2;
+    doc.fillColor(COLOR_MUTED).fontSize(9).font('Helvetica')
+      .text(`Emitido: ${fmtDateTime()}`, PAGE_LEFT, y);
+    y = doc.y + 8;
 
-    doc.moveTo(40, doc.y + 6).lineTo(570, doc.y + 6).strokeColor(COLOR_PRIMARY).lineWidth(1.2).stroke();
-
-    let y = doc.y + 14;
+    // Línea divisoria bajo el header
+    doc.moveTo(PAGE_LEFT, y).lineTo(PAGE_LEFT + PAGE_WIDTH, y)
+      .strokeColor(COLOR_PRIMARY).lineWidth(1.0).stroke();
+    y += 14;
 
     // ---- Resumen Ejecutivo (KPIs) ----
+    y = drawSectionTitle(doc, y, 'Resumen Ejecutivo', { badge: '★' });
     y = drawKpiGrid(doc, y, [
       { label: 'Ventas hoy',     value: CURRENCY_FMT(statsData.ventas?.hoy),     color: COLOR_PRIMARY },
       { label: 'Ventas semana',  value: CURRENCY_FMT(statsData.ventas?.semana),  color: COLOR_BLUE },
@@ -101,7 +115,7 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
       { label: 'Ticket promedio',value: CURRENCY_FMT(statsData.ticket_promedio), color: COLOR_AMBER },
     ]);
 
-    y = drawKpiGrid(doc, y + 8, [
+    y = drawKpiGrid(doc, y, [
       { label: 'Pedidos totales',     value: String(statsData.pedidos?.total ?? 0),       color: COLOR_TEXT },
       { label: 'Completados',         value: String(statsData.pedidos?.completados ?? 0), color: COLOR_GREEN },
       { label: 'Cancelados',          value: String(statsData.pedidos?.cancelados ?? 0),  color: COLOR_RED },
@@ -111,7 +125,7 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
     if (typeof statsData.crecimiento_mensual === 'number') {
       const arrow = statsData.crecimiento_mensual >= 0 ? '▲' : '▼';
       const color = statsData.crecimiento_mensual >= 0 ? COLOR_GREEN : COLOR_RED;
-      y = drawKpiGrid(doc, y + 8, [
+      y = drawKpiGrid(doc, y, [
         { label: 'Crecimiento mensual', value: `${arrow} ${Math.abs(statsData.crecimiento_mensual).toFixed(1)}%`, color },
         { label: 'Ingresos totales',    value: CURRENCY_FMT(statsData.resumen?.ingresos_totales), color: COLOR_TEXT },
         { label: 'Producto estrella',   value: statsData.resumen?.producto_estrella?.nombre || '—', color: COLOR_PRIMARY },
@@ -121,10 +135,10 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
 
     // ---- Productos más vendidos (tabla) ----
     if (statsData.productos_mas_vendidos?.length > 0) {
-      y = drawSectionTitle(doc, y, 'Productos Más Vendidos (Top 10)');
+      y = drawSectionTitle(doc, y, 'Productos Más Vendidos (Top 10)', { badge: '1' });
       y = drawTable(doc, y,
         ['#', 'Producto', 'Cantidad', 'Ingresos'],
-        [40, 200, 100, 150],
+        [40, 245, 90, 130],
         statsData.productos_mas_vendidos.slice(0, 10).map((p, idx) => ([
           String(idx + 1),
           p.nombre || '—',
@@ -140,15 +154,14 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           ],
         }
       );
-      y += 12;
     }
 
     // ---- Categorías más vendidas ----
     if (statsData.categorias_mas_vendidas?.length > 0) {
-      y = drawSectionTitle(doc, y, 'Categorías Más Vendidas');
+      y = drawSectionTitle(doc, y, 'Categorías Más Vendidas', { badge: '2' });
       y = drawTable(doc, y,
         ['#', 'Categoría', 'Cantidad', 'Ingresos'],
-        [40, 200, 100, 150],
+        [40, 245, 90, 130],
         statsData.categorias_mas_vendidas.slice(0, 10).map((c, idx) => ([
           String(idx + 1),
           c.categoria || 'Sin categoría',
@@ -164,16 +177,15 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           ],
         }
       );
-      y += 12;
     }
 
     // ---- Ventas Diarias (últimos 14 días para no saturar) ----
     if (statsData.ventas_diarias?.length > 0) {
       const ultimos14 = statsData.ventas_diarias.slice(-14);
-      y = drawSectionTitle(doc, y, `Ventas Diarias (últimos ${ultimos14.length} días)`);
+      y = drawSectionTitle(doc, y, `Ventas Diarias (últimos ${ultimos14.length} días)`, { badge: '3' });
       y = drawTable(doc, y,
         ['Fecha', 'Pedidos', 'Ventas'],
-        [80, 100, 150],
+        [140, 130, 220],
         ultimos14.map(v => ([
           fmtDate(v.fecha),
           String(v.total_pedidos ?? 0),
@@ -187,7 +199,6 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           ],
         }
       );
-      y += 12;
     }
 
     // ---- Ventas por Hora (solo Premium) ----
@@ -195,10 +206,10 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
       const top12 = [...statsData.ventas_por_hora]
         .sort((a, b) => Number(b.cantidad_pedidos || 0) - Number(a.cantidad_pedidos || 0))
         .slice(0, 12);
-      y = drawSectionTitle(doc, y, 'Ventas por Hora (Top 12 franjas)');
+      y = drawSectionTitle(doc, y, 'Ventas por Hora (Top 12 franjas)', { badge: '4' });
       y = drawTable(doc, y,
         ['Hora', 'Pedidos', 'Ventas'],
-        [80, 100, 150],
+        [220, 110, 175],
         top12.map(h => ([
           `${String(h.hora).padStart(2, '0')}:00 — ${String(h.hora).padStart(2, '0')}:59`,
           String(h.cantidad_pedidos ?? 0),
@@ -212,15 +223,14 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           ],
         }
       );
-      y += 12;
     }
 
     // ---- Métodos de Pago ----
     if (statsData.metodos_pago?.length > 0) {
-      y = drawSectionTitle(doc, y, 'Métodos de Pago');
+      y = drawSectionTitle(doc, y, 'Métodos de Pago', { badge: '5' });
       y = drawTable(doc, y,
-        ['Método', 'Pedidos', 'Total', '%'],
-        [180, 80, 130, 70],
+        ['Método', 'Pedidos', 'Total', '% del total'],
+        [200, 100, 130, 75],
         statsData.metodos_pago.map(m => ([
           String(m.metodo_pago || 'OTRO').replace(/_/g, ' ').toUpperCase(),
           String(m.cantidad ?? 0),
@@ -236,15 +246,14 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           ],
         }
       );
-      y += 12;
     }
 
     // ---- Cupones más usados (solo Premium) ----
     if (statsData.cupones_mas_utilizados?.length > 0) {
-      y = drawSectionTitle(doc, y, 'Cupones Más Utilizados');
+      y = drawSectionTitle(doc, y, 'Cupones Más Utilizados', { badge: '6' });
       y = drawTable(doc, y,
         ['#', 'Código', 'Descuento', 'Usos', 'Total descontado'],
-        [40, 100, 80, 70, 150],
+        [40, 145, 100, 80, 140],
         statsData.cupones_mas_utilizados.slice(0, 10).map((c, idx) => ([
           String(idx + 1),
           c.codigo || '—',
@@ -293,16 +302,17 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
       });
     }
     if (kpisOperativos.length > 0) {
-      y = drawKpiGrid(doc, y + 8, kpisOperativos);
+      y = drawSectionTitle(doc, y, 'Métricas Operativas', { badge: '7' });
+      y = drawKpiGrid(doc, y, kpisOperativos);
     }
 
     // ---- Distribución del valor del pedido (histograma) ----
     if (statsData.distribucion_ticket?.length > 0) {
       const totalDist = statsData.distribucion_ticket.reduce((a, d) => a + Number(d.cantidad_pedidos || 0), 0);
-      y = drawSectionTitle(doc, y, 'Distribución del Valor del Pedido (últimos 30 días)');
+      y = drawSectionTitle(doc, y, 'Distribución del Valor del Pedido (últimos 30 días)', { badge: '8' });
       y = drawTable(doc, y,
         ['Rango de ticket', 'Pedidos', 'Total ventas', '% del total'],
-        [160, 80, 130, 100],
+        [200, 100, 130, 75],
         statsData.distribucion_ticket.map(d => {
           const cant = Number(d.cantidad_pedidos || 0);
           const pct = totalDist > 0 ? ((cant / totalDist) * 100).toFixed(1) : '0.0';
@@ -317,15 +327,14 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           ],
         }
       );
-      y += 12;
     }
 
     // ---- Productos sin ventas (dormidos) ----
     if (statsData.productos_sin_ventas?.length > 0) {
-      y = drawSectionTitle(doc, y, 'Productos Sin Ventas (30+ días)');
+      y = drawSectionTitle(doc, y, 'Productos Sin Ventas (30+ días)', { badge: '9' });
       y = drawTable(doc, y,
         ['#', 'Producto', 'Precio', 'Última venta', 'Días sin venta'],
-        [40, 200, 80, 100, 80],
+        [40, 200, 85, 100, 80],
         statsData.productos_sin_ventas.slice(0, 20).map((p, idx) => ([
           String(idx + 1),
           p.nombre || '—',
@@ -334,15 +343,14 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
           String(p.dias_sin_venta ?? 0),
         ])),
       );
-      y += 12;
     }
 
     // ---- Combinaciones frecuentes (pares de productos) ----
     if (statsData.combinaciones_frecuentes?.length > 0) {
-      y = drawSectionTitle(doc, y, 'Combinaciones Frecuentes (últimos 60 días)');
+      y = drawSectionTitle(doc, y, 'Combinaciones Frecuentes (últimos 60 días)', { badge: '10' });
       y = drawTable(doc, y,
         ['#', 'Producto A', 'Producto B', 'Veces juntos'],
-        [40, 220, 220, 100],
+        [40, 200, 200, 65],
         statsData.combinaciones_frecuentes.map((c, idx) => ([
           String(idx + 1),
           c.producto_a || '—',
@@ -375,7 +383,7 @@ export async function generateOrdersPDF(pedidos, restaurante, filtros = {}) {
     const chunks = [];
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 50, bottom: 60, left: 40, right: 40 },
+      margins: { top: 50, bottom: 50, left: PAGE_LEFT, right: PAGE_RIGHT },
       bufferPages: true,
     });
 
@@ -387,34 +395,41 @@ export async function generateOrdersPDF(pedidos, restaurante, filtros = {}) {
     const subtitle = buildSubtitle(restaurante);
     const filterLabel = filtros?.label || 'Todos los estados — Top 100';
 
-    // Encabezado
-    doc.fillColor(COLOR_PRIMARY).fontSize(22).font('Helvetica-Bold')
-      .text('GigantYa — Reporte de Pedidos', { align: 'center' });
+    // Encabezado (portada con banda naranja)
+    doc.rect(0, 0, 595, 90).fillColor(COLOR_PRIMARY).fill();
+    doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold')
+      .text('Reporte de Pedidos', PAGE_LEFT, 22, { width: PAGE_WIDTH, align: 'left' });
+    doc.fillColor('#FFFFFF').fontSize(14).font('Helvetica')
+      .text('GigantYa', PAGE_LEFT, 50, { width: PAGE_WIDTH, align: 'left' });
 
-    doc.fillColor(COLOR_TEXT).fontSize(13).font('Helvetica')
-      .text(restNombre, { align: 'center' });
-
+    let y = 110;
+    doc.fillColor(COLOR_TEXT).fontSize(15).font('Helvetica-Bold')
+      .text(restNombre, PAGE_LEFT, y);
+    y = doc.y + 4;
     if (subtitle) {
-      doc.fillColor(COLOR_MUTED).fontSize(9)
-        .text(subtitle, { align: 'center' });
+      doc.fillColor(COLOR_MUTED).fontSize(9).font('Helvetica')
+        .text(subtitle, PAGE_LEFT, y);
+      y = doc.y + 2;
     }
+    doc.fillColor(COLOR_MUTED).fontSize(9).font('Helvetica')
+      .text(`Filtros: ${filterLabel}`, PAGE_LEFT, y);
+    y = doc.y + 2;
+    doc.fillColor(COLOR_MUTED).fontSize(9).font('Helvetica')
+      .text(`Emitido: ${fmtDateTime()}`, PAGE_LEFT, y);
+    y = doc.y + 8;
 
-    doc.fillColor(COLOR_MUTED).fontSize(9)
-      .text(`Filtros: ${filterLabel}`, { align: 'center' })
-      .text(`Emitido: ${fmtDateTime()}`, { align: 'center' });
-
-    doc.moveTo(40, doc.y + 6).lineTo(570, doc.y + 6).strokeColor(COLOR_PRIMARY).lineWidth(1.2).stroke();
+    doc.moveTo(PAGE_LEFT, y).lineTo(PAGE_LEFT + PAGE_WIDTH, y)
+      .strokeColor(COLOR_PRIMARY).lineWidth(1.0).stroke();
+    y += 14;
 
     // Tabla
-    let y = doc.y + 14;
-
-    // Calcular totales
     const totalCantidad = pedidos.length;
     const sumaTotal = pedidos.reduce((a, p) => a + Number(p.total || 0), 0);
 
+    y = drawSectionTitle(doc, y, 'Listado de Pedidos', { badge: '📋' });
     y = drawTable(doc, y,
       ['#', 'Cliente', 'Estado', 'Total', 'Fecha'],
-      [50, 180, 110, 90, 110],
+      [40, 200, 110, 85, 70],
       pedidos.map((p, idx) => ([
         String(idx + 1),
         p.cliente_nombre || 'N/A',
@@ -443,30 +458,61 @@ export async function generateOrdersPDF(pedidos, restaurante, filtros = {}) {
 // HELPERS PARA PDF
 // =====================================================
 
+// Ancho y posición horizontal del contenido (A4 = 595 pts de ancho).
+// Antes estaba en 40/40 → tabla de 530 pts. Ahora 45/45 → tabla de 505 pts
+// con más respiración lateral y un content_box bien definido.
+const PAGE_LEFT  = 45;
+const PAGE_RIGHT = 45;
+const PAGE_WIDTH = 595 - PAGE_LEFT - PAGE_RIGHT; // 505
+const SECTION_GAP = 18; // aire entre secciones
+const FOOTER_RESERVE = 60; // espacio reservado al final de la página para el footer
+
 /**
- * Dibuja el título de una sección y devuelve el y siguiente.
- * Si no hay espacio, crea nueva página.
+ * Dibuja el título de una sección con un badge opcional a la izquierda y una
+ * línea divisoria debajo. Maneja paginación automáticamente.
+ *
+ * drawSectionTitle(doc, y, 'Productos Más Vendidos', { badge: '1' })
  */
-function drawSectionTitle(doc, y, title) {
-  ensureSpace(doc, y, 30);
-  if (y !== doc.y) y = doc.y; // ensureSpace pudo haber avanzado de página
-  doc.fillColor(COLOR_PRIMARY).font('Helvetica-Bold').fontSize(13)
-    .text(title, 40, y);
-  y = doc.y + 6;
-  return y;
+function drawSectionTitle(doc, y, title, opts = {}) {
+  const { badge = null } = opts;
+  const needed = 50; // badge(18) + título(~22) + aire bajo línea(10)
+  ensureSpace(doc, y, needed);
+  if (y !== doc.y) y = doc.y;
+
+  // Badge opcional a la izquierda (cuadradito naranja con número/texto blanco)
+  let titleX = PAGE_LEFT;
+  if (badge != null) {
+    const badgeW = 22;
+    const badgeH = 18;
+    doc.rect(PAGE_LEFT, y - 2, badgeW, badgeH).fillColor(COLOR_PRIMARY).fill();
+    doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10)
+      .text(String(badge), PAGE_LEFT, y + 2, { width: badgeW, align: 'center' });
+    titleX = PAGE_LEFT + badgeW + 8;
+  }
+
+  // Título (más grande que antes: 15 vs 13)
+  doc.fillColor(COLOR_PRIMARY).font('Helvetica-Bold').fontSize(15)
+    .text(String(title), titleX, y, { width: PAGE_WIDTH - (titleX - PAGE_LEFT) });
+
+  // Línea divisoria debajo del título
+  const lineY = doc.y + 5;
+  doc.moveTo(PAGE_LEFT, lineY).lineTo(PAGE_LEFT + PAGE_WIDTH, lineY)
+    .strokeColor(COLOR_PRIMARY).lineWidth(0.6).stroke();
+
+  return lineY + 14; // aire bajo la línea
 }
 
 /**
- * Dibuja una grilla de KPIs (4 columnas). `y` es la posición actual.
- * Devuelve el y siguiente.
+ * Dibuja una grilla de KPIs (4 columnas).
+ * Celdas más grandes (58 vs 42) con barra de color lateral y padding generoso.
  */
 function drawKpiGrid(doc, y, kpis) {
-  ensureSpace(doc, y, 50);
+  ensureSpace(doc, y, 70);
 
-  const startX = 40;
-  const cellW = 130;
-  const cellH = 42;
-  const gap = 2;
+  const startX = PAGE_LEFT;
+  const gap = 6;
+  const cellW = (PAGE_WIDTH - 3 * gap) / 4; // 4 columnas con 3 gaps
+  const cellH = 60;
 
   kpis.forEach((kpi, idx) => {
     const col = idx % 4;
@@ -474,21 +520,24 @@ function drawKpiGrid(doc, y, kpis) {
     const x = startX + col * (cellW + gap);
     const yy = y + row * (cellH + gap);
 
-    // Borde y fondo suave
+    // Fondo suave
     doc.rect(x, yy, cellW, cellH).fillColor(COLOR_BG_SOFT).fill();
+    // Borde
     doc.rect(x, yy, cellW, cellH).strokeColor(COLOR_RULE).lineWidth(0.5).stroke();
+    // Barra de color a la izquierda (3 pts)
+    doc.rect(x, yy, 3, cellH).fillColor(kpi.color || COLOR_PRIMARY).fill();
 
-    // Label
+    // Label (uppercase, gris)
     doc.fillColor(COLOR_MUTED).font('Helvetica').fontSize(8)
-      .text(String(kpi.label).toUpperCase(), x + 8, yy + 6, { width: cellW - 16 });
+      .text(String(kpi.label).toUpperCase(), x + 10, yy + 10, { width: cellW - 18 });
 
-    // Valor
-    doc.fillColor(kpi.color || COLOR_TEXT).font('Helvetica-Bold').fontSize(14)
-      .text(String(kpi.value), x + 8, yy + 20, { width: cellW - 16, ellipsis: true });
+    // Valor (más grande: 16 vs 14)
+    doc.fillColor(kpi.color || COLOR_TEXT).font('Helvetica-Bold').fontSize(16)
+      .text(String(kpi.value), x + 10, yy + 28, { width: cellW - 18, ellipsis: true });
   });
 
   const rows = Math.ceil(kpis.length / 4);
-  return y + rows * (cellH + gap) + 4;
+  return y + rows * (cellH + gap) + SECTION_GAP;
 }
 
 /**
@@ -501,18 +550,25 @@ function drawKpiGrid(doc, y, kpis) {
  * totalsRow: array opcional con la fila de totales (mismo #cols)
  */
 function drawTable(doc, y, columns, colWidths, rows, { totalsRow = null } = {}) {
-  const rowHeight = 22;
-  const headerHeight = 26;
+  const rowHeight = 28;       // era 22 → más aire vertical por fila
+  const headerHeight = 32;    // era 26 → header más prominente
   const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+  // Recentrar la tabla si su ancho es menor que el área de contenido (PAGE_WIDTH=505)
+  const offsetX = (totalWidth < PAGE_WIDTH)
+    ? PAGE_LEFT + Math.floor((PAGE_WIDTH - totalWidth) / 2)
+    : PAGE_LEFT;
+
+  // Detecta columnas cuyo contenido debe alinearse a la derecha
+  const isNumericCol = (col) => /[Tt]otal|[Pp]edidos|[Ff]echa|[Cc]antidad|[Vv]entas|['"]\$|[Dd]ías|[Vv]eces|[Uu]sos|[Pp]recio|[Tt]iempo|[Pp]orcentaje|[Ii]d/i.test(col);
 
   const drawHeader = (yy) => {
-    doc.rect(40, yy, totalWidth, headerHeight).fillColor(COLOR_PRIMARY).fill();
+    doc.rect(offsetX, yy, totalWidth, headerHeight).fillColor(COLOR_PRIMARY).fill();
     doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9);
-    let x = 40;
+    let x = offsetX;
     columns.forEach((col, idx) => {
-      doc.text(String(col), x + 6, yy + 8, {
-        width: colWidths[idx] - 12,
-        align: idx >= 2 && /[Tt]otal|[Pp]edidos|Fecha|[Cc]antidad|[Vv]entas|['"]\$/.test(col) ? 'right' : 'left',
+      doc.text(String(col), x + 10, yy + 11, {
+        width: colWidths[idx] - 20,
+        align: idx >= 1 && isNumericCol(col) ? 'right' : 'left',
         ellipsis: true,
       });
       x += colWidths[idx];
@@ -527,7 +583,7 @@ function drawTable(doc, y, columns, colWidths, rows, { totalsRow = null } = {}) 
 
   rows.forEach((row, rIdx) => {
     // ¿necesita paginación?
-    if (curY + rowHeight > doc.page.height - 70) {
+    if (curY + rowHeight > doc.page.height - FOOTER_RESERVE) {
       doc.addPage();
       curY = 50;
       curY = drawHeader(curY);
@@ -535,15 +591,16 @@ function drawTable(doc, y, columns, colWidths, rows, { totalsRow = null } = {}) 
 
     // Filas alternadas
     if (rIdx % 2 === 1) {
-      doc.rect(40, curY, totalWidth, rowHeight).fillColor(COLOR_BG_SOFT).fill();
+      doc.rect(offsetX, curY, totalWidth, rowHeight).fillColor(COLOR_BG_SOFT).fill();
     }
 
     // Celdas
-    let x = 40;
+    let x = offsetX;
     row.forEach((cell, cIdx) => {
-      const isNumeric = cIdx >= 2;
-      doc.fillColor(COLOR_TEXT).text(String(cell ?? '—'), x + 6, curY + 6, {
-        width: colWidths[cIdx] - 12,
+      const headerName = columns[cIdx] || '';
+      const isNumeric = cIdx >= 1 && isNumericCol(headerName);
+      doc.fillColor(COLOR_TEXT).text(String(cell ?? '—'), x + 10, curY + 9, {
+        width: colWidths[cIdx] - 20,
         align: isNumeric ? 'right' : 'left',
         ellipsis: true,
       });
@@ -551,44 +608,45 @@ function drawTable(doc, y, columns, colWidths, rows, { totalsRow = null } = {}) 
     });
 
     // Línea inferior suave
-    doc.moveTo(40, curY + rowHeight).lineTo(40 + totalWidth, curY + rowHeight)
-      .strokeColor(COLOR_RULE).lineWidth(0.4).stroke();
+    doc.moveTo(offsetX, curY + rowHeight).lineTo(offsetX + totalWidth, curY + rowHeight)
+      .strokeColor(COLOR_RULE).lineWidth(0.3).stroke();
 
     curY += rowHeight;
   });
 
   // Fila de totales
   if (totalsRow) {
-    if (curY + rowHeight + 4 > doc.page.height - 70) {
+    if (curY + rowHeight + 6 > doc.page.height - FOOTER_RESERVE) {
       doc.addPage();
       curY = 50;
       curY = drawHeader(curY);
     }
 
-    doc.rect(40, curY, totalWidth, rowHeight + 2).fillColor(COLOR_PRIMARY).fill();
+    doc.rect(offsetX, curY, totalWidth, rowHeight + 4).fillColor(COLOR_PRIMARY).fill();
     doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9);
-    let x = 40;
+    let x = offsetX;
     totalsRow.forEach((cell, cIdx) => {
-      const isNumeric = cIdx >= 2;
-      doc.text(String(cell ?? ''), x + 6, curY + 7, {
-        width: colWidths[cIdx] - 12,
+      const headerName = columns[cIdx] || '';
+      const isNumeric = cIdx >= 1 && isNumericCol(headerName);
+      doc.text(String(cell ?? ''), x + 10, curY + 10, {
+        width: colWidths[cIdx] - 20,
         align: isNumeric ? 'right' : 'left',
         ellipsis: true,
       });
       x += colWidths[cIdx];
     });
-    curY += rowHeight + 2;
+    curY += rowHeight + 4;
   }
 
   doc.fillColor(COLOR_TEXT); // reset
-  return curY + 4;
+  return curY + SECTION_GAP;
 }
 
 /**
  * Asegura que haya al menos `needed` puntos de espacio vertical; si no, agrega página.
  */
 function ensureSpace(doc, y, needed) {
-  if (y + needed > doc.page.height - 70) {
+  if (y + needed > doc.page.height - FOOTER_RESERVE) {
     doc.addPage();
   }
 }
@@ -600,14 +658,15 @@ function drawPdfFooter(doc, text) {
   const range = doc.bufferedPageRange(); // { start, count }
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
-    const y = doc.page.height - 40;
-    doc.moveTo(40, y - 6).lineTo(570, y - 6).strokeColor(COLOR_RULE).lineWidth(0.4).stroke();
+    const y = doc.page.height - 35;
+    doc.moveTo(PAGE_LEFT, y - 8).lineTo(PAGE_LEFT + PAGE_WIDTH, y - 8)
+      .strokeColor(COLOR_RULE).lineWidth(0.3).stroke();
 
     doc.fillColor(COLOR_MUTED).font('Helvetica').fontSize(8)
-      .text(text, 40, y, { width: 360, align: 'left' });
+      .text(text, PAGE_LEFT, y, { width: 320, align: 'left' });
 
     doc.fillColor(COLOR_MUTED).font('Helvetica').fontSize(8)
-      .text(`Página ${i + 1} de ${range.count}`, 400, y, { width: 170, align: 'right' });
+      .text(`Página ${i + 1} de ${range.count}`, PAGE_LEFT + PAGE_WIDTH - 120, y, { width: 120, align: 'right' });
   }
 }
 
