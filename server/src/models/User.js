@@ -182,7 +182,7 @@ export async function changePassword(id, nueva_contrasena) {
  */
 export async function getUserProfile(id) {
   const usuario = await getUserById(id);
-  
+
   if (!usuario) return null;
 
   if (usuario.tipo_usuario === 'restaurante') {
@@ -196,6 +196,51 @@ export async function getUserProfile(id) {
   return usuario;
 }
 
+/**
+ * Marcar la última actividad del usuario. Pensado para llamarse como
+ * fire-and-forget desde el middleware `verifyToken`: el caller NO debe
+ * `await` la promesa, y debe encadenarle un `.catch()` para evitar
+ * uncaught rejections si la DB está saturada.
+ *
+ * Devolver la promesa (en vez de `void`) permite al caller decidir si
+ * la espera o no. En la práctica el middleware la descarta.
+ */
+export function touchLastActivity(userId) {
+  return query(
+    'UPDATE usuarios SET ultima_actividad = NOW() WHERE id = ?',
+    [userId]
+  );
+}
+
+/**
+ * Listar usuarios activos en los últimos N minutos. Usado por el endpoint
+ * admin `/admin/users/online` para mostrar el panel de "Usuarios Online".
+ *
+ * Devuelve `hace_segundos` como BIGINT crudo de MySQL — el controller es
+ * responsable de aplicar `Number(...)` antes de serializar a JSON para
+ * evitar concatenación de strings en el cliente.
+ *
+ * @param {number} minutesWindow  Ventana de actividad. Default 5 min.
+ *                                El controller clampea entre 1 y 60.
+ */
+export async function getOnlineUsers(minutesWindow = 5) {
+  return query(
+    `SELECT id,
+            nombre,
+            email,
+            tipo_usuario,
+            estado,
+            ultima_actividad,
+            TIMESTAMPDIFF(SECOND, ultima_actividad, NOW()) AS hace_segundos
+       FROM usuarios
+      WHERE ultima_actividad IS NOT NULL
+        AND ultima_actividad > (NOW() - INTERVAL ? MINUTE)
+        AND estado = 'activo'
+      ORDER BY ultima_actividad DESC`,
+    [minutesWindow]
+  );
+}
+
 export default {
   createUser,
   createUserWithConnection,
@@ -204,6 +249,8 @@ export default {
   verifyPassword,
   updateUser,
   changePassword,
-  getUserProfile
+  getUserProfile,
+  touchLastActivity,
+  getOnlineUsers
 };
 

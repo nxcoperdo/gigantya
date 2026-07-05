@@ -144,6 +144,9 @@ export const adminService = {
   updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}/status`, { estado: status }),
   // User management
   getUsers: () => api.get('/admin/users'),
+  // Usuarios online (ventana default 5 min). `params.minutos` permite ajustar
+  // la ventana entre 1 y 60.
+  getOnlineUsers: (params = {}) => api.get('/admin/users/online', { params }),
   createUser: (data) => api.post('/admin/users', data),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { estado: status }),

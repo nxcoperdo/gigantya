@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
@@ -23,6 +23,10 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState([]);
+  // Usuarios activos en los últimos 5 min. Se carga junto con el resto en
+  // `loadData()` y se refresca cada 30s con `setInterval` para mantener
+  // la vista "en vivo" sin que el admin tenga que recargar.
+  const [onlineUsers, setOnlineUsers] = useState([]);
 
   // UI States
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -59,7 +63,7 @@ export default function AdminDashboardPage() {
     try {
       setError('');
       setLoading(true);
-      const [statsRes, restaurantsRes, pendingRes, usersRes, ordersRes, analyticsRes, categoriesRes] = await Promise.all([
+      const [statsRes, restaurantsRes, pendingRes, usersRes, ordersRes, analyticsRes, categoriesRes, onlineRes] = await Promise.all([
         adminService.getStats(),
         adminService.getRestaurants(),
         adminService.getPendingRestaurants(),
@@ -67,6 +71,8 @@ export default function AdminDashboardPage() {
         adminService.getOrders(),
         adminService.getAnalytics(),
         adminService.getCategories(),
+        // Online users: si falla, no bloqueamos la carga principal
+        adminService.getOnlineUsers().catch(() => ({ data: { total: 0, usuarios: [] } })),
       ]);
 
       setStats(statsRes.data?.estadisticas || null);
@@ -76,6 +82,7 @@ export default function AdminDashboardPage() {
       setOrders(ordersRes.data?.pedidos || []);
       setAnalytics(analyticsRes.data?.analytics || { topRestaurants: [], topProducts: [] });
       setCategories(categoriesRes.data?.categorias || []);
+      setOnlineUsers(onlineRes.data?.usuarios || []);
     } catch (err) {
       console.error('Error cargando panel admin:', err);
       setError(err.response?.data?.error || 'No se pudo cargar la información del panel');
@@ -85,9 +92,33 @@ export default function AdminDashboardPage() {
     }
   };
 
+  /**
+   * Carga SOLO la lista de usuarios online. Pensado para llamarse desde el
+   * setInterval de auto-refresh (cada 30s) y desde el botón Refrescar. Si
+   * falla, dejamos la lista anterior en pantalla en vez de tirar un error
+   * que oculte el resto del panel.
+   */
+  const loadOnlineUsers = async () => {
+    try {
+      const res = await adminService.getOnlineUsers();
+      setOnlineUsers(res.data?.usuarios || []);
+    } catch (err) {
+      console.error('Error refrescando usuarios online:', err);
+    }
+  };
+
+  // Auto-refresh de online cada 30s. Limpia el interval al desmontar o
+  // cuando el admin sale del tab overview. Se monta siempre que el
+  // componente está activo porque el panel puede estar visible en
+  // cualquier tab; el costo es despreciable (1 query de ~5ms).
+  useEffect(() => {
+    const id = setInterval(loadOnlineUsers, 30000);
+    return () => clearInterval(id);
+  }, []);
+
   const refresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await Promise.all([loadData(), loadOnlineUsers()]);
   };
 
   const pendingCount = useMemo(() => pendingRestaurants.length, [pendingRestaurants]);
@@ -492,6 +523,72 @@ export default function AdminDashboardPage() {
                     <InfoRow label="Pendientes" value={pendingCount} />
                     <InfoRow label="Aprobados" value={stats?.restaurantes_aprobados ?? 0} />
                     <InfoRow label="Total Usuarios" value={stats?.usuarios_totales ?? 0} />
+                  </div>
+                </section>
+
+                {/* Usuarios Online — vista lateral compacta. Auto-refresca cada 30s */}
+                <section className="card-lg overflow-hidden">
+                  <div className="p-4 border-b border-[color:var(--border-subtle)] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h3 className="text-base font-bold text-[color:var(--text-primary)] truncate">Usuarios Online</h3>
+                      <span
+                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full whitespace-nowrap"
+                        style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
+                        title="Activos en los últimos 5 minutos"
+                      >
+                        {onlineUsers.length} en línea
+                      </span>
+                    </div>
+                    <Activity className="text-primary flex-shrink-0" size={20} />
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {onlineUsers.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-[color:var(--text-muted)]">
+                        Nadie conectado en los últimos 5 minutos.
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-[color:var(--border-subtle)]">
+                        {onlineUsers.map((u) => {
+                          const rol = u.tipo_usuario;
+                          const hace = Number(u.hace_segundos) || 0;
+                          const haceLabel =
+                            hace < 60
+                              ? `hace ${hace}s`
+                              : hace < 3600
+                              ? `hace ${Math.floor(hace / 60)}m`
+                              : `hace ${Math.floor(hace / 3600)}h`;
+                          // Chip de color por rol para identificar de un vistazo
+                          const rolStyle =
+                            rol === 'admin'
+                              ? { backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }
+                              : rol === 'restaurante'
+                              ? { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
+                              : { backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' };
+                          return (
+                            <li key={u.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-[color:var(--bg-muted)]/40 transition-colors">
+                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                                {(u.nombre || '?').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-semibold text-sm text-[color:var(--text-primary)] truncate">{u.nombre}</p>
+                                  <span
+                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                    style={rolStyle}
+                                  >
+                                    {rol}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-[color:var(--text-muted)] truncate">{u.email}</p>
+                              </div>
+                              <span className="text-[10px] text-[color:var(--text-muted)] whitespace-nowrap flex-shrink-0">
+                                {haceLabel}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
                 </section>
               </aside>

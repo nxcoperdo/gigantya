@@ -926,6 +926,36 @@ export async function getRestaurantSubscriptionHistory(req, res) {
   }
 }
 
+/**
+ * Listar usuarios online (con actividad en los últimos N minutos).
+ * La marca `ultima_actividad` se actualiza de forma asíncrona en el
+ * middleware `verifyToken`, así que esta función solo LEE. El query param
+ * `minutos` se clampea entre 1 y 60 para evitar valores absurdos.
+ */
+export async function getOnlineUsers(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden ver esto' });
+    }
+
+    const ventanaMin = Math.max(1, Math.min(60, parseInt(req.query.minutos, 10) || 5));
+    const usuarios = await UserModel.getOnlineUsers(ventanaMin);
+
+    res.json({
+      ventana_minutos: ventanaMin,
+      total: usuarios.length,
+      usuarios: usuarios.map(u => ({
+        ...u,
+        // Number() para que `hace_segundos` viaje como number en JSON
+        // (MySQL lo devuelve como string por ser BIGINT derivado de TIMESTAMPDIFF)
+        hace_segundos: Number(u.hace_segundos) || 0,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error listando usuarios online', detalles: error.message });
+  }
+}
+
 export default {
   getAllRestaurants,
   getPendingRestaurants,
@@ -950,4 +980,5 @@ export default {
   updateRestaurantEsComidaRapida,
   updateRestaurantEsRestaurante,
   updateRestaurantEsPanaderiaPasteleria,
+  getOnlineUsers,
 };

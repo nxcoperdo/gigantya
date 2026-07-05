@@ -101,7 +101,11 @@ async function _deleteBarrio(req, res) {
 /**
  * Rutas de Usuarios (Gestión Total)
  */
+// IMPORTANTE: la ruta específica '/users/online' debe ir ANTES de '/users/:id'
+// porque Express matchea por orden. Si se pone después, req.params.id = "online"
+// y `adminController.updateUser` recibe un id no numérico.
 router.get('/users', verifyToken, requireAdmin, adminController.getAllUsers);
+router.get('/users/online', verifyToken, requireAdmin, adminController.getOnlineUsers);
 router.post('/users', verifyToken, requireAdmin, adminController.adminCreateUser);
 router.put('/users/:id/status', verifyToken, requireAdmin, adminController.updateUserStatus);
 router.put('/users/:id', verifyToken, requireAdmin, adminController.updateUser);

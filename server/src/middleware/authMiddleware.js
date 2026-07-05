@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import * as UserModel from '../models/User.js';
+import { query } from '../config/database.js';
 
 /**
  * Middleware para verificar token JWT
@@ -40,6 +41,17 @@ export async function verifyToken(req, res, next) {
       // salvo si viene undefined (defensa por si la query devolvió algo raro).
       tipo_usuario: usuario.tipo_usuario || decoded.tipo_usuario,
     };
+
+    // Tracking de "online": actualiza `ultima_actividad` SIN `await` para no
+    // bloquear la respuesta. Si la DB está saturada, el `.catch()` evita que
+    // un unhandled rejection tumbe el proceso. La query compite por un slot
+    // del pool pero como no esperamos, el caller de este middleware no se ve
+    // afectado. Si en producción el `processlist` muestra acumulación, agregar
+    // throttle en memoria (1 UPDATE por usuario por minuto) — ver
+    // `gigantya-pending-improvements.md`.
+    query('UPDATE usuarios SET ultima_actividad = NOW() WHERE id = ?', [decoded.id])
+      .catch(err => console.error('[online] No se pudo actualizar ultima_actividad:', err.message));
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
