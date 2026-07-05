@@ -340,6 +340,43 @@ async function main() {
       console.log('     No hay datos de tendencias');
     }
 
+    // Métricas premium nuevas
+    console.log('\n   Métricas Operativas:');
+    console.log(`     - Tasa de cancelación: ${premiumStats.tasa_cancelacion?.porcentaje ?? 0}% (${premiumStats.tasa_cancelacion?.total_cancelados ?? 0}/${premiumStats.tasa_cancelacion?.total_pedidos ?? 0})`);
+    console.log(`     - Items por pedido: ${premiumStats.tamano_promedio_carrito ?? 0}`);
+    if (premiumStats.tiempo_promedio_preparacion?.pedidos_contados > 0) {
+      console.log(`     - Tiempo prom. preparación: ${premiumStats.tiempo_promedio_preparacion.promedio_minutos} min (min: ${premiumStats.tiempo_promedio_preparacion.minimo_minutos}, max: ${premiumStats.tiempo_promedio_preparacion.maximo_minutos})`);
+    } else {
+      console.log('     - Tiempo prom. preparación: sin datos');
+    }
+
+    console.log('\n   Distribución del Ticket:');
+    if (premiumStats.distribucion_ticket?.length > 0) {
+      premiumStats.distribucion_ticket.forEach(d => {
+        console.log(`     - ${d.rango}: ${d.cantidad_pedidos} pedidos`);
+      });
+    } else {
+      console.log('     No hay datos de distribución');
+    }
+
+    console.log('\n   Productos Sin Ventas:');
+    if (premiumStats.productos_sin_ventas?.length > 0) {
+      premiumStats.productos_sin_ventas.slice(0, 5).forEach(p => {
+        console.log(`     - ${p.nombre}: ${p.dias_sin_venta} días sin venta`);
+      });
+    } else {
+      console.log('     Todos los productos activos han vendido recientemente 🎉');
+    }
+
+    console.log('\n   Combinaciones Frecuentes:');
+    if (premiumStats.combinaciones_frecuentes?.length > 0) {
+      premiumStats.combinaciones_frecuentes.slice(0, 5).forEach(c => {
+        console.log(`     - ${c.producto_a} + ${c.producto_b}: ${c.veces_juntos} veces`);
+      });
+    } else {
+      console.log('     No hay combinaciones frecuentes (pares con >= 2 apariciones)');
+    }
+
     // Paso 5: Validaciones
     console.log('\n═══════════════════════════════════════════════════════');
     console.log('✅ VALIDACIONES');
@@ -381,6 +418,30 @@ async function main() {
       {
         nombre: 'Evolución de ventas tiene datos',
         paso: premiumStats.evolucion_ventas?.este_mes?.total != null,
+      },
+      {
+        nombre: 'Tasa de cancelación es número >= 0',
+        paso: typeof premiumStats.tasa_cancelacion?.porcentaje === 'number' && premiumStats.tasa_cancelacion.porcentaje >= 0,
+      },
+      {
+        nombre: 'Tamaño promedio carrito es número >= 0',
+        paso: typeof premiumStats.tamano_promedio_carrito === 'number' && premiumStats.tamano_promedio_carrito >= 0,
+      },
+      {
+        nombre: 'Tiempo preparación tiene shape correcto',
+        paso: typeof premiumStats.tiempo_promedio_preparacion?.promedio_minutos === 'number',
+      },
+      {
+        nombre: 'Distribución ticket es array',
+        paso: Array.isArray(premiumStats.distribucion_ticket),
+      },
+      {
+        nombre: 'Productos sin ventas es array',
+        paso: Array.isArray(premiumStats.productos_sin_ventas),
+      },
+      {
+        nombre: 'Combinaciones frecuentes es array',
+        paso: Array.isArray(premiumStats.combinaciones_frecuentes),
       },
     ];
 

@@ -372,6 +372,130 @@ export async function getPremiumStats(restaurante_id) {
       LIMIT 10
     `, [restaurante_id]);
 
+    // ===== Métricas premium adicionales =====
+
+    // 1) Tasa de cancelación (% de pedidos cancelados sobre el total del período)
+    const [tasaCancelacion] = await conn.query(`
+      SELECT
+        COUNT(*) as total_pedidos,
+        SUM(CASE WHEN estado = 'Cancelado' THEN 1 ELSE 0 END) as total_cancelados
+      FROM pedidos
+      WHERE restaurante_id = ?
+        AND creado_en >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+    `, [restaurante_id]);
+    const tcTotal = Number(tasaCancelacion[0]?.total_pedidos || 0);
+    const tcCancelados = Number(tasaCancelacion[0]?.total_cancelados || 0);
+    const tasaCancelacionValor = tcTotal > 0
+      ? Number(((tcCancelados / tcTotal) * 100).toFixed(2))
+      : 0;
+
+    // 2) Tamaño promedio del carrito (items por pedido)
+    // Considera pedidos con al menos un item en los últimos 30 días.
+    const [tamanoCarrito] = await conn.query(`
+      SELECT AVG(items_por_pedido) as promedio
+      FROM (
+        SELECT pedido_id, SUM(cantidad) as items_por_pedido
+        FROM items_pedido ip
+        JOIN pedidos p ON ip.pedido_id = p.id
+        WHERE p.restaurante_id = ?
+          AND p.creado_en >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY pedido_id
+      ) as sub
+    `, [restaurante_id]);
+
+    // 3) Tiempo promedio de preparación (minutos entre creado_en y actualizado_en)
+    // Solo pedidos Entregados (los cancelados no cuentan como preparación efectiva).
+    // Como el servidor persiste timestamps en hora local Bogotá, el cálculo es directo.
+    const [tiempoPreparacion] = await conn.query(`
+      SELECT
+        AVG(TIMESTAMPDIFF(MINUTE, creado_en, actualizado_en)) as promedio_minutos,
+        MIN(TIMESTAMPDIFF(MINUTE, creado_en, actualizado_en)) as minimo_minutos,
+        MAX(TIMESTAMPDIFF(MINUTE, creado_en, actualizado_en)) as maximo_minutos,
+        COUNT(*) as pedidos_contados
+      FROM pedidos
+      WHERE restaurante_id = ?
+        AND estado = 'Entregado'
+        AND creado_en >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        AND actualizado_en IS NOT NULL
+        AND actualizado_en >= creado_en
+    `, [restaurante_id]);
+
+    // 4) Productos "dormidos" (disponibles, sin ventas en 30+ días)
+    // LEFT JOIN para encontrar productos que NO tienen items en el período.
+    const [productosSinVentas] = await conn.query(`
+      SELECT
+        p.id,
+        p.nombre,
+        p.precio,
+        p.creado_en as creado_en_producto,
+        COALESCE(MAX(ip.creado_en), NULL) as ultima_venta,
+        DATEDIFF(CURDATE(), COALESCE(MAX(ip.creado_en), p.creado_en)) as dias_sin_venta
+      FROM productos p
+      LEFT JOIN items_pedido ip
+        ON ip.producto_id = p.id
+        AND ip.creado_en >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      WHERE p.restaurante_id = ?
+        AND p.estado = 'activo'
+        AND p.disponible = 1
+      GROUP BY p.id, p.nombre, p.precio, p.creado_en
+      HAVING ultima_venta IS NULL OR dias_sin_venta >= 30
+      ORDER BY dias_sin_venta DESC
+      LIMIT 20
+    `, [restaurante_id]);
+
+    // 5) Combinaciones frecuentes (pares de productos que se piden juntos en el mismo pedido)
+    // Self-join sobre items_pedido con producto_a < producto_b para no duplicar.
+    // Solo cuenta pares que aparecen al menos 2 veces en los últimos 60 días.
+    const [combinacionesFrecuentes] = await conn.query(`
+      SELECT
+        pa.id as producto_a_id,
+        pa.nombre as producto_a,
+        pb.id as producto_b_id,
+        pb.nombre as producto_b,
+        COUNT(*) as veces_juntos
+      FROM items_pedido ia
+      JOIN items_pedido ib
+        ON ia.pedido_id = ib.pedido_id
+        AND ia.producto_id < ib.producto_id
+      JOIN productos pa ON ia.producto_id = pa.id
+      JOIN productos pb ON ib.producto_id = pb.id
+      JOIN pedidos ped ON ia.pedido_id = ped.id
+      WHERE ped.restaurante_id = ?
+        AND ped.creado_en >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+      GROUP BY pa.id, pa.nombre, pb.id, pb.nombre
+      HAVING veces_juntos >= 2
+      ORDER BY veces_juntos DESC
+      LIMIT 10
+    `, [restaurante_id]);
+
+    // 6) Distribución del valor del pedido (histograma de tickets)
+    // Rangos en pesos colombianos: 0-20k, 20k-50k, 50k-100k, 100k-200k, 200k+
+    const [distribucionTicket] = await conn.query(`
+      SELECT
+        CASE
+          WHEN total < 20000 THEN '0 - 20.000'
+          WHEN total < 50000 THEN '20.000 - 50.000'
+          WHEN total < 100000 THEN '50.000 - 100.000'
+          WHEN total < 200000 THEN '100.000 - 200.000'
+          ELSE '200.000+'
+        END as rango,
+        CASE
+          WHEN total < 20000 THEN 1
+          WHEN total < 50000 THEN 2
+          WHEN total < 100000 THEN 3
+          WHEN total < 200000 THEN 4
+          ELSE 5
+        END as orden,
+        COUNT(*) as cantidad_pedidos,
+        COALESCE(SUM(total), 0) as total_ventas
+      FROM pedidos
+      WHERE restaurante_id = ?
+        AND estado = 'Entregado'
+        AND creado_en >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      GROUP BY rango, orden
+      ORDER BY orden ASC
+    `, [restaurante_id]);
+
     // Convertir valores numéricos en los resultados premium
     const ventasPorHoraConvertidas = Array.isArray(ventasPorHora)
       ? ventasPorHora.map(v => ({
@@ -461,6 +585,35 @@ export async function getPremiumStats(restaurante_id) {
         })
       : [];
 
+    // Conversiones de las 6 métricas premium nuevas
+    const productosSinVentasConvertidos = Array.isArray(productosSinVentas)
+      ? productosSinVentas.map(p => ({
+          id: p.id,
+          nombre: p.nombre,
+          precio: Number(p.precio) || 0,
+          ultima_venta: p.ultima_venta, // puede ser null
+          dias_sin_venta: Number(p.dias_sin_venta) || 0,
+        }))
+      : [];
+
+    const combinacionesFrecuentesConvertidas = Array.isArray(combinacionesFrecuentes)
+      ? combinacionesFrecuentes.map(c => ({
+          producto_a_id: c.producto_a_id,
+          producto_a: c.producto_a,
+          producto_b_id: c.producto_b_id,
+          producto_b: c.producto_b,
+          veces_juntos: Number(c.veces_juntos) || 0,
+        }))
+      : [];
+
+    const distribucionTicketConvertida = Array.isArray(distribucionTicket)
+      ? distribucionTicket.map(d => ({
+          rango: d.rango,
+          cantidad_pedidos: Number(d.cantidad_pedidos) || 0,
+          total_ventas: Number(d.total_ventas) || 0,
+        }))
+      : [];
+
     const diaMasRentable = diasRentablesConvertidos.length > 0
       ? diasRentablesConvertidos.reduce((max, d) =>
           Number(d.total_ventas) > Number(max.total_ventas) ? d : max, diasRentablesConvertidos[0])
@@ -506,6 +659,26 @@ export async function getPremiumStats(restaurante_id) {
       productos_mayor_rentabilidad: productosRentabilidadConvertidos,
       // Tendencias
       tendencias_productos: tendenciasConvertidas,
+      // Métricas premium adicionales
+      tasa_cancelacion: {
+        porcentaje: tasaCancelacionValor,
+        total_pedidos: tcTotal,
+        total_cancelados: tcCancelados,
+      },
+      tamano_promedio_carrito: Number(tamanoCarrito[0]?.promedio)
+        ? Number(Number(tamanoCarrito[0].promedio).toFixed(2))
+        : 0,
+      tiempo_promedio_preparacion: {
+        promedio_minutos: tiempoPreparacion[0]?.promedio_minutos != null
+          ? Number(Number(tiempoPreparacion[0].promedio_minutos).toFixed(1))
+          : 0,
+        minimo_minutos: Number(tiempoPreparacion[0]?.minimo_minutos) || 0,
+        maximo_minutos: Number(tiempoPreparacion[0]?.maximo_minutos) || 0,
+        pedidos_contados: Number(tiempoPreparacion[0]?.pedidos_contados) || 0,
+      },
+      productos_sin_ventas: productosSinVentasConvertidos,
+      combinaciones_frecuentes: combinacionesFrecuentesConvertidas,
+      distribucion_ticket: distribucionTicketConvertida,
     };
   } finally {
     conn.release();

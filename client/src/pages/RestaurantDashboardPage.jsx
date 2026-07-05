@@ -1178,7 +1178,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
   }
 
   // Métricas premium bloqueadas (para mostrar el contador en el banner de upgrade)
-  const premiumMetricsCount = 11;
+  const premiumMetricsCount = 17;
 
   // Calcular porcentaje de métodos de pago
   const totalPedidosPago = statsData.metodos_pago?.reduce((sum, m) => sum + Number(m.cantidad), 0) || 0;
@@ -1260,7 +1260,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                 </span>
               </div>
               <p className="text-sm text-amber-800 mb-3">
-                Conocé tu <strong>hora pico</strong>, tus <strong>clientes recurrentes</strong>, la <strong>tasa de crecimiento mensual</strong>, el rendimiento de tus cupones y mucho más.
+                Conocé tu <strong>hora pico</strong>, tus <strong>clientes recurrentes</strong>, la <strong>tasa de cancelación</strong>, el <strong>tiempo promedio de preparación</strong>, los <strong>productos sin ventas</strong> y mucho más.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -1275,7 +1275,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                   ⭐ Actualizar a Premium · $200.000/mes
                 </button>
                 <span className="text-xs text-amber-800 font-medium">
-                  Menos de $7.000 al día · 12 métricas exclusivas
+                  Menos de $7.000 al día · 17 métricas exclusivas
                 </span>
               </div>
             </div>
@@ -1996,6 +1996,276 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
         </section>
       ) : (
         <PremiumLockedFeature title="Tendencias de Consumo" description="Productos en crecimiento y descenso" planActual={restaurant?.plan || 'basico'} />
+      )}
+
+      {/* ========== SOLO PREMIUM: TASA DE CANCELACIÓN ========== */}
+      {isPremium ? (
+        <section className="card-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertCircle className="text-primary" size={24} />
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Tasa de Cancelación</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+              <p className="text-xs text-[color:var(--text-muted)] mb-1">% Cancelados</p>
+              <p
+                className="text-3xl font-bold"
+                style={{ color: Number(statsData.tasa_cancelacion?.porcentaje || 0) > 10 ? 'var(--danger-text)' : 'var(--success-text)' }}
+              >
+                {Number(statsData.tasa_cancelacion?.porcentaje || 0).toFixed(1)}%
+              </p>
+              <p className="text-xs text-[color:var(--text-muted)] mt-1">
+                {Number(statsData.tasa_cancelacion?.porcentaje || 0) > 10 ? 'Atención: alta' : 'En rango aceptable'}
+              </p>
+            </div>
+            <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+              <p className="text-xs text-[color:var(--text-muted)] mb-1">Pedidos Cancelados</p>
+              <p className="text-3xl font-bold text-[color:var(--text-primary)]">
+                {statsData.tasa_cancelacion?.total_cancelados || 0}
+              </p>
+            </div>
+            <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+              <p className="text-xs text-[color:var(--text-muted)] mb-1">Total Pedidos (30d)</p>
+              <p className="text-3xl font-bold text-[color:var(--text-primary)]">
+                {statsData.tasa_cancelacion?.total_pedidos || 0}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <PremiumLockedFeature title="Tasa de Cancelación" description="% de pedidos cancelados en los últimos 30 días" planActual={restaurant?.plan || 'basico'} />
+      )}
+
+      {/* ========== SOLO PREMIUM: TAMAÑO PROMEDIO DEL CARRITO ========== */}
+      {isPremium ? (
+        <section className="card-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <ShoppingBag className="text-primary" size={24} />
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Tamaño Promedio del Carrito</h3>
+          </div>
+          <div className="flex items-baseline gap-3">
+            <span className="text-4xl font-bold text-primary">
+              {Number(statsData.tamano_promedio_carrito || 0).toFixed(1)}
+            </span>
+            <span className="text-sm text-[color:var(--text-secondary)]">
+              items por pedido en los últimos 30 días
+            </span>
+          </div>
+          <p className="text-xs text-[color:var(--text-muted)] mt-3">
+            {Number(statsData.tamano_promedio_carrito || 0) >= 3
+              ? '✅ Los clientes suelen pedir varios productos. Considerá ofrecer combos.'
+              : Number(statsData.tamano_promedio_carrito || 0) >= 2
+                ? 'ℹ️ Pedidos regulares. Podrías intentar up-selling.'
+                : '⚠️ Pedidos muy simples. Oportunidad para combos y sugerencias.'}
+          </p>
+        </section>
+      ) : (
+        <PremiumLockedFeature title="Tamaño Promedio del Carrito" description="Promedio de items por pedido" planActual={restaurant?.plan || 'basico'} />
+      )}
+
+      {/* ========== SOLO PREMIUM: TIEMPO PROMEDIO DE PREPARACIÓN ========== */}
+      {isPremium ? (
+        <section className="card-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <Clock3 className="text-primary" size={24} />
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Tiempo Promedio de Preparación</h3>
+          </div>
+          {Number(statsData.tiempo_promedio_preparacion?.pedidos_contados || 0) === 0 ? (
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay pedidos entregados en los últimos 30 días para calcular.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+                <p className="text-xs text-[color:var(--text-muted)] mb-1">Promedio</p>
+                <p className="text-3xl font-bold text-primary">
+                  {Number(statsData.tiempo_promedio_preparacion?.promedio_minutos || 0).toFixed(0)}
+                </p>
+                <p className="text-xs text-[color:var(--text-muted)] mt-1">minutos</p>
+              </div>
+              <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+                <p className="text-xs text-[color:var(--text-muted)] mb-1">Más rápido</p>
+                <p className="text-2xl font-bold text-[color:var(--success-text)]">
+                  {Number(statsData.tiempo_promedio_preparacion?.minimo_minutos || 0).toFixed(0)} min
+                </p>
+              </div>
+              <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+                <p className="text-xs text-[color:var(--text-muted)] mb-1">Más lento</p>
+                <p className="text-2xl font-bold text-[color:var(--danger-text)]">
+                  {Number(statsData.tiempo_promedio_preparacion?.maximo_minutos || 0).toFixed(0)} min
+                </p>
+              </div>
+              <div className="border border-[color:var(--border-default)] rounded-xl p-4 bg-[color:var(--bg-elevated)] text-center">
+                <p className="text-xs text-[color:var(--text-muted)] mb-1">Pedidos medidos</p>
+                <p className="text-2xl font-bold text-[color:var(--text-primary)]">
+                  {statsData.tiempo_promedio_preparacion?.pedidos_contados || 0}
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+      ) : (
+        <PremiumLockedFeature title="Tiempo de Preparación" description="Promedio, mínimo y máximo de minutos por pedido entregado" planActual={restaurant?.plan || 'basico'} />
+      )}
+
+      {/* ========== SOLO PREMIUM: DISTRIBUCIÓN DEL TICKET ========== */}
+      {isPremium ? (
+        <section className="card-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <BarChart3 className="text-primary" size={24} />
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Distribución del Valor del Pedido (30 días)</h3>
+          </div>
+          {statsData.distribucion_ticket?.length === 0 ? (
+            <p className="text-[color:var(--text-muted)] text-center py-8">No hay pedidos entregados en los últimos 30 días.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
+                  <tr>
+                    <th className="px-4 py-3">Rango de ticket</th>
+                    <th className="px-4 py-3 text-right">Pedidos</th>
+                    <th className="px-4 py-3 text-right">Total Ventas</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
+                  {(() => {
+                    const totalDist = statsData.distribucion_ticket.reduce((s, d) => s + Number(d.cantidad_pedidos || 0), 0);
+                    return statsData.distribucion_ticket.map((d, idx) => {
+                      const cant = Number(d.cantidad_pedidos || 0);
+                      const pct = totalDist > 0 ? ((cant / totalDist) * 100).toFixed(1) : '0.0';
+                      return (
+                        <tr key={`${d.rango}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                          <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{d.rango}</td>
+                          <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">
+                            {cant} <span className="text-xs text-[color:var(--text-muted)]">({pct}%)</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-bold text-primary">
+                            ${Number(d.total_ventas || 0).toLocaleString('es-CO')}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : (
+        <PremiumLockedFeature title="Distribución del Ticket" description="Histograma de rangos de valor del pedido" planActual={restaurant?.plan || 'basico'} />
+      )}
+
+      {/* ========== SOLO PREMIUM: PRODUCTOS SIN VENTAS ========== */}
+      {isPremium ? (
+        <section className="card-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Package className="text-primary" size={24} />
+              <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Productos Sin Ventas (30+ días)</h3>
+            </div>
+            {statsData.productos_sin_ventas?.length > 0 && (
+              <span
+                className="px-3 py-1 rounded-full text-xs font-bold"
+                style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}
+              >
+                💤 {statsData.productos_sin_ventas.length} sin vender
+              </span>
+            )}
+          </div>
+          {statsData.productos_sin_ventas?.length === 0 ? (
+            <p className="text-[color:var(--text-muted)] text-center py-8">Todos tus productos activos han vendido en los últimos 30 días. 🎉</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
+                  <tr>
+                    <th className="px-4 py-3">Producto</th>
+                    <th className="px-4 py-3 text-right">Precio</th>
+                    <th className="px-4 py-3">Última venta</th>
+                    <th className="px-4 py-3 text-right">Días sin venta</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[color:var(--border-subtle)]">
+                  {statsData.productos_sin_ventas.map((p, idx) => {
+                    const dias = Number(p.dias_sin_venta || 0);
+                    const bgColor = dias > 90 ? 'var(--danger-bg)' : dias > 60 ? 'var(--warning-bg)' : 'var(--info-bg)';
+                    const textColor = dias > 90 ? 'var(--danger-text)' : dias > 60 ? 'var(--warning-text)' : 'var(--info-text)';
+                    const borderColor = dias > 90 ? 'var(--danger-border)' : dias > 60 ? 'var(--warning-border)' : 'var(--info-border)';
+                    return (
+                      <tr key={`psv-${p.id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                        <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{p.nombre || 'Sin nombre'}</td>
+                        <td className="px-4 py-3 text-sm text-right text-[color:var(--text-secondary)]">
+                          ${Number(p.precio || 0).toLocaleString('es-CO')}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-[color:var(--text-secondary)]">
+                          {p.ultima_venta ? formatShortDate(new Date(p.ultima_venta)) : 'Nunca'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span
+                            className="px-2 py-1 rounded-full text-xs font-bold"
+                            style={{ backgroundColor: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
+                          >
+                            {dias} días
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : (
+        <PremiumLockedFeature title="Productos Sin Ventas" description="Productos disponibles que no se vendieron en 30+ días" planActual={restaurant?.plan || 'basico'} />
+      )}
+
+      {/* ========== SOLO PREMIUM: COMBINACIONES FRECUENTES ========== */}
+      {isPremium ? (
+        <section className="card-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <Users className="text-primary" size={24} />
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)]">Combinaciones Frecuentes (60 días)</h3>
+          </div>
+          {statsData.combinaciones_frecuentes?.length === 0 ? (
+            <p className="text-[color:var(--text-muted)] text-center py-8">Aún no hay combinaciones de productos suficientemente frecuentes.</p>
+          ) : (
+            <>
+              <p className="text-sm text-[color:var(--text-secondary)] mb-3">
+                💡 Estos pares de productos se piden juntos. Considerá armar combos para aumentar el ticket.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-[color:var(--bg-subtle)] text-xs uppercase text-[color:var(--text-muted)] font-bold">
+                    <tr>
+                      <th className="px-4 py-3">#</th>
+                      <th className="px-4 py-3">Producto A</th>
+                      <th className="px-4 py-3">Producto B</th>
+                      <th className="px-4 py-3 text-right">Veces juntos</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[color:var(--border-subtle)]">
+                    {statsData.combinaciones_frecuentes.map((c, idx) => (
+                      <tr key={`comb-${c.producto_a_id}-${c.producto_b_id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
+                        <td className="px-4 py-3 text-sm font-bold text-[color:var(--text-subtle)]">#{idx + 1}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{c.producto_a}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{c.producto_b}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span
+                            className="px-2 py-1 rounded-full text-xs font-bold"
+                            style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}
+                          >
+                            🔗 {c.veces_juntos} veces
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      ) : (
+        <PremiumLockedFeature title="Combinaciones Frecuentes" description="Pares de productos que los clientes suelen pedir juntos" planActual={restaurant?.plan || 'basico'} />
       )}
     </div>
   );

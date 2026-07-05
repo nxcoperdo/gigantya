@@ -264,6 +264,102 @@ export async function generateStatsPDF(statsData, restaurante, dateRange) {
       );
     }
 
+    // ============================================
+    // MÉTRICAS PREMIUM ADICIONALES
+    // ============================================
+
+    // ---- Tasa de cancelación + tamaño promedio carrito (KPIs) ----
+    const kpisOperativos = [];
+    if (statsData.tasa_cancelacion) {
+      const tc = statsData.tasa_cancelacion;
+      kpisOperativos.push({
+        label: 'Tasa de cancelación',
+        value: `${Number(tc.porcentaje || 0).toFixed(1)}%`,
+        color: Number(tc.porcentaje || 0) > 10 ? COLOR_RED : COLOR_GREEN,
+      });
+    }
+    if (typeof statsData.tamano_promedio_carrito === 'number') {
+      kpisOperativos.push({
+        label: 'Items por pedido',
+        value: `${Number(statsData.tamano_promedio_carrito).toFixed(1)}`,
+        color: COLOR_PRIMARY,
+      });
+    }
+    if (statsData.tiempo_promedio_preparacion?.pedidos_contados > 0) {
+      kpisOperativos.push({
+        label: 'Tiempo prom. preparación',
+        value: `${Number(statsData.tiempo_promedio_preparacion.promedio_minutos || 0).toFixed(0)} min`,
+        color: COLOR_BLUE,
+      });
+    }
+    if (kpisOperativos.length > 0) {
+      y = drawKpiGrid(doc, y + 8, kpisOperativos);
+    }
+
+    // ---- Distribución del valor del pedido (histograma) ----
+    if (statsData.distribucion_ticket?.length > 0) {
+      const totalDist = statsData.distribucion_ticket.reduce((a, d) => a + Number(d.cantidad_pedidos || 0), 0);
+      y = drawSectionTitle(doc, y, 'Distribución del Valor del Pedido (últimos 30 días)');
+      y = drawTable(doc, y,
+        ['Rango de ticket', 'Pedidos', 'Total ventas', '% del total'],
+        [160, 80, 130, 100],
+        statsData.distribucion_ticket.map(d => {
+          const cant = Number(d.cantidad_pedidos || 0);
+          const pct = totalDist > 0 ? ((cant / totalDist) * 100).toFixed(1) : '0.0';
+          return [d.rango, String(cant), CURRENCY_FMT(d.total_ventas), `${pct}%`];
+        }),
+        {
+          totalsRow: [
+            'TOTAL',
+            String(totalDist),
+            CURRENCY_FMT(statsData.distribucion_ticket.reduce((a, d) => a + Number(d.total_ventas || 0), 0)),
+            '100.0%',
+          ],
+        }
+      );
+      y += 12;
+    }
+
+    // ---- Productos sin ventas (dormidos) ----
+    if (statsData.productos_sin_ventas?.length > 0) {
+      y = drawSectionTitle(doc, y, 'Productos Sin Ventas (30+ días)');
+      y = drawTable(doc, y,
+        ['#', 'Producto', 'Precio', 'Última venta', 'Días sin venta'],
+        [40, 200, 80, 100, 80],
+        statsData.productos_sin_ventas.slice(0, 20).map((p, idx) => ([
+          String(idx + 1),
+          p.nombre || '—',
+          CURRENCY_FMT(p.precio),
+          p.ultima_venta ? fmtDate(p.ultima_venta) : 'Nunca',
+          String(p.dias_sin_venta ?? 0),
+        ])),
+      );
+      y += 12;
+    }
+
+    // ---- Combinaciones frecuentes (pares de productos) ----
+    if (statsData.combinaciones_frecuentes?.length > 0) {
+      y = drawSectionTitle(doc, y, 'Combinaciones Frecuentes (últimos 60 días)');
+      y = drawTable(doc, y,
+        ['#', 'Producto A', 'Producto B', 'Veces juntos'],
+        [40, 220, 220, 100],
+        statsData.combinaciones_frecuentes.map((c, idx) => ([
+          String(idx + 1),
+          c.producto_a || '—',
+          c.producto_b || '—',
+          String(c.veces_juntos ?? 0),
+        ])),
+        {
+          totalsRow: [
+            '',
+            'TOTAL COMBINACIONES',
+            '',
+            String(statsData.combinaciones_frecuentes.reduce((a, c) => a + Number(c.veces_juntos || 0), 0)),
+          ],
+        }
+      );
+    }
+
     // ---- Pie + numeración ----
     drawPdfFooter(doc, 'Reporte generado automáticamente por GigantYa');
 
@@ -647,6 +743,15 @@ export async function generateStatsExcel(statsData, restaurante, dateRange) {
   if (statsData.hora_pico) {
     kpis.push({ label: 'Hora pico', value: `${statsData.hora_pico.hora}:00 (${statsData.hora_pico.cantidad_pedidos} ped.)`, nfmt: null });
   }
+  if (statsData.tasa_cancelacion) {
+    kpis.push({ label: 'Tasa de cancelación', value: Number(statsData.tasa_cancelacion.porcentaje) / 100, nfmt: PERCENT_NFMT });
+  }
+  if (typeof statsData.tamano_promedio_carrito === 'number' && statsData.tamano_promedio_carrito > 0) {
+    kpis.push({ label: 'Items por pedido (prom.)', value: Number(statsData.tamano_promedio_carrito), nfmt: NUMBER_NFMT });
+  }
+  if (statsData.tiempo_promedio_preparacion?.pedidos_contados > 0) {
+    kpis.push({ label: 'Tiempo prom. preparación', value: `${Number(statsData.tiempo_promedio_preparacion.promedio_minutos).toFixed(0)} min`, nfmt: null });
+  }
 
   kpis.forEach((k) => {
     resumen.addRow({ metrica: k.label, valor: k.value });
@@ -847,6 +952,93 @@ export async function generateStatsExcel(statsData, restaurante, dateRange) {
     applyDataBorders(cup, 4, lastDataRow, 5);
     applyTotalsRow(cup, lastDataRow + 1, 5);
     freezeTopAndFilter(cup, 1, 5);
+  }
+
+  // ============= HOJA: DISTRIBUCIÓN DEL TICKET (premium) =============
+  if (statsData.distribucion_ticket?.length > 0) {
+    const dist = workbook.addWorksheet('Distribución Ticket');
+    dist.columns = [
+      { header: 'Rango',         key: 'rango',    width: 22 },
+      { header: 'Pedidos',       key: 'cantidad', width: 12, style: { numFmt: NUMBER_NFMT, alignment: { horizontal: 'right' } } },
+      { header: 'Total ventas',  key: 'ventas',   width: 18, style: { numFmt: CURRENCY_NFMT, alignment: { horizontal: 'right' } } },
+    ];
+    applyTitleRow(dist, 1, titleFull, 3, subtitleFull);
+    applyHeaderRow(dist, 3, 3);
+
+    const totalDist = statsData.distribucion_ticket.reduce((a, d) => a + Number(d.cantidad_pedidos || 0), 0);
+    let tCant = 0, tVentas = 0;
+    statsData.distribucion_ticket.forEach(d => {
+      const cant = Number(d.cantidad_pedidos || 0);
+      dist.addRow({
+        rango: d.rango,
+        cantidad: cant,
+        ventas: Number(d.total_ventas || 0),
+      });
+      tCant += cant;
+      tVentas += Number(d.total_ventas || 0);
+    });
+    const lastDataRow = dist.rowCount;
+    dist.addRow({ rango: 'TOTAL', cantidad: tCant, ventas: tVentas });
+    applyDataBorders(dist, 4, lastDataRow, 3);
+    applyTotalsRow(dist, lastDataRow + 1, 3);
+    freezeTopAndFilter(dist, 1, 3);
+  }
+
+  // ============= HOJA: PRODUCTOS SIN VENTAS (premium) =============
+  if (statsData.productos_sin_ventas?.length > 0) {
+    const psv = workbook.addWorksheet('Productos Sin Ventas');
+    psv.columns = [
+      { header: '#',                key: 'pos',         width: 6 },
+      { header: 'Producto',         key: 'nombre',      width: 40 },
+      { header: 'Precio',           key: 'precio',      width: 16, style: { numFmt: CURRENCY_NFMT, alignment: { horizontal: 'right' } } },
+      { header: 'Última venta',     key: 'ultima',      width: 18 },
+      { header: 'Días sin venta',   key: 'dias',        width: 18, style: { numFmt: NUMBER_NFMT, alignment: { horizontal: 'right' } } },
+    ];
+    applyTitleRow(psv, 1, titleFull, 5, subtitleFull);
+    applyHeaderRow(psv, 3, 5);
+
+    statsData.productos_sin_ventas.forEach((p, idx) => {
+      psv.addRow({
+        pos: idx + 1,
+        nombre: p.nombre,
+        precio: Number(p.precio || 0),
+        ultima: p.ultima_venta ? new Date(p.ultima_venta) : 'Nunca',
+        dias: Number(p.dias_sin_venta || 0),
+      });
+    });
+    const lastDataRow = psv.rowCount;
+    applyDataBorders(psv, 4, lastDataRow, 5);
+    freezeTopAndFilter(psv, 1, 5);
+  }
+
+  // ============= HOJA: COMBINACIONES FRECUENTES (premium) =============
+  if (statsData.combinaciones_frecuentes?.length > 0) {
+    const comb = workbook.addWorksheet('Combinaciones');
+    comb.columns = [
+      { header: '#',                key: 'pos',          width: 6 },
+      { header: 'Producto A',       key: 'producto_a',   width: 32 },
+      { header: 'Producto B',       key: 'producto_b',   width: 32 },
+      { header: 'Veces juntos',     key: 'veces',        width: 14, style: { numFmt: NUMBER_NFMT, alignment: { horizontal: 'right' } } },
+    ];
+    applyTitleRow(comb, 1, titleFull, 4, subtitleFull);
+    applyHeaderRow(comb, 3, 4);
+
+    let tVeces = 0;
+    statsData.combinaciones_frecuentes.forEach((c, idx) => {
+      const veces = Number(c.veces_juntos || 0);
+      comb.addRow({
+        pos: idx + 1,
+        producto_a: c.producto_a,
+        producto_b: c.producto_b,
+        veces,
+      });
+      tVeces += veces;
+    });
+    const lastDataRow = comb.rowCount;
+    comb.addRow({ pos: '', producto_a: 'TOTAL', producto_b: '', veces: tVeces });
+    applyDataBorders(comb, 4, lastDataRow, 4);
+    applyTotalsRow(comb, lastDataRow + 1, 4);
+    freezeTopAndFilter(comb, 1, 4);
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
