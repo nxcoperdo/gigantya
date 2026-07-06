@@ -82,6 +82,24 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
+# 5a. Generar sitemap.xml contra la API de producción (consulta restaurantes
+# aprobados y escribe client/public/sitemap.xml). Vite lo copia a dist/ en el
+# build, y Nginx lo sirve estático. Si la API no responde, el script aborta
+# el deploy — preferimos fallar visiblemente antes que publicar un sitemap
+# desactualizado.
+echo -e "${YELLOW}🗺️  [4a/7] Generando sitemap.xml...${NC}"
+if [ -f "$APP_DIR/scripts/generate-sitemap.js" ]; then
+    # La API destino del sitemap es el backend de producción (ya reiniciado
+    # más abajo, pero el endpoint /api/restaurants es público y stateless, así
+    # que también funciona apuntando al puerto local 5000 antes del restart).
+    SITEMAP_BASE_URL="https://${SERVER_NAME:-gigantya.com}" \
+    SITEMAP_API_URL="http://localhost:5000/api/restaurants" \
+        node "$APP_DIR/scripts/generate-sitemap.js"
+    echo -e "${GREEN}   ✅ sitemap.xml generado${NC}"
+else
+    echo -e "${YELLOW}   ⚠️  scripts/generate-sitemap.js no existe, saltando${NC}"
+fi
+
 npm install
 npm run build
 echo -e "${GREEN}   ✅ Frontend compilado${NC}"

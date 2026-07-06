@@ -1,0 +1,22 @@
+# robots.txt — GigantYA
+# Le indica a Googlebot y otros crawlers qué puede y qué no puede rastrear.
+
+User-agent: *
+# Bloqueamos las áreas privadas y de autenticación (no aportan SEO y gastan crawl budget).
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+# Permitimos explícitamente el resto (home y páginas de restaurantes).
+Allow: /
+Allow: /restaurant/
+
+# Ubicación del sitemap (Googlebot y Bingbot lo descubren automáticamente,
+# pero declararlo acelera el primer rastreo).
+Sitemap: https://gigantya.com/sitemap.xml

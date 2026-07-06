@@ -1,0 +1,13 @@
+{
+  "name": "gigantya-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripts de utilidad para GigantYA (sitemap, etc.)",
+  "scripts": {
+    "sitemap": "node generate-sitemap.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
