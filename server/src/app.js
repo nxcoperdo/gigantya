@@ -59,8 +59,30 @@ app.use(helmet({
 }));
 
 // CORS
+// Assert temprano: CORS_ORIGIN debe ser un único origin (no '*' ni lista
+// separada por comas). Express solo permite un origin cuando se usa
+// `credentials: true`; cualquier otro valor hace que el navegador ignore
+// la respuesta CORS y termina rompiendo auth en silencio. Si la validación
+// falla, NO arrancamos el server (fail-fast en vez de inseguro-por-defecto).
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+if (CORS_ORIGIN === '*' || CORS_ORIGIN.trim() === '') {
+  throw new Error('CORS_ORIGIN no puede ser "*" ni estar vacío. Definí un único origin (ej: https://gigantya.com)');
+}
+if (CORS_ORIGIN.includes(',')) {
+  throw new Error(`CORS_ORIGIN debe ser un único origin, no una lista separada por comas. Recibido: "${CORS_ORIGIN}"`);
+}
+// Validar que parezca una URL http(s) — defensa contra typos en .env
+try {
+  const parsed = new URL(CORS_ORIGIN);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('protocol no es http/https');
+  }
+} catch (e) {
+  throw new Error(`CORS_ORIGIN no es una URL válida: "${CORS_ORIGIN}" (${e.message})`);
+}
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: CORS_ORIGIN,
   credentials: true,
   // Reducir overhead de CORS preflight
   maxAge: 86400 // Cache preflight 24h

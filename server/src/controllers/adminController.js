@@ -232,6 +232,20 @@ export async function adminCreateUser(req, res) {
       await connection.commit();
       logger.info(`Admin creó usuario ${email} con rol ${tipo_usuario}`);
 
+      // Auditar la creación. Si es `admin`, se loguea como `admin.create`
+      // (caso sensible: cualquier elevación a admin debe quedar registrada
+      // para detectar escalación de privilegios).
+      const accion = tipo_usuario === 'admin' ? 'admin.create' : 'user.create';
+      await recordAudit(req, accion, 'usuario', userId, {
+        despues: {
+          nombre,
+          email,
+          tipo_usuario,
+          telefono: telefono || null,
+          documento_identidad: documento_identidad || null,
+        },
+      });
+
       res.status(201).json({
         mensaje: tipo_usuario === 'restaurante'
           ? 'Usuario y local pendientes creados exitosamente'

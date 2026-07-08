@@ -175,7 +175,11 @@ export async function login(req, res) {
     // Buscar usuario (sin importar el estado para poder informar si está suspendido)
     const usuario = await UserModel.getUserByEmailIgnoreStatus(email);
     if (!usuario) {
-      console.warn(`⚠️ Login fallido (email no encontrado): ${email}`);
+      // Logueamos solo el id (que no existe) y el dominio del email, no
+      // el email completo, para evitar que emails de usuarios queden
+      // en logs de Winston (combinado.log) y sean scrapeables.
+      const masked = email.includes('@') ? email.split('@')[1] : '?';
+      console.warn(`⚠️ Login fallido (email no encontrado) dominio=${masked}`);
       return res.status(401).json({
         code: 'EMAIL_NOT_FOUND',
         error: 'No existe una cuenta registrada con ese correo electrónico'
@@ -183,8 +187,9 @@ export async function login(req, res) {
     }
 
     // Log de diagnóstico: ayuda a depurar futuros casos de "login intermitente"
-    // tras suspensiones/reactivaciones del admin.
-    console.log(`🔎 Intento de login: ${email} (id=${usuario.id}, estado=${usuario.estado})`);
+    // tras suspensiones/reactivaciones del admin. Solo logueamos el id, no
+    // el email (PII).
+    console.log(`🔎 Intento de login: id=${usuario.id} estado=${usuario.estado}`);
 
     if (['suspendido', 'inactivo'].includes(usuario.estado)) {
       return res.status(403).json({
@@ -205,8 +210,8 @@ export async function login(req, res) {
     const token = generateToken(usuario);
     const refreshToken = generateRefreshToken(usuario.id);
 
-    // Log del login exitoso
-    console.log(`✅ Login exitoso: ${usuario.email} (${usuario.tipo_usuario})`);
+    // Log del login exitoso (sin PII: solo el id y el rol)
+    console.log(`✅ Login exitoso: id=${usuario.id} rol=${usuario.tipo_usuario}`);
 
     res.json({
       mensaje: 'Login exitoso',
@@ -303,14 +308,14 @@ export async function changePassword(req, res) {
     }
 
     if (contrasena_nueva !== contrasena_confirmacion) {
-      return res.status(400).json({ 
-        error: 'Las nuevas contraseñas no coinciden' 
+      return res.status(400).json({
+        error: 'Las nuevas contraseñas no coinciden'
       });
     }
 
     if (contrasena_nueva.length < 6) {
-      return res.status(400).json({ 
-        error: 'La nueva contraseña debe tener al menos 6 caracteres' 
+      return res.status(400).json({
+        error: 'La nueva contraseña debe tener al menos 6 caracteres'
       });
     }
 

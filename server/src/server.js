@@ -20,9 +20,13 @@ const httpServer = createServer(app);
 // Configurar timeouts del servidor HTTP para mejor manejo de conexiones largas
 httpServer.keepAliveTimeout = 65000; // 65 segundos (mayor al típico ALB de 60s)
 httpServer.headersTimeout = 66000; // Debe ser mayor a keepAliveTimeout
-// Timeout para requests lentas (10 min - útil para exports grandes)
-httpServer.requestTimeout = 600000;
-httpServer.timeout = 600000;
+// Timeout para requests lentas. 5 min es suficiente para exports grandes
+// (PDFs/Excel de hasta ~1000 pedidos) y reduce la ventana de ataques
+// Slowloris vs el default anterior de 10 min. Si en el futuro algún
+// endpoint necesita más, usar streaming con chunked transfer en vez
+// de inflar este número.
+httpServer.requestTimeout = 300000;
+httpServer.timeout = 300000;
 
 const io = new SocketServer(httpServer, {
   cors: {

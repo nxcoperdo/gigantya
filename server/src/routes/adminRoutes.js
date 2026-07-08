@@ -12,6 +12,19 @@ import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 /**
+ * IMPORTANTE: este router requiere autenticación de admin para TODO
+ * endpoint, sin excepción. Se aplica con `router.use(...)` arriba para
+ * no repetir `verifyToken, requireAdmin` en cada línea.
+ *
+ * Si en el futuro se agrega un endpoint público bajo /api/admin (ej: un
+ * healthcheck), MONTARLO EN UN ROUTER APARTE y registrarlo antes en
+ * app.js — nunca豁 esta regla agregando un `router.get('/public', ...)`
+ * acá, porque Express respeta el orden de los `use` y quedaría un hueco
+ * de seguridad.
+ */
+router.use(verifyToken, requireAdmin);
+
+/**
  * Helpers inline para CRUD de sectores y barrios. Se mantienen aquí porque son
  * muy delgados (delegan a los modelos) y solo los usa el admin.
  */
@@ -105,56 +118,56 @@ async function _deleteBarrio(req, res) {
 // porque Express matchea por orden. Si se pone después, req.params.id = "online"
 // y `adminController.updateUser` recibe un id no numérico.
 // Misma lógica para '/users/:id/orders' vs '/users/:id'.
-router.get('/users', verifyToken, requireAdmin, adminController.getAllUsers);
-router.get('/users/online', verifyToken, requireAdmin, adminController.getOnlineUsers);
-router.post('/users', verifyToken, requireAdmin, adminController.adminCreateUser);
-router.get('/users/:id', verifyToken, requireAdmin, adminController.getUserByIdAdmin);
-router.get('/users/:id/orders', verifyToken, requireAdmin, adminController.getUserOrdersAdmin);
-router.put('/users/:id/status', verifyToken, requireAdmin, adminController.updateUserStatus);
-router.put('/users/:id', verifyToken, requireAdmin, adminController.updateUser);
-router.delete('/users/:id', verifyToken, requireAdmin, adminController.deleteUser);
+router.get('/users', adminController.getAllUsers);
+router.get('/users/online', adminController.getOnlineUsers);
+router.post('/users', adminController.adminCreateUser);
+router.get('/users/:id', adminController.getUserByIdAdmin);
+router.get('/users/:id/orders', adminController.getUserOrdersAdmin);
+router.put('/users/:id/status', adminController.updateUserStatus);
+router.put('/users/:id', adminController.updateUser);
+router.delete('/users/:id', adminController.deleteUser);
 
 /**
  * Rutas de Restaurantes
  */
-router.get('/restaurants', verifyToken, requireAdmin, adminController.getAllRestaurants);
-router.get('/restaurants/pending', verifyToken, requireAdmin, adminController.getPendingRestaurants);
-router.put('/restaurants/:id/approve', verifyToken, requireAdmin, adminController.approveRestaurant);
-router.put('/restaurants/:id/reject', verifyToken, requireAdmin, adminController.rejectRestaurant);
-router.put('/restaurants/:id/plan', verifyToken, requireAdmin, adminController.updateRestaurantPlan);
-router.get('/restaurants/:id/subscriptions', verifyToken, requireAdmin, adminController.getRestaurantSubscriptionHistory);
-router.put('/restaurants/:id/config', verifyToken, requireAdmin, adminController.updateRestaurantConfig);
-router.put('/restaurants/:id/ofrece-domicilio', verifyToken, requireAdmin, adminController.updateRestaurantDomicilio);
-router.put('/restaurants/:id/ofrece-consumo-en-local', verifyToken, requireAdmin, adminController.updateRestaurantConsumoEnLocal);
-router.put('/restaurants/:id/es-mercado-abarrotes', verifyToken, requireAdmin, adminController.updateRestaurantEsMercado);
-router.put('/restaurants/:id/es-comida-rapida', verifyToken, requireAdmin, adminController.updateRestaurantEsComidaRapida);
-router.put('/restaurants/:id/es-restaurante', verifyToken, requireAdmin, adminController.updateRestaurantEsRestaurante);
-router.put('/restaurants/:id/es-panaderia-pasteleria', verifyToken, requireAdmin, adminController.updateRestaurantEsPanaderiaPasteleria);
+router.get('/restaurants', adminController.getAllRestaurants);
+router.get('/restaurants/pending', adminController.getPendingRestaurants);
+router.put('/restaurants/:id/approve', adminController.approveRestaurant);
+router.put('/restaurants/:id/reject', adminController.rejectRestaurant);
+router.put('/restaurants/:id/plan', adminController.updateRestaurantPlan);
+router.get('/restaurants/:id/subscriptions', adminController.getRestaurantSubscriptionHistory);
+router.put('/restaurants/:id/config', adminController.updateRestaurantConfig);
+router.put('/restaurants/:id/ofrece-domicilio', adminController.updateRestaurantDomicilio);
+router.put('/restaurants/:id/ofrece-consumo-en-local', adminController.updateRestaurantConsumoEnLocal);
+router.put('/restaurants/:id/es-mercado-abarrotes', adminController.updateRestaurantEsMercado);
+router.put('/restaurants/:id/es-comida-rapida', adminController.updateRestaurantEsComidaRapida);
+router.put('/restaurants/:id/es-restaurante', adminController.updateRestaurantEsRestaurante);
+router.put('/restaurants/:id/es-panaderia-pasteleria', adminController.updateRestaurantEsPanaderiaPasteleria);
 
 /**
  * Rutas de Costos de Envío por Sector (por restaurante)
  */
-router.get('/restaurants/:id/envios-sectores', verifyToken, requireAdmin, restaurantShippingController.getEnviosSectores);
-router.put('/restaurants/:id/envios-sectores', verifyToken, requireAdmin, restaurantShippingController.replaceEnviosSectores);
+router.get('/restaurants/:id/envios-sectores', restaurantShippingController.getEnviosSectores);
+router.put('/restaurants/:id/envios-sectores', restaurantShippingController.replaceEnviosSectores);
 
 /**
  * Rutas de Gestión de Sectores y Barrios
  */
-router.get('/sectores', verifyToken, requireAdmin, zonaController.getSectores);
-router.post('/sectores', verifyToken, requireAdmin, _createSector);
-router.put('/sectores/:id', verifyToken, requireAdmin, _updateSector);
-router.delete('/sectores/:id', verifyToken, requireAdmin, _deleteSector);
+router.get('/sectores', zonaController.getSectores);
+router.post('/sectores', _createSector);
+router.put('/sectores/:id', _updateSector);
+router.delete('/sectores/:id', _deleteSector);
 
-router.get('/barrios', verifyToken, requireAdmin, zonaController.getBarrios);
-router.post('/barrios', verifyToken, requireAdmin, _createBarrio);
-router.put('/barrios/:id', verifyToken, requireAdmin, _updateBarrio);
-router.delete('/barrios/:id', verifyToken, requireAdmin, _deleteBarrio);
+router.get('/barrios', zonaController.getBarrios);
+router.post('/barrios', _createBarrio);
+router.put('/barrios/:id', _updateBarrio);
+router.delete('/barrios/:id', _deleteBarrio);
 
 /**
  * Rutas de Pedidos Globales
  */
-router.get('/orders', verifyToken, requireAdmin, adminController.getAllOrders);
-router.put('/orders/:id/status', verifyToken, requireAdmin, adminController.updateOrderStatus);
+router.get('/orders', adminController.getAllOrders);
+router.put('/orders/:id/status', adminController.updateOrderStatus);
 
 /**
  * Comprobantes de pago (vista global del admin, no filtrada por local).
@@ -164,34 +177,34 @@ router.put('/orders/:id/status', verifyToken, requireAdmin, adminController.upda
  * comprobantes de sus pedidos. Las rutas `/api/payments/...` (sin
  * /admin) siguen siendo para el flujo local/cliente.
  */
-router.get('/comprobantes', verifyToken, requireAdmin, adminController.getAllPaymentProofsAdmin);
-router.post('/comprobantes/:id/approve', verifyToken, requireAdmin, adminController.approvePaymentProofAdmin);
-router.post('/comprobantes/:id/reject', verifyToken, requireAdmin, adminController.rejectPaymentProofAdmin);
+router.get('/comprobantes', adminController.getAllPaymentProofsAdmin);
+router.post('/comprobantes/:id/approve', adminController.approvePaymentProofAdmin);
+router.post('/comprobantes/:id/reject', adminController.rejectPaymentProofAdmin);
 
 /**
  * Auditoría: log de acciones del admin (aprobar/rechazar locales,
  * cambiar planes, suspender usuarios, validar comprobantes, etc.).
  */
-router.get('/audit', verifyToken, requireAdmin, adminController.getAuditLogs);
+router.get('/audit', adminController.getAuditLogs);
 
 /**
  * Comunicación y Notificaciones
  */
-router.post('/notifications/global', verifyToken, requireAdmin, adminController.sendGlobalNotification);
+router.post('/notifications/global', adminController.sendGlobalNotification);
 
 /**
  * Rutas de Estadísticas y Analytics
  */
-router.get('/stats', verifyToken, requireAdmin, adminController.getStats);
-router.get('/analytics', verifyToken, requireAdmin, adminController.getAdvancedAnalytics);
+router.get('/stats', adminController.getStats);
+router.get('/analytics', adminController.getAdvancedAnalytics);
 
 /**
  * Rutas de Gestión de Categorías (Admin)
  */
-router.get('/categorias', verifyToken, requireAdmin, categoryController.getCategories);
-router.post('/categorias', verifyToken, requireAdmin, categoryController.createCategory);
-router.put('/categorias/:id', verifyToken, requireAdmin, categoryController.updateCategory);
-router.delete('/categorias/:id', verifyToken, requireAdmin, categoryController.deleteCategory);
+router.get('/categorias', categoryController.getCategories);
+router.post('/categorias', categoryController.createCategory);
+router.put('/categorias/:id', categoryController.updateCategory);
+router.delete('/categorias/:id', categoryController.deleteCategory);
 
 /**
  * Rutas de Gestión de Cupones (Admin)
@@ -202,14 +215,14 @@ router.delete('/categorias/:id', verifyToken, requireAdmin, categoryController.d
  * local o globales. Los handlers están en `couponController` con el
  * prefijo `admin*`.
  */
-router.get('/coupons', verifyToken, requireAdmin, couponController.adminListCoupons);
-router.post('/coupons', verifyToken, requireAdmin, couponController.adminCreateCoupon);
+router.get('/coupons', couponController.adminListCoupons);
+router.post('/coupons', couponController.adminCreateCoupon);
 // IMPORTANTE: esta ruta debe ir ANTES de /coupons/:id para que Express
 // no capture "usages" como un id. Si se pone después, adminGetCoupon
 // recibe req.params.id = "usages" y devuelve 404.
-router.get('/coupons/usages', verifyToken, requireAdmin, couponController.adminGetCouponUsages);
-router.get('/coupons/:id', verifyToken, requireAdmin, couponController.adminGetCoupon);
-router.put('/coupons/:id', verifyToken, requireAdmin, couponController.adminUpdateCoupon);
-router.delete('/coupons/:id', verifyToken, requireAdmin, couponController.adminDeleteCoupon);
+router.get('/coupons/usages', couponController.adminGetCouponUsages);
+router.get('/coupons/:id', couponController.adminGetCoupon);
+router.put('/coupons/:id', couponController.adminUpdateCoupon);
+router.delete('/coupons/:id', couponController.adminDeleteCoupon);
 
 export default router;
