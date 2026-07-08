@@ -73,9 +73,14 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
         return;
       }
 
-      // Extraemos el HTML del clon y construimos un documento nuevo
-      // con su propio <style> que define el formato ticket.
-      const ticketHTML = source.outerHTML;
+      // Clonamos el nodo para poder mutarlo sin tocar el DOM original.
+      // Aprovechamos para limpiar todo lo que NO queremos en un ticket:
+      // - El mapa de Google (AddressMapPreview / iframe de Maps).
+      // - Cualquier elemento con la clase no-print.
+      const clone = source.cloneNode(true);
+      clone.querySelectorAll('.no-print').forEach((el) => el.remove());
+      clone.querySelectorAll('iframe').forEach((el) => el.remove());
+      const ticketHTML = clone.outerHTML;
 
       const docHtml = `<!doctype html>
 <html lang="es">
@@ -474,7 +479,11 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
                 window.print();
                 return;
               }
-              const ticketHTML = source.outerHTML;
+              // Limpiamos el mapa y los no-print antes de serializar
+              const clone = source.cloneNode(true);
+              clone.querySelectorAll('.no-print').forEach((el) => el.remove());
+              clone.querySelectorAll('iframe').forEach((el) => el.remove());
+              const ticketHTML = clone.outerHTML;
               const docHtml = `<!doctype html><html><head><meta charset="UTF-8"><title>Pedido</title><style>@page{size:80mm auto;margin:0}body{margin:0;padding:4mm;box-sizing:border-box;width:80mm;background:white;color:black;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.35}div,span,p,h1,h2,h3{color:black!important;background:transparent!important}section{margin:0 0 4px 0;padding:0;border:none}h2{font-size:14px;text-align:center;margin:0 0 4px 0}h3{font-size:12px;border-bottom:1px dashed #000;padding-bottom:2px;margin:4px 0 2px 0}</style></head><body>${ticketHTML}<script>window.addEventListener('load',function(){setTimeout(function(){window.print();setTimeout(function(){window.close()},500)},100)})<\/script></body></html>`;
               const popup = window.open('', 'gigantya_print', 'width=400,height=600');
               if (!popup) {
