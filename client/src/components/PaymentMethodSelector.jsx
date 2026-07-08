@@ -161,6 +161,15 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
             <h4 className="font-bold text-[color:var(--text-primary)]">Instrucciones para pagar con {selectedMethodData?.name}</h4>
           </div>
 
+          <div className="bg-[color:var(--bg-elevated)] rounded-lg p-4 mb-4">
+            <p className="text-sm font-bold text-[color:var(--text-primary)] mb-2">Pasos a seguir:</p>
+            <ol className="space-y-1 text-sm text-[color:var(--text-secondary)] list-decimal list-inside">
+              <li>Transfiere al número o clave de abajo.</li>
+              <li>Sube aquí el comprobante de tu pago.</li>
+              <li>Espera a que el local valide tu comprobante.</li>
+            </ol>
+          </div>
+
           <div className="space-y-4">
             {paymentConfig[selectedMethod]?.telefono || paymentConfig[selectedMethod]?.clave ? (
               <div className="space-y-4">
