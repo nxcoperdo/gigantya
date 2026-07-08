@@ -89,8 +89,8 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[color:var(--bg-elevated)] rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-scaleUp max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn printing-modal-backdrop">
+      <div className="printing-modal-wrapper bg-[color:var(--bg-elevated)] rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-scaleUp max-h-[90vh] overflow-y-auto">
         <div className="order-print-content">
         {/* Header */}
         <div className="border-b-2 p-6" style={stateStyle}>

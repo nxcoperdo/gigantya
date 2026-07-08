@@ -1335,19 +1335,46 @@ html.theme-transition *::after {
   }
 
   /* Cuando se imprime desde el modal de detalles de pedido:
-     - Ocultar el backdrop y todo lo que esté fuera del contenido del modal
-     - Mostrar solo el contenido del modal en formato ticket */
+     Truco estándar de "imprimir solo un componente":
+     1. visibility:hidden en TODO (saca del render visible).
+     2. visibility:visible solo en el subtree de .order-print-content
+        y en sus ancestros directos (backdrop, wrapper) para que la
+        cadena de visibilidad no se corte.
+     El .printing-modal-wrapper solo tiene como hijo directo al
+     .order-print-content (header+content), y el footer está afuera
+     del wrapper con no-print. No hay más hermanos a ocultar. */
   body.printing-order * {
     visibility: hidden;
   }
+  body.printing-order .printing-modal-backdrop,
+  body.printing-order .printing-modal-wrapper,
   body.printing-order .order-print-content,
   body.printing-order .order-print-content * {
     visibility: visible;
   }
+
+  /* El .order-print-content se posiciona absoluto en la página.
+     Como sus ancestros tienen visibility:visible pero son position:static
+     con su layout normal (max-w-2xl = ~672px), necesitamos sacarlo del
+     flow con absolute. El padre más cercano con position:relative sería
+     ideal; usamos el body como contenedor final. */
+  body.printing-order .printing-modal-backdrop,
+  body.printing-order .printing-modal-wrapper {
+    position: static !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    inset: auto !important;
+  }
   body.printing-order .order-print-content {
     position: absolute;
-    left: 0;
     top: 0;
+    left: 0;
     width: 80mm;
     max-width: 80mm;
     background: white;
@@ -1399,20 +1426,10 @@ html.theme-transition *::after {
   body.printing-order .order-print-content [class*="text-"] {
     color: black !important;
   }
-  /* Tamaño total del modal debe ser de 80mm, no heredar el max-w-2xl */
-  body.printing-order .fixed {
-    position: static !important;
-    background: white !important;
-  }
+
   body.printing-order .animate-fadeIn,
   body.printing-order .animate-scaleUp {
     animation: none !important;
-  }
-  body.printing-order > div > div {
-    max-width: 80mm !important;
-    width: 80mm !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
   }
 }
 
