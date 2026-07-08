@@ -130,7 +130,7 @@ export default function CartPage() {
             <div className="card-lg space-y-3 sm:space-y-4">
               {cart.map((item, index) => (
                 <div
-                  key={item.id}
+                  key={item.line_id}
                   className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-[color:var(--border-default)] last:border-0 last:pb-0 animate-slideUp"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
@@ -154,12 +154,49 @@ export default function CartPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base sm:text-lg font-bold text-[color:var(--text-primary)] truncate">{item.nombre}</h3>
                     <p className="text-[color:var(--text-secondary)] text-sm sm:text-base">{formatCurrency(item.precio)}</p>
+
+                    {/* Adiciones elegidas */}
+                    {item.adiciones && item.adiciones.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {item.adiciones.map((a) => (
+                          <li
+                            key={a.adicion_id}
+                            className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
+                          >
+                            <Plus size={10} className="text-primary flex-shrink-0" />
+                            <span>
+                              {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
+                              {a.precio_extra > 0 && (
+                                <span className="text-[color:var(--text-muted)]"> (+{formatCurrency(a.precio_extra * a.cantidad)})</span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Ingredientes quitados */}
+                    {item.removidos && item.removidos.length > 0 && (
+                      <p className="text-xs text-[color:var(--text-muted)] mt-1">
+                        <span className="font-semibold">Sin:</span>{' '}
+                        <span className="line-through">
+                          {item.removidos.map(r => r.nombre).join(', ')}
+                        </span>
+                      </p>
+                    )}
+
+                    {/* Nota libre */}
+                    {item.nota && (
+                      <p className="text-xs italic text-[color:var(--text-secondary)] mt-1">
+                        "{item.nota}"
+                      </p>
+                    )}
                   </div>
 
                   {/* Cantidad */}
                   <div className="flex items-center justify-between sm:justify-center gap-2 sm:gap-3 bg-[color:var(--bg-subtle)] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl">
                     <button
-                      onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                      onClick={() => updateQuantity(item.line_id, item.cantidad - 1)}
                       className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-[color:var(--bg-elevated)] shadow-sm text-primary hover:text-primaryDark transition-colors active:scale-95 touch-feedback"
                       aria-label="Disminuir cantidad"
                     >
@@ -169,7 +206,7 @@ export default function CartPage() {
                       {item.cantidad}
                     </span>
                     <button
-                      onClick={() => updateQuantity(item.id, item.cantidad + 1)}
+                      onClick={() => updateQuantity(item.line_id, item.cantidad + 1)}
                       className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-[color:var(--bg-elevated)] shadow-sm text-primary hover:text-primaryDark transition-colors active:scale-95 touch-feedback"
                       aria-label="Aumentar cantidad"
                     >
@@ -180,10 +217,10 @@ export default function CartPage() {
                   {/* Subtotal y Eliminar */}
                   <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 sm:gap-2">
                     <p className="text-lg sm:text-xl font-bold text-primary">
-                      {formatCurrency(item.precio * item.cantidad)}
+                      {formatCurrency((item.precio_unitario_final || item.precio) * item.cantidad)}
                     </p>
                     <button
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.line_id)}
                       className="w-9 h-9 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg transition-colors active:scale-95 touch-feedback"
                       style={{ color: 'var(--danger-text)' }}
                       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}

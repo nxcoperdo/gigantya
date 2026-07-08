@@ -1,5 +1,6 @@
 import * as ProductModel from '../models/Product.js';
 import * as RestaurantModel from '../models/Restaurant.js';
+import * as ProductModifierModel from '../models/ProductModifier.js';
 import { canAccessPlan, getPlanLimit } from '../utils/planFeatures.js';
 
 /**
@@ -476,6 +477,82 @@ export async function deleteProductGalleryImage(req, res) {
   }
 }
 
+// =============================================================================
+// Modificadores de producto (estilo Rappi/PedidosYa) — todos los planes
+// =============================================================================
+
+/**
+ * GET /api/products/:id/paquete-modificadores
+ * Devuelve { grupos, adiciones, removibles } del producto.
+ * Público: el cliente lo consulta antes de abrir el modal de
+ * customización.
+ */
+export async function getPaqueteModificadores(req, res) {
+  try {
+    const { id } = req.params;
+    const producto = await ProductModel.getProductById(id);
+    if (!producto) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    const paquete = await ProductModifierModel.getPaqueteModificadores(id);
+    res.json({ configuracion: paquete });
+  } catch (error) {
+    console.error('Error obteniendo paquete de modificadores:', error);
+    res.status(500).json({ error: 'Error al obtener modificadores', detalles: error.message });
+  }
+}
+
+/**
+ * PUT /api/products/:id/paquete-modificadores
+ * Reemplaza el paquete completo (grupos, adiciones sueltas,
+ * removibles) en una sola transacción. Solo el dueño del local.
+ *
+ * Body esperado:
+ * {
+ *   grupos: [{ nombre, orden, adiciones: [{ nombre, precio_extra, orden }] }],
+ *   adiciones_sueltas: [{ nombre, precio_extra, orden }],
+ *   removibles: [{ nombre, orden }],
+ * }
+ */
+export async function replacePaqueteModificadores(req, res) {
+  try {
+    const { id } = req.params;
+    const payload = req.body || {};
+
+    if (req.user.tipo_usuario !== 'restaurante') {
+      return res.status(403).json({ error: 'Solo locales pueden editar modificadores' });
+    }
+    const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
+    if (!restaurante) return res.status(404).json({ error: 'Local no encontrado' });
+
+    const producto = await ProductModel.getProductById(id);
+    if (!producto || producto.restaurante_id !== restaurante.id) {
+      return res.status(403).json({ error: 'Producto no encontrado o sin permiso' });
+    }
+
+    // Defensa básica de shape
+    if (typeof payload !== 'object' || Array.isArray(payload)) {
+      return res.status(400).json({ error: 'Body inválido' });
+    }
+    const grupos = Array.isArray(payload.grupos) ? payload.grupos : [];
+    const adicionesSueltas = Array.isArray(payload.adiciones_sueltas)
+      ? payload.adiciones_sueltas
+      : [];
+    const removibles = Array.isArray(payload.removibles) ? payload.removibles : [];
+
+    const paquete = await ProductModifierModel.replacePaqueteModificadores(id, {
+      grupos,
+      adiciones_sueltas: adicionesSueltas,
+      removibles,
+    });
+
+    res.json({ mensaje: 'Modificadores guardados', configuracion: paquete });
+  } catch (error) {
+    console.error('Error guardando modificadores:', error);
+    res.status(500).json({ error: 'Error al guardar modificadores', detalles: error.message });
+  }
+}
+
 export default {
   getProductsByRestaurant,
   listProducts,
@@ -490,5 +567,8 @@ export default {
   addProductGallery,
   getProductGallery,
   deleteProductGalleryImage,
+  // Modificadores de producto (estilo Rappi/PedidosYa) — todos los planes
+  getPaqueteModificadores,
+  replacePaqueteModificadores,
 };
 

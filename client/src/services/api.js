@@ -95,6 +95,9 @@ export const productService = {
   uploadGallery: (producto_id, formData) => api.post(`/products/gallery`, formData),
   getGallery: (producto_id) => api.get(`/products/gallery/${producto_id}`),
   deleteGalleryImage: (producto_id, imagen_id) => api.delete(`/products/gallery/${producto_id}/${imagen_id}`),
+  // Modificadores de producto (estilo Rappi/PedidosYa) — todos los planes
+  getPaqueteModificadores: (id) => api.get(`/products/${id}/paquete-modificadores`),
+  replacePaqueteModificadores: (id, data) => api.put(`/products/${id}/paquete-modificadores`, data),
 };
 
 // ========== PEDIDOS ==========

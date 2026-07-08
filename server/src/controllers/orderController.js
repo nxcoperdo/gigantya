@@ -104,11 +104,48 @@ export async function createOrder(req, res) {
       try {
         const normalizedItems = OrderModel.normalizeOrderItems(items);
         const productIds = normalizedItems.map(i => i.producto_id);
-        const [products] = await pool.query('SELECT precio FROM productos WHERE id IN (?)', [productIds]);
+        // Traemos id y precio de cada producto para calcular el subtotal
+        // base. Las adiciones se agregan abajo.
+        const [products] = await pool.query(
+          'SELECT id, precio FROM productos WHERE id IN (?)',
+          [productIds]
+        );
+        const priceById = new Map(products.map((p) => [Number(p.id), Number(p.precio)]));
+
+        // Subtotal del cupón = (precio base + suma de adiciones) * cantidad.
+        // Cargamos las adiciones para que el descuento calcule sobre el
+        // subtotal REAL del pedido (con extras), no solo sobre la base.
+        // Si el item no trae adiciones o los ids son inválidos, lo
+        // tratamos como precio base.
+        const adicionIds = [
+          ...new Set(
+            normalizedItems
+              .flatMap((i) => (i.adiciones || []).map((a) => a.adicion_id))
+              .filter((id) => Number.isInteger(id) && id > 0)
+          ),
+        ];
+        let adicionesById = new Map();
+        if (adicionIds.length > 0) {
+          const [adicRows] = await pool.query(
+            `SELECT id, precio_extra FROM producto_adiciones
+             WHERE id IN (?) AND activo = 1`,
+            [adicionIds]
+          );
+          adicionesById = new Map(
+            adicRows.map((r) => [
+              Number(r.id),
+              r.precio_extra == null ? 0 : Number(r.precio_extra),
+            ])
+          );
+        }
 
         const subtotal = normalizedItems.reduce((sum, item) => {
-          const p = products.find(prod => prod.id === item.producto_id);
-          return sum + (p ? p.precio * item.cantidad : 0);
+          const precioBase = priceById.get(Number(item.producto_id)) || 0;
+          const sumaAdiciones = (item.adiciones || []).reduce((s, a) => {
+            const p = adicionesById.get(a.adicion_id);
+            return s + (p == null ? 0 : p * (a.cantidad || 0));
+          }, 0);
+          return sum + (precioBase + sumaAdiciones) * item.cantidad;
         }, 0);
 
         const coupon = await CouponModel.validateCoupon(

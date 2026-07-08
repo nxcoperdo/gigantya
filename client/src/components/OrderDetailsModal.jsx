@@ -1,4 +1,4 @@
-import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag, Printer } from 'lucide-react';
+import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag, Printer, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { orderService } from '../services/api';
 import AddressMapPreview from './AddressMapPreview';
@@ -381,6 +381,42 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
                           <p className="text-sm text-[color:var(--text-secondary)]">
                             {item.descripcion || item.producto_descripcion || 'Sin descripción'}
                           </p>
+
+                          {/* Adiciones elegidas (Rappi-style) — una línea
+                              por cada adición con su cantidad y precio. */}
+                          {item.adiciones && item.adiciones.length > 0 && (
+                            <ul className="mt-1.5 space-y-0.5">
+                              {item.adiciones.map((a, idx) => (
+                                <li
+                                  key={`${item.id}-add-${idx}`}
+                                  className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
+                                >
+                                  <Plus size={10} className="text-primary flex-shrink-0" />
+                                  <span>
+                                    {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
+                                    {Number(a.precio_unitario_adicion) > 0 && (
+                                      <span className="text-[color:var(--text-muted)]">
+                                        {' '}(+${Number(a.subtotal || 0).toLocaleString('es-CO')})
+                                      </span>
+                                    )}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          {/* Ingredientes removidos (marcados por el
+                              cliente) — línea tachada. */}
+                          {item.removidos && item.removidos.length > 0 && (
+                            <p className="text-xs text-[color:var(--text-muted)] mt-1">
+                              <span className="font-semibold">Sin:</span>{' '}
+                              <span className="line-through">
+                                {item.removidos.map(r => r.nombre).join(', ')}
+                              </span>
+                            </p>
+                          )}
+
+                          {/* Nota libre (también viene de item.especificaciones) */}
                           {item.especificaciones && (
                             <p className="text-xs text-[color:var(--text-muted)] mt-1">
                               <span className="font-medium">Especificaciones:</span> {item.especificaciones}

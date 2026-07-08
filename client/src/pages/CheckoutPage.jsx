@@ -495,7 +495,18 @@ export default function CheckoutPage() {
         items: cart.map(item => ({
           producto_id: item.id,
           cantidad: item.cantidad,
+          // precio_unitario es el BASE — el backend lo sobreescribe
+          // con el de la BD para evitar tampering. Lo mandamos igual
+          // por si el backend lo usa para validación de cupón.
           precio_unitario: item.precio,
+          // Customización (estilo Rappi) — el backend agrupa por firma
+          // así que dos items con distinta customización no se fusionan.
+          adiciones: (item.adiciones || []).map(a => ({
+            adicion_id: a.adicion_id,
+            cantidad: a.cantidad,
+          })),
+          removidos_ids: (item.removidos || []).map(r => r.id),
+          notas_item: item.nota || '',
         })),
         cupon_codigo: appliedCoupon?.codigo || null,
         notas: formData.notas,

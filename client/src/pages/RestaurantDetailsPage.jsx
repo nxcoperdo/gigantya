@@ -8,6 +8,7 @@ import Loading from '../components/Loading';
 import AddToCartModal from '../components/AddToCartModal';
 import FavoriteButton from '../components/FavoriteButton';
 import ProductGalleryModal from '../components/ProductGalleryModal';
+import ProductCustomizationModal from '../components/ProductCustomizationModal';
 import api, { productService } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { ratingService } from '../services/api';
@@ -29,6 +30,8 @@ export default function RestaurantDetailsPage() {
     name: '',
     productoId: null,
   });
+  // Producto actualmente siendo customizado (null si no hay modal abierto)
+  const [customizing, setCustomizing] = useState(null);
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -125,11 +128,32 @@ export default function RestaurantDetailsPage() {
   const sortedCategories = Object.entries(groupedProductos)
     .sort(([, a], [, b]) => a.orden - b.orden);
 
-   const handleAddToCart = (producto) => {
+   const handleAddToCart = async (producto) => {
      // El cliente puede agregar productos al carrito incluso si el local
      // es "solo retiro en mostrador" (ofrece_domicilio=0). El checkout
      // y el backend se encargan de forzar nulls en dirección/barrio/sector
      // y costo_envio=0 en ese caso. Ya no bloqueamos acá.
+
+     // Auto-detección de modificadores: si el producto tiene
+     // adiciones o removibles configurados, abrimos el modal
+     // de customización (estilo Rappi) y NO agregamos al carrito
+     // todavía. El callback onAdd del modal llama a addToCart
+     // con la selección estructurada.
+     if (Number(producto.tiene_modificadores) === 1) {
+       try {
+         const res = await productService.getPaqueteModificadores(producto.id);
+         setCustomizing({ producto, paquete: res.data?.configuracion || res.data || { grupos: [], adiciones: [], removibles: [] } });
+       } catch (err) {
+         console.error('Error cargando modificadores:', err);
+         // Si falla el GET (ej: race condition al eliminar el paquete
+         // entre el render y el click), abrimos con paquete vacío:
+         // el usuario solo podrá ajustar la cantidad.
+         setCustomizing({ producto, paquete: { grupos: [], adiciones: [], removibles: [] } });
+       }
+       return { success: true };
+     }
+
+     // Flujo viejo: producto sin modificadores, agregar directo.
      const result = addToCart(producto);
 
      if (!result.success) {
@@ -142,6 +166,28 @@ export default function RestaurantDetailsPage() {
      setProductAdded({ ...producto, cantidad: nuevaCantidad });
      setShowModal(true);
      return result;
+   };
+
+   // Callback que dispara el ProductCustomizationModal cuando el
+   // cliente confirma su selección. Misma estructura que el flujo
+   // viejo: addToCart + setCantidades + abrir AddToCartModal.
+   const handleCustomizationAdd = ({ cantidad, adiciones, removidos, nota }) => {
+     if (!customizing?.producto) return;
+     const result = addToCart(
+       customizing.producto,
+       cantidad,
+       adiciones,
+       removidos,
+       nota
+     );
+     if (!result.success) {
+       alert(result.error);
+       return;
+     }
+     const nuevaCantidad = (cantidades[customizing.producto.id] || 0) + cantidad;
+     setCantidades((prev) => ({ ...prev, [customizing.producto.id]: nuevaCantidad }));
+     setProductAdded({ ...customizing.producto, cantidad: nuevaCantidad });
+     setShowModal(true);
    };
 
   const radiusMap = {
@@ -196,6 +242,16 @@ export default function RestaurantDetailsPage() {
          onClose={() => setShowModal(false)}
          producto={productAdded}
          cantidad={productAdded?.cantidad || 1}
+       />
+
+       {/* Modal de Customización (Rappi-style) — se abre cuando el
+           producto tiene modificadores configurados. */}
+       <ProductCustomizationModal
+         isOpen={customizing != null}
+         onClose={() => setCustomizing(null)}
+         producto={customizing?.producto}
+         paquete={customizing?.paquete}
+         onAdd={handleCustomizationAdd}
        />
 
        {/* Lightbox de galería del producto (swipeable en mobile, flechas en desktop) */}

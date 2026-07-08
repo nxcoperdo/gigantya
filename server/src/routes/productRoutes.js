@@ -46,6 +46,26 @@ router.get('/search/:restaurante_id', productController.searchProducts);
 router.get('/:id', productController.getProduct);
 
 /**
+ * @route   GET /api/products/:id/paquete-modificadores
+ * @desc    Obtener grupos, adiciones y removibles configurados
+ *          por el local para un producto. Público: el cliente lo
+ *          consulta antes de abrir el modal de customización.
+ * @access  Public
+ */
+// IMPORTANTE: declarar ANTES de `/:id` para que Express no matchee
+// el primer segmento como id.
+router.get('/:id/paquete-modificadores', productController.getPaqueteModificadores);
+
+/**
+ * @route   PUT /api/products/:id/paquete-modificadores
+ * @desc    Reemplazar el paquete completo de modificadores del
+ *          producto (grupos, adiciones sueltas, removibles) en una
+ *          sola transacción. Solo el dueño del local. Sin plan-gating.
+ * @access  Private - Restaurant
+ */
+router.put('/:id/paquete-modificadores', verifyToken, requireRestaurant, productController.replacePaqueteModificadores);
+
+/**
  * @route   POST /api/products
  * @desc    Crear nuevo producto (solo restaurante)
  * @access  Private - Restaurant

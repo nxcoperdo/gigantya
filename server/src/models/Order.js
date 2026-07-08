@@ -1,6 +1,7 @@
 import pool, { query, queryOne } from '../config/database.js';
 import * as RestauranteEnvioSector from './RestauranteEnvioSector.js';
 import * as Barrio from './Barrio.js';
+import * as ProductModifier from './ProductModifier.js';
 import { resolverSectorPorCoordenadas } from '../utils/geoUtils.js';
 
 /**
@@ -36,6 +37,23 @@ function createValidationError(message) {
   return error;
 }
 
+/**
+ * Normaliza los items del pedido agrupando por FIRMA, no por
+ * producto_id. La firma es un JSON estable que incluye:
+ *   - producto_id
+ *   - adiciones ordenadas por adicion_id (con su cantidad)
+ *   - removidos ordenados por id
+ *   - nota libre
+ *
+ * Si dos items del request comparten firma, se suman sus
+ * cantidades (mismo producto con misma customización).
+ * Si difieren, quedan como dos items_pedido distintos (mismo
+ * producto con customización distinta, comportamiento Rappi).
+ *
+ * Cada item de salida lleva `adiciones`, `removidos` y `notas`
+ * en su shape canónica para que el resto del pipeline los
+ * consuma directo.
+ */
 export function normalizeOrderItems(items) {
   if (!Array.isArray(items) || items.length === 0) {
     throw createValidationError('items debe ser un array no vacio');
@@ -55,10 +73,54 @@ export function normalizeOrderItems(items) {
       throw createValidationError('Cada item debe tener una cantidad entera positiva');
     }
 
-    grouped.set(producto_id, (grouped.get(producto_id) || 0) + cantidad);
+    // Normalizar adiciones: [{ adicion_id, cantidad: >= 1 }]
+    const adicionesRaw = Array.isArray(item.adiciones) ? item.adiciones : [];
+    const adiciones = adicionesRaw
+      .map((a) => ({
+        adicion_id: Number(a.adicion_id),
+        cantidad: Math.max(1, Math.floor(Number(a.cantidad) || 0)),
+      }))
+      .filter((a) => Number.isInteger(a.adicion_id) && a.adicion_id > 0 && a.cantidad > 0)
+      .sort((a, b) => a.adicion_id - b.adicion_id);
+
+    // Normalizar removidos: [id, ...]
+    const removidosRaw = Array.isArray(item.removidos_ids)
+      ? item.removidos_ids
+      : (Array.isArray(item.removidos) ? item.removidos.map((r) => (typeof r === 'object' ? r.id : r)) : []);
+    const removidos = removidosRaw
+      .map((r) => Number(r))
+      .filter((id) => Number.isInteger(id) && id > 0)
+      .sort((a, b) => a - b);
+
+    // Nota libre: string, máximo 200 caracteres (defensa)
+    const notaRaw = typeof item.notas_item === 'string'
+      ? item.notas_item
+      : (typeof item.nota === 'string' ? item.nota : '');
+    const nota = notaRaw.slice(0, 200);
+
+    // Firma estable (JSON string) — igual a la del CartContext
+    const firma = JSON.stringify({
+      id: producto_id,
+      ad: adiciones.map((a) => ({ id: a.adicion_id, c: a.cantidad })),
+      re: removidos,
+      nota,
+    });
+
+    const existing = grouped.get(firma);
+    if (existing) {
+      existing.cantidad += cantidad;
+    } else {
+      grouped.set(firma, {
+        producto_id,
+        cantidad,
+        adiciones,
+        removidos,
+        nota,
+      });
+    }
   }
 
-  return Array.from(grouped, ([producto_id, cantidad]) => ({ producto_id, cantidad }));
+  return Array.from(grouped.values());
 }
 
 /**
@@ -252,6 +314,10 @@ export async function createOrderWithItems(orderData) {
     const pricedItems = normalizedItems.map(item => {
       const product = productsById.get(item.producto_id);
 
+      if (!product) {
+        throw createValidationError('Uno o mas productos no existen');
+      }
+
       if (Number(product.restaurante_id) !== Number(restaurante_id)) {
         throw createValidationError('Todos los productos deben pertenecer al restaurante seleccionado');
       }
@@ -260,11 +326,62 @@ export async function createOrderWithItems(orderData) {
         throw createValidationError('Uno o mas productos no estan disponibles');
       }
 
+      const precioBase = Number(product.precio);
+      // El subtotal y la suma de adiciones se aplican DESPUÉS de
+      // validar las adiciones (abajo). Acá solo dejamos el precio
+      // base para mantener el shape compatible con calculateOrderTotal.
       return {
         ...item,
-        precio_unitario: Number(product.precio)
+        precio_unitario: precioBase,
       };
     });
+
+    // Validar adiciones: que existan, que estén activas y que
+    // pertenezcan al producto del item. Devuelve la lista con
+    // precio_extra snapshot (en el momento del pedido, no se
+    // recalcula si el local edita la adición después).
+    const validatedItems = await Promise.all(
+      pricedItems.map(async (item) => {
+        if (!item.adiciones || item.adiciones.length === 0) {
+          return { ...item, adiciones_snapshot: [], suma_adiciones: 0 };
+        }
+        const adicionIds = item.adiciones.map((a) => a.adicion_id);
+        const placeholders = adicionIds.map(() => '?').join(',');
+        const [rows] = await connection.query(
+          `SELECT id, producto_id, nombre, precio_extra
+           FROM producto_adiciones
+           WHERE id IN (${placeholders}) AND activo = 1`,
+          adicionIds
+        );
+        const adicionesById = new Map(rows.map((r) => [Number(r.id), r]));
+        const snapshot = [];
+        for (const a of item.adiciones) {
+          const row = adicionesById.get(a.adicion_id);
+          if (!row) {
+            throw createValidationError(`Adición ${a.adicion_id} no existe o no está activa`);
+          }
+          if (Number(row.producto_id) !== Number(item.producto_id)) {
+            throw createValidationError(
+              `La adición ${a.adicion_id} no pertenece al producto ${item.producto_id}`
+            );
+          }
+          const precio = row.precio_extra == null ? 0 : Number(row.precio_extra);
+          snapshot.push({
+            adicion_id: a.adicion_id,
+            cantidad: a.cantidad,
+            nombre: row.nombre,
+            precio_unitario_adicion: precio,
+            subtotal: Number((precio * a.cantidad).toFixed(2)),
+          });
+        }
+        const sumaAdiciones = snapshot.reduce((s, a) => s + a.subtotal, 0);
+        return {
+          ...item,
+          adiciones_snapshot: snapshot,
+          suma_adiciones: Number(sumaAdiciones.toFixed(2)),
+        };
+      })
+    );
 
     // Obtener datos del cupón si se proporcionó
     let coupon = null;
@@ -353,7 +470,15 @@ export async function createOrderWithItems(orderData) {
     if (totalFromRequest !== null && totalFromRequest !== undefined && Number(totalFromRequest) > 0) {
       total = Number(totalFromRequest);
     } else {
-      const calc = calculateOrderTotal(pricedItems, coupon, taxConfig, shippingConfig, {
+      // Para que calculateOrderTotal sume las adiciones al subtotal,
+      // le pasamos un shadow de items con `precio_unitario` ya extendido
+      // a base + suma_adiciones. El shape que consume calculateOrderTotal
+      // es { precio_unitario, cantidad }.
+      const pricedForTotal = validatedItems.map((item) => ({
+        precio_unitario: item.precio_unitario + item.suma_adiciones,
+        cantidad: item.cantidad,
+      }));
+      const calc = calculateOrderTotal(pricedForTotal, coupon, taxConfig, shippingConfig, {
         costo_envio_override: resolvedCostoEnvio
       });
       total = calc.total;
@@ -437,15 +562,51 @@ export async function createOrderWithItems(orderData) {
 
     const pedidoId = orderResult.insertId;
 
-    for (const item of pricedItems) {
-      const subtotal = Number((item.cantidad * item.precio_unitario).toFixed(2));
-      await connection.query(
-        `
-          INSERT INTO items_pedido (pedido_id, producto_id, cantidad, precio_unitario, subtotal)
-          VALUES (?, ?, ?, ?, ?)
-        `,
-        [pedidoId, item.producto_id, item.cantidad, item.precio_unitario, subtotal]
+    for (const item of validatedItems) {
+      // precio_unitario = base del producto (se conserva por
+      // trazabilidad histórica y compatibilidad con reports).
+      // subtotal = (base + suma_adiciones) * cantidad. El frontend
+      // ya calculó el total final, así que el `total` del pedido
+      // sigue siendo la fuente de verdad para cobrar.
+      const subtotal = Number(
+        ((item.precio_unitario + item.suma_adiciones) * item.cantidad).toFixed(2)
       );
+      const removidosJson = item.removidos && item.removidos.length > 0
+        ? JSON.stringify(item.removidos)
+        : null;
+      const [insertResult] = await connection.query(
+        `
+          INSERT INTO items_pedido
+            (pedido_id, producto_id, cantidad, precio_unitario, subtotal, especificaciones, removidos_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          pedidoId,
+          item.producto_id,
+          item.cantidad,
+          item.precio_unitario,
+          subtotal,
+          item.nota || null,
+          removidosJson,
+        ]
+      );
+      const itemPedidoId = insertResult.insertId;
+      // Insert de cada adición del item con su snapshot
+      for (const ad of item.adiciones_snapshot) {
+        await connection.query(
+          `INSERT INTO items_pedido_adiciones
+            (item_pedido_id, adicion_id, nombre, precio_unitario_adicion, cantidad, subtotal, creado_en)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            itemPedidoId,
+            ad.adicion_id,
+            ad.nombre,
+            ad.precio_unitario_adicion,
+            ad.cantidad,
+            ad.subtotal,
+          ]
+        );
+      }
     }
 
     await connection.commit();
@@ -481,6 +642,35 @@ export async function addOrderItem(pedido_id, producto_id, cantidad, precio_unit
   } catch (error) {
     throw new Error(`Error agregando item al pedido: ${error.message}`);
   }
+}
+
+/**
+ * Enriquece los items de un pedido con `adiciones[]` y `removidos[]`
+ * (parseados desde `removidos_json`). Es la forma única en que el
+ * frontend (cliente, local, admin) ve la customización del producto
+ * — sin esto, el local no sabría qué pidió el cliente.
+ *
+ * Recibe los items ya cargados (shape de getOrderById/getOrderWithPaymentInfo)
+ * y los MUTA in-place con los nuevos campos. Si no hay adiciones ni
+ * removidos, queda con arrays vacíos.
+ */
+async function enrichItemsWithModifiers(pedidoId, items) {
+  if (!Array.isArray(items) || items.length === 0) return items;
+  const adicionesPorItem = await ProductModifier.getItemsAdicionesByPedido(pedidoId);
+  for (const item of items) {
+    item.adiciones = adicionesPorItem.get(item.id) || [];
+    if (item.removidos_json) {
+      try {
+        item.removidos = JSON.parse(item.removidos_json);
+        if (!Array.isArray(item.removidos)) item.removidos = [];
+      } catch {
+        item.removidos = [];
+      }
+    } else {
+      item.removidos = [];
+    }
+  }
+  return items;
 }
 
 /**
@@ -524,6 +714,9 @@ export async function getOrderById(id) {
     LEFT JOIN productos pr ON ip.producto_id = pr.id
     WHERE ip.pedido_id = ?
   `, [id]);
+
+  // Enriquece cada item con adiciones[] y removidos[]
+  await enrichItemsWithModifiers(id, items);
 
   const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
   const costoEnvio = Number(pedido.costo_envio) || 0;
@@ -735,6 +928,9 @@ export async function getOrderWithPaymentInfo(id) {
     LEFT JOIN productos pr ON ip.producto_id = pr.id
     WHERE ip.pedido_id = ?
   `, [id]);
+
+  // Enriquece cada item con adiciones[] y removidos[]
+  await enrichItemsWithModifiers(id, items);
 
   // Calcular subtotal y descuento
   const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);

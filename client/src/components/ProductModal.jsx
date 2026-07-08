@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Trash2, Sparkles } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Sparkles, ListPlus, Plus, ChefHat } from 'lucide-react';
 import { productService, categoryService, authService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { getCategoryIcon } from '../utils/categoryIcons';
@@ -25,6 +25,12 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
   const [gallery, setGallery] = useState([]);
   const [galleryFiles, setGalleryFiles] = useState([]);
   const [galleryUploading, setGalleryUploading] = useState(false);
+  // Modificadores de producto (estilo Rappi/PedidosYa) — sin plan-gating
+  const [grupos, setGrupos] = useState([]);
+  const [adicionesSueltas, setAdicionesSueltas] = useState([]);
+  const [removibles, setRemovibles] = useState([]);
+  const [loadingModificadores, setLoadingModificadores] = useState(false);
+  const [savingModificadores, setSavingModificadores] = useState(false);
   const [plan, setPlan] = useState('basico');
 
   useEffect(() => {
@@ -114,6 +120,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       });
       setImagePreview(product.imagen_url ? getImageUrl(product.imagen_url) : '');
       loadGallery(product.id);
+      loadModificadores(product.id);
     } else {
       setFormData({
         nombre: '',
@@ -125,6 +132,9 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       });
       setImagePreview('');
       setGallery([]);
+      setGrupos([]);
+      setAdicionesSueltas([]);
+      setRemovibles([]);
     }
     setGalleryFiles([]);
     setError('');
@@ -137,6 +147,57 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       setGallery(res.data?.imagenes || []);
     } catch (e) {
       setGallery([]);
+    }
+  };
+
+  // Carga el paquete de modificadores del producto. Se llama cada vez
+  // que se abre el modal con un producto existente.
+  const loadModificadores = async (productId) => {
+    if (!productId) return;
+    setLoadingModificadores(true);
+    try {
+      const res = await productService.getPaqueteModificadores(productId);
+      const config = res.data?.configuracion || { grupos: [], adiciones: [], removibles: [] };
+      // El backend devuelve todas las adiciones juntas (con y sin grupo).
+      // Acá las partimos: las de grupo_id NULL van a adicionesSueltas, el
+      // resto a su grupo correspondiente.
+      const gruposAdaptados = (config.grupos || []).map((g) => ({
+        _uiId: `g-${g.id}`,
+        _serverId: g.id,
+        nombre: g.nombre,
+        adiciones: (config.adiciones || [])
+          .filter((a) => a.grupo_id === g.id)
+          .map((a) => ({
+            _uiId: `a-${a.id}`,
+            _serverId: a.id,
+            nombre: a.nombre,
+            precio_extra: a.precio_extra == null ? '' : a.precio_extra,
+          })),
+      }));
+      const sueltasAdaptadas = (config.adiciones || [])
+        .filter((a) => a.grupo_id == null)
+        .map((a) => ({
+          _uiId: `a-${a.id}`,
+          _serverId: a.id,
+          nombre: a.nombre,
+          precio_extra: a.precio_extra == null ? '' : a.precio_extra,
+        }));
+      const removiblesAdaptados = (config.removibles || []).map((r) => ({
+        _uiId: `r-${r.id}`,
+        _serverId: r.id,
+        nombre: r.nombre,
+      }));
+      setGrupos(gruposAdaptados);
+      setAdicionesSueltas(sueltasAdaptadas);
+      setRemovibles(removiblesAdaptados);
+    } catch (e) {
+      // Si el endpoint no existe o falla, asumimos que no hay
+      // modificadores (compatibilidad con migración aún no corrida).
+      setGrupos([]);
+      setAdicionesSueltas([]);
+      setRemovibles([]);
+    } finally {
+      setLoadingModificadores(false);
     }
   };
 
@@ -239,6 +300,12 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
         await uploadGallery(productoId);
       }
 
+      // Guardar el paquete de modificadores (todos los planes pueden).
+      // Es un PUT que reemplaza el paquete entero.
+      if (productoId) {
+        await saveModificadores(productoId);
+      }
+
       onSave();
       onClose();
     } catch (err) {
@@ -246,6 +313,124 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
     } finally {
       setSaving(false);
     }
+  };
+
+  // Construye el payload del paquete y lo manda al backend.
+  // No falla el guardado del producto si esta parte falla: se loguea
+  // y se sigue. (La sección de modificadores es un extra.)
+  const saveModificadores = async (productoId) => {
+    setSavingModificadores(true);
+    try {
+      const payload = {
+        grupos: grupos
+          .filter((g) => g.nombre && g.nombre.trim())
+          .map((g) => ({
+            nombre: g.nombre.trim(),
+            adiciones: (g.adiciones || [])
+              .filter((a) => a.nombre && a.nombre.trim())
+              .map((a) => ({
+                nombre: a.nombre.trim(),
+                precio_extra:
+                  a.precio_extra === '' || a.precio_extra == null
+                    ? null
+                    : Number(a.precio_extra),
+              })),
+          })),
+        adiciones_sueltas: adicionesSueltas
+          .filter((a) => a.nombre && a.nombre.trim())
+          .map((a) => ({
+            nombre: a.nombre.trim(),
+            precio_extra:
+              a.precio_extra === '' || a.precio_extra == null
+                ? null
+                : Number(a.precio_extra),
+          })),
+        removibles: removibles
+          .filter((r) => r.nombre && r.nombre.trim())
+          .map((r) => ({ nombre: r.nombre.trim() })),
+      };
+      await productService.replacePaqueteModificadores(productoId, payload);
+    } catch (err) {
+      console.error('Error guardando modificadores:', err);
+      // No bloqueamos el cierre del modal: el producto ya quedó
+      // guardado, los modificadores pueden reintentarse.
+      setError(
+        (prev) => prev || 'Producto guardado, pero falló al guardar los modificadores: ' +
+        (err.response?.data?.error || err.message)
+      );
+    } finally {
+      setSavingModificadores(false);
+    }
+  };
+
+  // Helpers para manipular los arrays de modificadores
+  const addGrupo = () => {
+    setGrupos((prev) => [
+      ...prev,
+      { _uiId: `g-new-${Date.now()}`, nombre: '', adiciones: [] },
+    ]);
+  };
+  const updateGrupo = (uiId, patch) => {
+    setGrupos((prev) => prev.map((g) => (g._uiId === uiId ? { ...g, ...patch } : g)));
+  };
+  const removeGrupo = (uiId) => {
+    setGrupos((prev) => prev.filter((g) => g._uiId !== uiId));
+  };
+  const addAdicionToGrupo = (grupoUiId) => {
+    setGrupos((prev) =>
+      prev.map((g) =>
+        g._uiId === grupoUiId
+          ? { ...g, adiciones: [...g.adiciones, { _uiId: `a-new-${Date.now()}`, nombre: '', precio_extra: '' }] }
+          : g
+      )
+    );
+  };
+  const updateAdicionInGrupo = (grupoUiId, adicionUiId, patch) => {
+    setGrupos((prev) =>
+      prev.map((g) =>
+        g._uiId === grupoUiId
+          ? {
+              ...g,
+              adiciones: g.adiciones.map((a) =>
+                a._uiId === adicionUiId ? { ...a, ...patch } : a
+              ),
+            }
+          : g
+      )
+    );
+  };
+  const removeAdicionFromGrupo = (grupoUiId, adicionUiId) => {
+    setGrupos((prev) =>
+      prev.map((g) =>
+        g._uiId === grupoUiId
+          ? { ...g, adiciones: g.adiciones.filter((a) => a._uiId !== adicionUiId) }
+          : g
+      )
+    );
+  };
+  const addAdicionSuelta = () => {
+    setAdicionesSueltas((prev) => [
+      ...prev,
+      { _uiId: `a-new-${Date.now()}`, nombre: '', precio_extra: '' },
+    ]);
+  };
+  const updateAdicionSuelta = (uiId, patch) => {
+    setAdicionesSueltas((prev) => prev.map((a) => (a._uiId === uiId ? { ...a, ...patch } : a)));
+  };
+  const removeAdicionSuelta = (uiId) => {
+    setAdicionesSueltas((prev) => prev.filter((a) => a._uiId !== uiId));
+  };
+  const addRemovible = () => {
+    setRemovibles((prev) => [
+      ...prev,
+      { _uiId: `r-new-${Date.now()}`, nombre: '' },
+    ]);
+  };
+  const updateRemovible = (uiId, patch) => {
+    setRemovibles((prev) => prev.map((r) => (r._uiId === uiId ? { ...r, ...patch } : r)));
+  };
+  const removeRemovible = (uiId) => {
+    setRemovibles((prev) => prev.filter((r) => r._uiId !== uiId));
   };
 
   const galleryLimit = PLAN_LIMITS[plan] || 1;
@@ -462,6 +647,179 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                 </div>
               )}
             </div>
+
+            {/* Modificadores (estilo Rappi/PedidosYa) — sin plan-gating.
+                El cliente va a ver un modal de selección si este
+                producto tiene adiciones o removibles configurados. */}
+            <div className="border-t border-[color:var(--border-subtle)] pt-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-[color:var(--text-primary)] flex items-center gap-2">
+                    <ListPlus size={16} className="text-primary" />
+                    Adiciones y modificadores
+                  </p>
+                  <span className="text-xs text-[color:var(--text-muted)]">
+                    {loadingModificadores ? 'Cargando…' : 'Todos los planes'}
+                  </span>
+                </div>
+                <p className="text-xs text-[color:var(--text-muted)]">
+                  Configura qué puede añadir o quitar el cliente al pedir este producto. Si no agregas nada, el producto se sigue pidiendo como siempre.
+                </p>
+
+                {/* Grupos de adiciones */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">
+                    Grupos de adiciones (opcional)
+                  </p>
+                  {grupos.map((g) => (
+                    <div
+                      key={g._uiId}
+                      className="rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)] p-3 space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={g.nombre}
+                          onChange={(e) => updateGrupo(g._uiId, { nombre: e.target.value })}
+                          placeholder='Nombre del grupo (ej. "Salsas")'
+                          className="flex-1 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-sm text-[color:var(--text-primary)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeGrupo(g._uiId)}
+                          className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+                          aria-label="Eliminar grupo"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <div className="space-y-1.5 pl-2">
+                        {g.adiciones.map((a) => (
+                          <div key={a._uiId} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={a.nombre}
+                              onChange={(e) => updateAdicionInGrupo(g._uiId, a._uiId, { nombre: e.target.value })}
+                              placeholder='Nombre (ej. "Mayo")'
+                              className="flex-1 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={a.precio_extra}
+                              onChange={(e) => updateAdicionInGrupo(g._uiId, a._uiId, { precio_extra: e.target.value })}
+                              placeholder="Gratis"
+                              className="w-24 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeAdicionFromGrupo(g._uiId, a._uiId)}
+                              className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+                              aria-label="Eliminar adición"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addAdicionToGrupo(g._uiId)}
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <Plus size={12} /> Adición
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addGrupo}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus size={12} /> Grupo de adiciones
+                  </button>
+                </div>
+
+                {/* Adiciones sueltas */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">
+                    Adiciones sueltas (sin grupo)
+                  </p>
+                  {adicionesSueltas.map((a) => (
+                    <div key={a._uiId} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={a.nombre}
+                        onChange={(e) => updateAdicionSuelta(a._uiId, { nombre: e.target.value })}
+                        placeholder='Nombre (ej. "Con limón")'
+                        className="flex-1 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] text-sm text-[color:var(--text-primary)]"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={a.precio_extra}
+                        onChange={(e) => updateAdicionSuelta(a._uiId, { precio_extra: e.target.value })}
+                        placeholder="Gratis"
+                        className="w-24 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] text-sm text-[color:var(--text-primary)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeAdicionSuelta(a._uiId)}
+                        className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+                        aria-label="Eliminar adición"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addAdicionSuelta}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus size={12} /> Adición suelta
+                  </button>
+                </div>
+
+                {/* Removibles */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide flex items-center gap-1">
+                    <ChefHat size={12} /> Ingredientes removibles
+                  </p>
+                  <p className="text-[11px] text-[color:var(--text-muted)]">
+                    Cosas que vienen por defecto y el cliente puede quitar (ej. "Cebolla", "Tomate").
+                  </p>
+                  {removibles.map((r) => (
+                    <div key={r._uiId} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={r.nombre}
+                        onChange={(e) => updateRemovible(r._uiId, { nombre: e.target.value })}
+                        placeholder='Nombre (ej. "Cebolla")'
+                        className="flex-1 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] text-sm text-[color:var(--text-primary)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeRemovible(r._uiId)}
+                        className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+                        aria-label="Eliminar ingrediente"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addRemovible}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus size={12} /> Ingrediente removible
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -474,10 +832,10 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
             </button>
             <button
               type="submit"
-              disabled={saving || uploading || galleryUploading}
+              disabled={saving || uploading || galleryUploading || savingModificadores}
               className="px-6 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primaryDark transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              {saving || uploading || galleryUploading ? 'Guardando...' : product ? 'Actualizar' : 'Crear Producto'}
+              {saving || uploading || galleryUploading || savingModificadores ? 'Guardando...' : product ? 'Actualizar' : 'Crear Producto'}
             </button>
           </div>
         </form>

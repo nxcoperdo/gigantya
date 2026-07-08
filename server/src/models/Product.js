@@ -71,8 +71,29 @@ export async function createProduct(productData) {
  * Obtener productos por restaurante
  */
 export async function getProductsByRestaurant(restaurante_id) {
+  // `tiene_modificadores` permite al cliente saber en el render inicial
+  // si debe abrir el modal de customización (Rappi-style) o agregar
+  // directo. Se computa con dos EXISTS a producto_adiciones y
+  // producto_ingredientes_removibles. Cada EXISTS es O(log n) gracias
+  // a los índices (producto_id, orden) que crea la migración
+  // 20260708000001_modificadores_producto.
   const sql = `
-    SELECT p.*, c.nombre as categoria_nombre, c.orden as categoria_orden
+    SELECT
+      p.*,
+      c.nombre AS categoria_nombre,
+      c.orden  AS categoria_orden,
+      EXISTS(
+        SELECT 1 FROM producto_adiciones
+        WHERE producto_id = p.id AND activo = 1
+      ) AS tiene_adiciones,
+      EXISTS(
+        SELECT 1 FROM producto_ingredientes_removibles
+        WHERE producto_id = p.id AND activo = 1
+      ) AS tiene_removibles,
+      (
+        EXISTS(SELECT 1 FROM producto_adiciones WHERE producto_id = p.id AND activo = 1)
+        OR EXISTS(SELECT 1 FROM producto_ingredientes_removibles WHERE producto_id = p.id AND activo = 1)
+      ) AS tiene_modificadores
     FROM productos p
     LEFT JOIN categorias c ON p.categoria_id = c.id
     WHERE p.restaurante_id = ? AND p.estado = 'activo'
