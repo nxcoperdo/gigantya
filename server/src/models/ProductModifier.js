@@ -193,26 +193,33 @@ export async function replacePaqueteModificadores(productoId, payload) {
       throw new Error(`Producto ${productoId} no existe`);
     }
 
-    // 2. Borrar grupos (las adiciones con ese grupo_id se ponen NULL)
+    // 2. Borrar grupos (las adiciones con ese grupo_id se ponen NULL
+    //    por la FK ON DELETE SET NULL; sobreviven vivas).
     await connection.query(
       'DELETE FROM producto_grupos_adiciones WHERE producto_id = ?',
       [productoId]
     );
 
-    // 3. Borrar adiciones sueltas (sobreviven las que tenían grupo_id
-    //    porque su FK es SET NULL, pero el CASCADE anterior no las toca
-    //    por el mismo motivo: solo sobreviven si la SET NULL las deja
-    //    vivas — pero como ya borramos los grupos, quedaron NULL y
-    //    necesitamos purgarlas también para que el replace sea limpio).
-    //    Razonamiento: si el admin reescribió los grupos, las adiciones
-    //    viejas (con grupo_id viejo que ahora es NULL) son basura. Las
-    //    borramos.
+    // 3. NO podemos hacer DELETE FROM producto_adiciones: la FK
+    //    items_pedido_adiciones.adicion_id → producto_adiciones.id
+    //    es ON DELETE RESTRICT (a propósito, para que los pedidos
+    //    viejos siempre apunten a una adición válida y podamos
+    //    mostrarla en el ticket). Si borramos, MySQL rebota con
+    //    ER_ROW_IS_REFERENCED_2.
+    //
+    //    Solución: soft-delete. Marcamos las viejas como activo=0.
+    //    getAdicionesByProducto filtra por activo=1, así que la API
+    //    no las ve; los pedidos viejos siguen apuntando a su
+    //    adicion_id original y se siguen mostrando bien en el ticket
+    //    (lee el snapshot de items_pedido_adiciones.nombre y
+    //    .precio_unitario_adicion, no la fila viva).
     await connection.query(
-      'DELETE FROM producto_adiciones WHERE producto_id = ?',
+      'UPDATE producto_adiciones SET activo = 0 WHERE producto_id = ?',
       [productoId]
     );
 
-    // 4. Borrar removibles
+    // 4. Borrar removibles (no tienen tabla histórica, se pueden
+    //    borrar sin problema).
     await connection.query(
       'DELETE FROM producto_ingredientes_removibles WHERE producto_id = ?',
       [productoId]
