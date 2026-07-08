@@ -166,6 +166,7 @@ export default function PaymentMethodSelector({ selectedMethod, onMethodChange, 
             <ol className="space-y-1 text-sm text-[color:var(--text-secondary)] list-decimal list-inside">
               <li>Transfiere al número o clave de abajo.</li>
               <li>Sube aquí el comprobante de tu pago.</li>
+              <li>Confirma el pedido.</li>
               <li>Espera a que el local valide tu comprobante.</li>
             </ol>
           </div>
