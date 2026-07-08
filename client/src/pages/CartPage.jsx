@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart, Store } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
@@ -155,25 +155,50 @@ export default function CartPage() {
                     <h3 className="text-base sm:text-lg font-bold text-[color:var(--text-primary)] truncate">{item.nombre}</h3>
                     <p className="text-[color:var(--text-secondary)] text-sm sm:text-base">{formatCurrency(item.precio)}</p>
 
-                    {/* Adiciones elegidas */}
-                    {item.adiciones && item.adiciones.length > 0 && (
-                      <ul className="mt-1 space-y-0.5">
-                        {item.adiciones.map((a) => (
-                          <li
-                            key={a.adicion_id}
-                            className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
-                          >
-                            <Plus size={10} className="text-primary flex-shrink-0" />
-                            <span>
-                              {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
-                              {a.precio_extra > 0 && (
-                                <span className="text-[color:var(--text-muted)]"> (+{formatCurrency(a.precio_extra * a.cantidad)})</span>
+                    {/* Adiciones elegidas. Si la adición tiene
+                        `grupo_nombre` (poblado por el ProductCustomizationModal
+                        o por un pedido viejo que vino del backend), se
+                        muestra como heading. Adiciones sueltas (sin
+                        grupo) quedan sin heading. */}
+                    {item.adiciones && item.adiciones.length > 0 && (() => {
+                      const grupos = [];
+                      const indexByGrupo = new Map();
+                      for (const a of item.adiciones) {
+                        const key = a.grupo_nombre || null;
+                        if (!indexByGrupo.has(key)) {
+                          indexByGrupo.set(key, grupos.length);
+                          grupos.push({ grupo: key, items: [] });
+                        }
+                        grupos[indexByGrupo.get(key)].items.push(a);
+                      }
+                      return (
+                        <ul className="mt-1 space-y-0.5">
+                          {grupos.map((g, gi) => (
+                            <Fragment key={`${item.line_id}-grupo-${gi}`}>
+                              {g.grupo && (
+                                <li className="text-[11px] font-semibold text-[color:var(--text-muted)] uppercase tracking-wide mt-1">
+                                  {g.grupo}:
+                                </li>
                               )}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                              {g.items.map((a) => (
+                                <li
+                                  key={a.adicion_id}
+                                  className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
+                                >
+                                  <Plus size={10} className="text-primary flex-shrink-0" />
+                                  <span>
+                                    {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
+                                    {a.precio_extra > 0 && (
+                                      <span className="text-[color:var(--text-muted)]"> (+{formatCurrency(a.precio_extra * a.cantidad)})</span>
+                                    )}
+                                  </span>
+                                </li>
+                              ))}
+                            </Fragment>
+                          ))}
+                        </ul>
+                      );
+                    })()}
 
                     {/* Ingredientes quitados */}
                     {item.removidos && item.removidos.length > 0 && (

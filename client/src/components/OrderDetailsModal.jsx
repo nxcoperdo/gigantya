@@ -1,5 +1,5 @@
 import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag, Printer, Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { orderService } from '../services/api';
 import AddressMapPreview from './AddressMapPreview';
 import { formatDateTime } from '../utils/dateHelper';
@@ -382,28 +382,55 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
                             {item.descripcion || item.producto_descripcion || 'Sin descripción'}
                           </p>
 
-                          {/* Adiciones elegidas (Rappi-style) — una línea
-                              por cada adición con su cantidad y precio. */}
-                          {item.adiciones && item.adiciones.length > 0 && (
-                            <ul className="mt-1.5 space-y-0.5">
-                              {item.adiciones.map((a, idx) => (
-                                <li
-                                  key={`${item.id}-add-${idx}`}
-                                  className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
-                                >
-                                  <Plus size={10} className="text-primary flex-shrink-0" />
-                                  <span>
-                                    {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
-                                    {Number(a.precio_unitario_adicion) > 0 && (
-                                      <span className="text-[color:var(--text-muted)]">
-                                        {' '}(+${Number(a.subtotal || 0).toLocaleString('es-CO')})
-                                      </span>
+                          {/* Adiciones elegidas (Rappi-style).
+                              Las adiciones con `grupo_nombre` se agrupan
+                              bajo un heading con el nombre del grupo
+                              (ej. "Salsas:"). Las adiciones sin grupo
+                              (grupo_nombre null) se listan sin heading
+                              arriba, igual que en el ProductCustomizationModal. */}
+                          {item.adiciones && item.adiciones.length > 0 && (() => {
+                            // Estructura: [{ grupo, items: [...] }, ...]
+                            // donde `grupo` es null para adiciones sueltas.
+                            const grupos = [];
+                            const indexByGrupo = new Map();
+                            for (const a of item.adiciones) {
+                              const key = a.grupo_nombre || null;
+                              if (!indexByGrupo.has(key)) {
+                                indexByGrupo.set(key, grupos.length);
+                                grupos.push({ grupo: key, items: [] });
+                              }
+                              grupos[indexByGrupo.get(key)].items.push(a);
+                            }
+                            return (
+                              <ul className="mt-1.5 space-y-0.5">
+                                {grupos.map((g, gi) => (
+                                  <Fragment key={`${item.id}-grupo-${gi}`}>
+                                    {g.grupo && (
+                                      <li className="text-[11px] font-semibold text-[color:var(--text-muted)] uppercase tracking-wide mt-1">
+                                        {g.grupo}:
+                                      </li>
                                     )}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                                    {g.items.map((a, idx) => (
+                                      <li
+                                        key={`${item.id}-add-${gi}-${idx}`}
+                                        className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
+                                      >
+                                        <Plus size={10} className="text-primary flex-shrink-0" />
+                                        <span>
+                                          {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
+                                          {Number(a.precio_unitario_adicion) > 0 && (
+                                            <span className="text-[color:var(--text-muted)]">
+                                              {' '}(+${Number(a.subtotal || 0).toLocaleString('es-CO')})
+                                            </span>
+                                          )}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </Fragment>
+                                ))}
+                              </ul>
+                            );
+                          })()}
 
                           {/* Ingredientes removidos (marcados por el
                               cliente) — línea tachada. */}

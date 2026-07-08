@@ -357,10 +357,16 @@ export async function createOrderWithItems(orderData) {
         }
         const adicionIds = item.adiciones.map((a) => a.adicion_id);
         const placeholders = adicionIds.map(() => '?').join(',');
+        // LEFT JOIN a producto_grupos_adiciones para hacer snapshot
+        // del nombre del grupo al momento del pedido. Si la adición
+        // no tiene grupo (grupo_id IS NULL), `grupo_nombre` queda NULL
+        // — el render del ticket lo trata como "adición suelta".
         const [rows] = await connection.query(
-          `SELECT id, producto_id, nombre, precio_extra
-           FROM producto_adiciones
-           WHERE id IN (${placeholders}) AND activo = 1`,
+          `SELECT pa.id, pa.producto_id, pa.nombre, pa.precio_extra, pa.grupo_id,
+                  pg.nombre AS grupo_nombre
+           FROM producto_adiciones pa
+           LEFT JOIN producto_grupos_adiciones pg ON pa.grupo_id = pg.id
+           WHERE pa.id IN (${placeholders}) AND pa.activo = 1`,
           adicionIds
         );
         const adicionesById = new Map(rows.map((r) => [Number(r.id), r]));
@@ -380,6 +386,7 @@ export async function createOrderWithItems(orderData) {
             adicion_id: a.adicion_id,
             cantidad: a.cantidad,
             nombre: row.nombre,
+            grupo_nombre: row.grupo_nombre || null,
             precio_unitario_adicion: precio,
             subtotal: Number((precio * a.cantidad).toFixed(2)),
           });
@@ -642,12 +649,13 @@ export async function createOrderWithItems(orderData) {
       for (const ad of item.adiciones_snapshot) {
         await connection.query(
           `INSERT INTO items_pedido_adiciones
-            (item_pedido_id, adicion_id, nombre, precio_unitario_adicion, cantidad, subtotal, creado_en)
-           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+            (item_pedido_id, adicion_id, nombre, grupo_nombre, precio_unitario_adicion, cantidad, subtotal, creado_en)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
           [
             itemPedidoId,
             ad.adicion_id,
             ad.nombre,
+            ad.grupo_nombre || null,
             ad.precio_unitario_adicion,
             ad.cantidad,
             ad.subtotal,

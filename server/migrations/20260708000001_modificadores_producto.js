@@ -91,6 +91,12 @@ export async function up(knex) {
       table.integer('item_pedido_id').unsigned().notNullable();
       table.integer('adicion_id').unsigned().notNullable();
       table.string('nombre', 150).notNullable();
+      // Snapshot del nombre del grupo de la adición al momento del
+      // pedido (NULL = adición suelta, sin grupo). El render del
+      // ticket lo usa para mostrar el heading del grupo. Si el local
+      // edita el nombre del grupo después, el pedido histórico no se
+      // ve afectado — mismo principio que `nombre` y `precio_extra`.
+      table.string('grupo_nombre', 100).nullable();
       table.decimal('precio_unitario_adicion', 10, 2).notNullable();
       table.integer('cantidad').notNullable().defaultTo(1);
       table.decimal('subtotal', 10, 2).notNullable();
@@ -104,6 +110,12 @@ export async function up(knex) {
         .references('id').inTable('producto_adiciones').onDelete('RESTRICT');
       table.index('item_pedido_id', 'idx_item_pedido_ad');
       table.index('adicion_id', 'idx_adicion_en_items');
+    });
+  } else if (!(await knex.schema.hasColumn('items_pedido_adiciones', 'grupo_nombre'))) {
+    // Tabla ya existía (creada por la versión anterior de la migración
+    // o por SQL manual) → agregamos la columna sin tocar el resto.
+    await knex.schema.alterTable('items_pedido_adiciones', (table) => {
+      table.string('grupo_nombre', 100).nullable();
     });
   }
 
@@ -121,6 +133,11 @@ export async function down(knex) {
   if (await knex.schema.hasColumn('items_pedido', 'removidos_json')) {
     await knex.schema.alterTable('items_pedido', (table) => {
       table.dropColumn('removidos_json');
+    });
+  }
+  if (await knex.schema.hasColumn('items_pedido_adiciones', 'grupo_nombre')) {
+    await knex.schema.alterTable('items_pedido_adiciones', (table) => {
+      table.dropColumn('grupo_nombre');
     });
   }
   await knex.schema.dropTableIfExists('items_pedido_adiciones');

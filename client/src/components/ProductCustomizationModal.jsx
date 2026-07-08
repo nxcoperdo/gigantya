@@ -94,6 +94,15 @@ export default function ProductCustomizationModal({
 
   function handleAdd() {
     if (!producto) return;
+    // Mapa id → nombre del grupo, para que cada adición lleve el
+    // nombre de su grupo en el payload del carrito. El backend hace
+    // el snapshot final en `items_pedido_adiciones.grupo_nombre` (con
+    // LEFT JOIN a producto_grupos_adiciones), pero acá también lo
+    // dejamos para que el carrito del cliente lo pueda renderizar
+    // sin tener que esperar al backend.
+    const grupoNombreById = new Map(
+      (paquete?.grupos || []).map((g) => [g.id, g.nombre])
+    );
     const adicionesSeleccionadas = todasAdiciones
       .filter((a) => Number(adicionesQty[a.id] || 0) > 0)
       .map((a) => {
@@ -102,6 +111,7 @@ export default function ProductCustomizationModal({
         return {
           adicion_id: a.id,
           nombre: a.nombre,
+          grupo_nombre: a.grupo_id ? (grupoNombreById.get(a.grupo_id) || null) : null,
           precio_extra: precio,
           cantidad: qty,
           subtotal: precio * qty,

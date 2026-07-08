@@ -321,11 +321,16 @@ export async function insertItemAdicion(connection, { item_pedido_id, adicion_id
 
 /**
  * Devuelve las adiciones de un pedido, agrupadas por item_pedido_id.
+ * Cada adición incluye `grupo_nombre` (snapshot — puede ser NULL si
+ * la adición no pertenece a ningún grupo). El render del ticket usa
+ * este campo para mostrar el heading del grupo.
+ *
  * Estructura: Map<item_pedido_id, adiciones[]>
  */
 export async function getItemsAdicionesByPedido(pedidoId) {
   const sql = `
     SELECT ipa.id, ipa.item_pedido_id, ipa.adicion_id, ipa.nombre,
+           ipa.grupo_nombre,
            ipa.precio_unitario_adicion, ipa.cantidad, ipa.subtotal
     FROM items_pedido_adiciones ipa
     INNER JOIN items_pedido ip ON ipa.item_pedido_id = ip.id
@@ -339,6 +344,7 @@ export async function getItemsAdicionesByPedido(pedidoId) {
     grouped.get(row.item_pedido_id).push({
       adicion_id: row.adicion_id,
       nombre: row.nombre,
+      grupo_nombre: row.grupo_nombre || null,
       precio_unitario_adicion: Number(row.precio_unitario_adicion),
       cantidad: row.cantidad,
       subtotal: Number(row.subtotal),
