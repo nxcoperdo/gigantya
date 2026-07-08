@@ -1,4 +1,4 @@
-import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag, Printer, Plus } from 'lucide-react';
+import { X, Clock, MapPin, Phone, User, DollarSign, Package, Tag, Printer, Plus } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { orderService } from '../services/api';
 import AddressMapPreview from './AddressMapPreview';
@@ -46,6 +46,17 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
       setLoading(false);
     }
   }, [isOpen, order]);
+
+  // Body scroll lock: bloquea el scroll del fondo mientras el modal
+  // de detalle de pedido está abierto (evita "scroll pasante" en iOS).
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   // Si llega con autoPrint=true, disparamos window.print() una vez que
   // los datos estén listos. La técnica: abrimos un popup con un HTML
@@ -284,9 +295,19 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
         {/* Content */}
         <div className="p-6 space-y-6">
           {loading && (
-            <div className="py-8 text-center">
-              <Loader size={32} className="mx-auto text-primary animate-spin mb-3" />
-              <p className="text-[color:var(--text-secondary)]">Cargando detalles del pedido...</p>
+            <div className="space-y-4" aria-busy="true" aria-label="Cargando detalles del pedido">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="bg-[color:var(--bg-subtle)] rounded-xl p-4 space-y-3"
+                >
+                  <div className="skeleton h-4 w-1/3" />
+                  <div className="space-y-2">
+                    <div className="skeleton h-3 w-2/3" />
+                    <div className="skeleton h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -415,7 +436,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
                                         key={`${item.id}-add-${gi}-${idx}`}
                                         className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
                                       >
-                                        <Plus size={10} className="text-primary flex-shrink-0" />
+                                        <Plus size={10} className="text-primary flex-shrink-0" aria-hidden="true" />
                                         <span>
                                           {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
                                           {Number(a.precio_unitario_adicion) > 0 && (
@@ -467,7 +488,13 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
               </section>
 
               {/* Resumen */}
-              <section className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 space-y-3 border border-primary/20">
+              <section
+                className="rounded-xl p-4 space-y-3"
+                style={{
+                  backgroundColor: 'var(--accent-purple-bg)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
                 <h3 className="font-bold text-[color:var(--text-primary)] text-lg">Resumen del Pedido</h3>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -530,7 +557,10 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[color:var(--border-default)] p-6 bg-[color:var(--bg-subtle)] flex gap-3 justify-end no-print">
+        <div
+          className="border-t border-[color:var(--border-default)] p-4 sm:p-6 bg-[color:var(--bg-subtle)] flex gap-3 modal-actions no-print"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
           <button
             onClick={() => {
               // Misma técnica que autoPrint: clonar el contenido y

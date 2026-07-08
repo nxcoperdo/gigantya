@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ShoppingCart, Store } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingCart, Store, Utensils } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { useCart } from '../context/CartContext';
@@ -144,8 +144,8 @@ export default function CartPage() {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent text-2xl">
-                        🍽️
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent">
+                        <Utensils size={36} className="text-white/80" aria-hidden="true" />
                       </div>
                     )}
                   </div>
@@ -185,7 +185,7 @@ export default function CartPage() {
                                   key={a.adicion_id}
                                   className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1"
                                 >
-                                  <Plus size={10} className="text-primary flex-shrink-0" />
+                                  <Plus size={10} className="text-primary flex-shrink-0" aria-hidden="true" />
                                   <span>
                                     {a.cantidad > 1 ? `${a.cantidad}× ` : ''}{a.nombre}
                                     {a.precio_extra > 0 && (
@@ -221,8 +221,9 @@ export default function CartPage() {
                   {/* Cantidad */}
                   <div className="flex items-center justify-between sm:justify-center gap-2 sm:gap-3 bg-[color:var(--bg-subtle)] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl">
                     <button
+                      type="button"
                       onClick={() => updateQuantity(item.line_id, item.cantidad - 1)}
-                      className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-[color:var(--bg-elevated)] shadow-sm text-primary hover:text-primaryDark transition-colors active:scale-95 touch-feedback"
+                      className="w-9 h-9 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-[color:var(--bg-elevated)] shadow-sm text-primary hover:text-primaryDark transition-colors active:scale-95 touch-feedback"
                       aria-label="Disminuir cantidad"
                     >
                       <Minus size={16} />
@@ -231,8 +232,9 @@ export default function CartPage() {
                       {item.cantidad}
                     </span>
                     <button
+                      type="button"
                       onClick={() => updateQuantity(item.line_id, item.cantidad + 1)}
-                      className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-[color:var(--bg-elevated)] shadow-sm text-primary hover:text-primaryDark transition-colors active:scale-95 touch-feedback"
+                      className="w-9 h-9 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-[color:var(--bg-elevated)] shadow-sm text-primary hover:text-primaryDark transition-colors active:scale-95 touch-feedback"
                       aria-label="Aumentar cantidad"
                     >
                       <Plus size={16} />
@@ -240,13 +242,14 @@ export default function CartPage() {
                   </div>
 
                   {/* Subtotal y Eliminar */}
-                  <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 sm:gap-2">
-                    <p className="text-lg sm:text-xl font-bold text-primary">
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 sm:gap-2 pt-3 mt-3 border-t border-[color:var(--border-subtle)] sm:border-0 sm:pt-0 sm:mt-0">
+                    <p className="text-xl sm:text-2xl font-heading font-bold text-primary">
                       {formatCurrency((item.precio_unitario_final || item.precio) * item.cantidad)}
                     </p>
                     <button
+                      type="button"
                       onClick={() => removeFromCart(item.line_id)}
-                      className="w-9 h-9 sm:w-auto sm:h-auto flex items-center justify-center rounded-lg transition-colors active:scale-95 touch-feedback"
+                      className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg transition-colors active:scale-95 touch-feedback"
                       style={{ color: 'var(--danger-text)' }}
                       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -287,14 +290,20 @@ export default function CartPage() {
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
                   <span>Envío:</span>
                   <span className="font-medium">
-                    {esRetiroLocalCart
+                    {!configLoaded ? (
+                      <span className="skeleton inline-block h-3 w-24 align-middle" />
+                    ) : esRetiroLocalCart
                       ? 'Gratis (retiro en local)'
                       : '(se calcula en el checkout)'}
                   </span>
                 </div>
                 <div className="flex justify-between text-[color:var(--text-secondary)] text-sm sm:text-base">
                   <span>Impuestos{taxConfig.activo ? ` (${taxConfig.porcentaje}%)` : ''}:</span>
-                  <span>{formatCurrency(taxAmount)}</span>
+                  {!configLoaded ? (
+                    <span className="skeleton inline-block h-3 w-16 align-middle" />
+                  ) : (
+                    <span>{formatCurrency(taxAmount)}</span>
+                  )}
                 </div>
               </div>
 
@@ -326,7 +335,11 @@ export default function CartPage() {
                 </div>
               )}
 
-              <Link to="/checkout" className="btn btn-primary btn-lg btn-block min-h-[48px]">
+              <Link
+                to="/checkout"
+                className="btn btn-primary btn-lg btn-block min-h-[48px]"
+                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+              >
                 Proceder al Pago
               </Link>
 

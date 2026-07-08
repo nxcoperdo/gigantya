@@ -527,6 +527,8 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
                     placeholder="0.00"
+                    inputMode="decimal"
+                    min="0.01"
                     step="0.01"
                     required
                 />
@@ -537,7 +539,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                     name="categoria_id"
                     value={formData.categoria_id}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
+                    className="select"
                   >
                     <option value="">Seleccione una categoría</option>
                     {categories.map(cat => (
@@ -629,6 +631,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                           className="hidden"
                           accept="image/*"
                           multiple
+                          aria-label="Subir imágenes a la galería"
                           onChange={handleGalleryChange}
                         />
                       </label>
@@ -707,9 +710,11 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                               type="number"
                               step="0.01"
                               min="0"
+                              inputMode="decimal"
                               value={a.precio_extra}
                               onChange={(e) => updateAdicionInGrupo(g._uiId, a._uiId, { precio_extra: e.target.value })}
                               placeholder="Gratis"
+                              aria-label={`Precio extra de ${a.nombre || 'esta adición'}`}
                               className="w-24 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
                             />
                             <button
@@ -759,9 +764,11 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                         type="number"
                         step="0.01"
                         min="0"
+                        inputMode="decimal"
                         value={a.precio_extra}
                         onChange={(e) => updateAdicionSuelta(a._uiId, { precio_extra: e.target.value })}
                         placeholder="Gratis"
+                        aria-label={`Precio extra de ${a.nombre || 'esta adición'}`}
                         className="w-24 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] text-sm text-[color:var(--text-primary)]"
                       />
                       <button

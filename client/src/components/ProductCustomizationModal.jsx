@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Minus, X, ListPlus, ShoppingCart, AlertCircle } from 'lucide-react';
+import { Plus, Minus, X, ListPlus, ShoppingCart, AlertCircle, ListChecks } from 'lucide-react';
 import { formatCurrency } from '../utils/formatHelper';
 
 /**
@@ -39,6 +39,18 @@ export default function ProductCustomizationModal({
       setNota('');
     }
   }, [isOpen, producto?.id]);
+
+  // Body scroll lock: evita que la página de fondo scrollee mientras
+  // el modal está abierto. Restaura el valor previo en cleanup para
+  // no pisar el scroll de otros modales que se hayan cerrado antes.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   const grupos = paquete?.grupos || [];
   const todasAdiciones = paquete?.adiciones || [];
@@ -174,10 +186,10 @@ export default function ProductCustomizationModal({
             </div>
             <button
               onClick={onClose}
-              className="text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)] p-1 rounded-lg hover:bg-[color:var(--bg-muted)]"
+              className="p-2.5 -m-1.5 text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)] rounded-full hover:bg-[color:var(--bg-muted)] mobile-tap-target"
               aria-label="Cerrar"
             >
-              <X size={22} />
+              <X size={20} />
             </button>
           </div>
 
@@ -287,11 +299,17 @@ export default function ProductCustomizationModal({
             {/* Resumen interno de la customización */}
             {(hayAdicionesElegidas || hayRemovidos || hayNota) && (
               <div
-                className="rounded-lg p-3 text-xs space-y-1"
+                className="rounded-lg p-3 space-y-1.5"
                 style={{ backgroundColor: 'var(--bg-subtle)' }}
               >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <ListChecks size={14} className="text-primary" aria-hidden="true" />
+                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--primary-text)]">
+                    Tu selección
+                  </h4>
+                </div>
                 {hayAdicionesElegidas && (
-                  <p className="text-[color:var(--text-secondary)]">
+                  <p className="text-xs text-[color:var(--text-secondary)]">
                     <span className="font-semibold">Adiciones:</span>{' '}
                     {todasAdiciones
                       .filter((a) => Number(adicionesQty[a.id] || 0) > 0)
@@ -300,7 +318,7 @@ export default function ProductCustomizationModal({
                   </p>
                 )}
                 {hayRemovidos && (
-                  <p className="text-[color:var(--text-secondary)]">
+                  <p className="text-xs text-[color:var(--text-secondary)]">
                     <span className="font-semibold">Sin:</span>{' '}
                     {removibles
                       .filter((r) => removidos.has(r.id))
@@ -330,7 +348,10 @@ export default function ProductCustomizationModal({
           </div>
 
           {/* Footer fijo */}
-          <div className="border-t border-[color:var(--border-subtle)] p-4 flex items-center gap-3 bg-[color:var(--bg-elevated)]">
+          <div
+            className="border-t border-[color:var(--border-subtle)] p-4 flex items-center gap-3 bg-[color:var(--bg-elevated)]"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
             <div className="flex items-center gap-1 border border-[color:var(--border-default)] rounded-lg">
               <button
                 onClick={() => setCantidad((c) => Math.max(1, Number(c) - 1))}
@@ -388,21 +409,21 @@ function AdicionRow({ adicion, qty, onInc, onDec }) {
       <div className="flex items-center gap-1 border border-[color:var(--border-default)] rounded-lg">
         <button
           onClick={onDec}
-          className="p-1.5 hover:bg-[color:var(--bg-subtle)] rounded-l-lg disabled:opacity-30"
+          className="p-2 hover:bg-[color:var(--bg-subtle)] rounded-l-lg disabled:opacity-30 mobile-tap-target"
           disabled={qty <= 0}
           aria-label={`Quitar una unidad de ${adicion.nombre}`}
         >
-          <Minus size={14} />
+          <Minus size={16} />
         </button>
-        <span className="w-7 text-center text-sm font-semibold text-[color:var(--text-primary)]">
+        <span className="w-8 text-center text-sm font-semibold text-[color:var(--text-primary)]">
           {qty}
         </span>
         <button
           onClick={onInc}
-          className="p-1.5 hover:bg-[color:var(--bg-subtle)] rounded-r-lg"
+          className="p-2 hover:bg-[color:var(--bg-subtle)] rounded-r-lg mobile-tap-target"
           aria-label={`Agregar una unidad de ${adicion.nombre}`}
         >
-          <Plus size={14} />
+          <Plus size={16} />
         </button>
       </div>
     </div>

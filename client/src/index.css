@@ -662,7 +662,7 @@ label {
 
 /* Animations */
 .animate-fadeIn {
-  animation: fadeIn 0.4s ease-out;
+  animation: fadeIn 0.28s ease-out;
 }
 
 .animate-slideUp {
