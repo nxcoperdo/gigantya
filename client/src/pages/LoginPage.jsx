@@ -19,7 +19,14 @@ export default function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al iniciar sesión');
+      const data = err.response?.data;
+      if (data?.code === 'EMAIL_NOT_FOUND') {
+        setError('Ese correo no está registrado. ¿Querés crear una cuenta?');
+      } else if (data?.code === 'INVALID_PASSWORD') {
+        setError('La contraseña es incorrecta. ¿Olvidaste tu contraseña?');
+      } else {
+        setError(data?.error || 'Error al iniciar sesión');
+      }
     } finally {
       setLoading(false);
     }

@@ -177,7 +177,8 @@ export async function login(req, res) {
     if (!usuario) {
       console.warn(`⚠️ Login fallido (email no encontrado): ${email}`);
       return res.status(401).json({
-        error: 'Credenciales inválidas'
+        code: 'EMAIL_NOT_FOUND',
+        error: 'No existe una cuenta registrada con ese correo electrónico'
       });
     }
 
@@ -194,8 +195,9 @@ export async function login(req, res) {
     // Verificar contraseña
     const contrasenaValida = await UserModel.verifyPassword(contrasena, usuario.contrasena_hash);
     if (!contrasenaValida) {
-      return res.status(401).json({ 
-        error: 'Credenciales inválidas' 
+      return res.status(401).json({
+        code: 'INVALID_PASSWORD',
+        error: 'La contraseña es incorrecta'
       });
     }
 
