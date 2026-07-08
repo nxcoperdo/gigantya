@@ -1,4 +1,4 @@
-import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag } from 'lucide-react';
+import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag, Printer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { orderService } from '../services/api';
 import AddressMapPreview from './AddressMapPreview';
@@ -19,7 +19,7 @@ const PAYMENT_METHOD_LABELS = {
   bre_b: 'BreezB',
 };
 
-export default function OrderDetailsModal({ isOpen, onClose, order }) {
+export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = false }) {
   const [fullOrderData, setFullOrderData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -46,6 +46,33 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
     }
   }, [isOpen, order]);
 
+  // Si llega con autoPrint=true, disparamos window.print() una vez que
+  // los datos estén listos. Marcamos el body con `printing-order` para que
+  // el CSS @media print oculte el chrome del modal y muestre solo el
+  // contenido. Limpiamos al cerrar (afterprint o unmount).
+  useEffect(() => {
+    if (!isOpen || !autoPrint) return undefined;
+    if (loading) return undefined;
+
+    document.body.classList.add('printing-order');
+    const afterPrint = () => {
+      document.body.classList.remove('printing-order');
+    };
+    window.addEventListener('afterprint', afterPrint);
+
+    // Pequeño delay para que el navegador renderice el modal con el contenido
+    // completo antes de abrir el diálogo de impresión.
+    const timer = setTimeout(() => {
+      window.print();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('afterprint', afterPrint);
+      document.body.classList.remove('printing-order');
+    };
+  }, [isOpen, autoPrint, loading]);
+
   if (!isOpen || !order) return null;
 
   const displayOrder = fullOrderData || order;
@@ -64,6 +91,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
       <div className="bg-[color:var(--bg-elevated)] rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-scaleUp max-h-[90vh] overflow-y-auto">
+        <div className="order-print-content">
         {/* Header */}
         <div className="border-b-2 p-6" style={stateStyle}>
           <div className="flex items-start justify-between gap-4 mb-4">
@@ -82,7 +110,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-black/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-black/10 rounded-lg transition-colors no-print"
               aria-label="Cerrar"
             >
               <X size={24} />
@@ -160,16 +188,20 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                       (siempre anclado a "Gigante, Huila, Colombia"). Así el
                       restaurante siempre ve el mapita, incluso para pedidos
                       hechos con fallback manual sin coordenadas.
+                      Se oculta al imprimir (no-print) porque no tiene sentido
+                      en un ticket.
                     */}
-                    <AddressMapPreview
-                      latitud={displayOrder.latitud}
-                      longitud={displayOrder.longitud}
-                      direccion={
-                        displayOrder.direccion_formateada ||
-                        displayOrder.direccion_entrega ||
-                        displayOrder.direccion
-                      }
-                    />
+                    <div className="no-print">
+                      <AddressMapPreview
+                        latitud={displayOrder.latitud}
+                        longitud={displayOrder.longitud}
+                        direccion={
+                          displayOrder.direccion_formateada ||
+                          displayOrder.direccion_entrega ||
+                          displayOrder.direccion
+                        }
+                      />
+                    </div>
                   </div>
                 </section>
               )}
@@ -272,9 +304,18 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
             </>
           )}
         </div>
+        </div>
 
         {/* Footer */}
-        <div className="border-t border-[color:var(--border-default)] p-6 bg-[color:var(--bg-subtle)] flex gap-3 justify-end">
+        <div className="border-t border-[color:var(--border-default)] p-6 bg-[color:var(--bg-subtle)] flex gap-3 justify-end no-print">
+          <button
+            onClick={() => window.print()}
+            className="btn btn-outline inline-flex items-center gap-2"
+            title="Imprimir este pedido"
+          >
+            <Printer size={16} />
+            Imprimir
+          </button>
           <button
             onClick={onClose}
             className="btn btn-outline"

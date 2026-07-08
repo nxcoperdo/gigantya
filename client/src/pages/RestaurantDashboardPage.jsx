@@ -39,6 +39,7 @@ import {
   Truck,
   DollarSign,
   Store,
+  Printer,
 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatDate, formatDateTime, formatShortDate } from '../utils/dateHelper';
@@ -69,7 +70,7 @@ const PAYMENT_METHOD_LABELS = {
   bre_b: 'BreezB',
 };
 
-function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrder, onViewDetails, isMuted = false }) {
+function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrder, onViewDetails, onPrint, isMuted = false }) {
   const nextStatus = NEXT_STATUS_BY_STATE[order.estado];
   return (
     <article className={`border border-[color:var(--border-default)] rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-[color:var(--bg-elevated)] hover:shadow-md hover:border-[color:var(--border-strong)] transition-all duration-200 ${isMuted ? 'opacity-80 grayscale-[0.2]' : ''}`}>
@@ -147,6 +148,17 @@ function OrderCard({ order, updatingOrderId, handleStatusChange, handleCancelOrd
               <Eye size={14} />
               <span className="hidden sm:inline">Detalles</span>
             </button>
+            {onPrint && (
+              <button
+                type="button"
+                onClick={() => onPrint(order)}
+                className="btn btn-outline btn-small inline-flex items-center gap-1.5 min-h-[40px]"
+                title="Imprimir pedido"
+              >
+                <Printer size={14} />
+                <span className="hidden sm:inline">Imprimir</span>
+              </button>
+            )}
             {nextStatus && (
               <button
                 type="button"
@@ -259,6 +271,7 @@ export default function RestaurantDashboardPage() {
   const [cancellationReason, setCancellationReason] = useState('');
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
   const [isOrderDetailsModalOpen, setIsOrderDetailsModalOpen] = useState(false);
+  const [autoPrintOrder, setAutoPrintOrder] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const ordersPollingRef = useRef(null);
@@ -547,7 +560,21 @@ export default function RestaurantDashboardPage() {
 
   const handleViewOrderDetails = (order) => {
     setSelectedOrderForDetails(order);
+    setAutoPrintOrder(false);
     setIsOrderDetailsModalOpen(true);
+  };
+
+  // Abre el modal de detalles con autoPrint=true: el modal dispara
+  // window.print() una vez que los datos están cargados.
+  const handlePrintOrder = (order) => {
+    setSelectedOrderForDetails(order);
+    setAutoPrintOrder(true);
+    setIsOrderDetailsModalOpen(true);
+  };
+
+  const closeOrderDetailsModal = () => {
+    setIsOrderDetailsModalOpen(false);
+    setAutoPrintOrder(false);
   };
 
   if (profileLoading) {
@@ -770,6 +797,7 @@ export default function RestaurantDashboardPage() {
             handleStatusChange={handleStatusChange}
             handleCancelOrder={handleCancelOrder}
             handleViewOrderDetails={handleViewOrderDetails}
+            handlePrintOrder={handlePrintOrder}
             stats={stats}
             handleExport={handleExport}
             exporting={exporting}
@@ -836,8 +864,9 @@ export default function RestaurantDashboardPage() {
 
       <OrderDetailsModal
         isOpen={isOrderDetailsModalOpen}
-        onClose={() => setIsOrderDetailsModalOpen(false)}
+        onClose={closeOrderDetailsModal}
         order={selectedOrderForDetails}
+        autoPrint={autoPrintOrder}
       />
 
       <RestaurantShippingTaxModal
@@ -850,7 +879,7 @@ export default function RestaurantDashboardPage() {
   );
 }
 
-function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange, handleCancelOrder, handleViewOrderDetails, stats, handleExport, exporting }) {
+function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange, handleCancelOrder, handleViewOrderDetails, handlePrintOrder, stats, handleExport, exporting }) {
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
 
   const { activeOrders, completedOrders } = useMemo(() => {
@@ -949,6 +978,7 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
                       handleStatusChange={handleStatusChange}
                       handleCancelOrder={handleCancelOrder}
                       onViewDetails={handleViewOrderDetails}
+                      onPrint={handlePrintOrder}
                     />
                   ))}
                 </div>
@@ -990,6 +1020,7 @@ function OrdersView({ orders, ordersLoading, updatingOrderId, handleStatusChange
                         handleStatusChange={handleStatusChange}
                         handleCancelOrder={handleCancelOrder}
                         onViewDetails={handleViewOrderDetails}
+                        onPrint={handlePrintOrder}
                         isMuted={true}
                       />
                     ))

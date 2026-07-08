@@ -1323,6 +1323,32 @@ html.theme-transition *::after {
   body {
     background: white !important;
   }
+
+  /* Cuando se imprime desde el modal de detalles de pedido:
+     - Ocultar el backdrop y todo lo que esté fuera del contenido del modal
+     - Mostrar solo el contenido del modal en formato ticket */
+  body.printing-order * {
+    visibility: hidden;
+  }
+  body.printing-order .order-print-content,
+  body.printing-order .order-print-content * {
+    visibility: visible;
+  }
+  body.printing-order .order-print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+  }
+  body.printing-order .fixed {
+    position: static !important;
+    background: white !important;
+  }
+  body.printing-order .animate-fadeIn,
+  body.printing-order .animate-scaleUp {
+    animation: none !important;
+  }
 }
 
 /* High contrast mode support */
