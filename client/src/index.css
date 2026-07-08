@@ -1315,13 +1315,23 @@ html.theme-transition *::after {
 }
 
 /* Print styles */
+@page {
+  /* Tamaño de página para impresoras térmicas POS de facturas.
+     80mm de ancho x auto de alto. Si la impresora es más ancha (A4/Letter),
+     el navegador escala o centra el contenido. */
+  size: 80mm auto;
+  margin: 0;
+}
+
 @media print {
   .no-print {
     display: none !important;
   }
 
-  body {
+  html, body {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Cuando se imprime desde el modal de detalles de pedido:
@@ -1338,9 +1348,58 @@ html.theme-transition *::after {
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 80mm;
+    max-width: 80mm;
     background: white;
+    color: black;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    line-height: 1.35;
+    padding: 4mm;
+    box-sizing: border-box;
   }
+
+  /* Tipografía compacta para ticket: */
+  body.printing-order .order-print-content h2 {
+    font-size: 14px;
+    margin: 0 0 2px 0;
+    text-align: center;
+    color: black !important;
+  }
+  body.printing-order .order-print-content h3 {
+    font-size: 12px;
+    margin: 4px 0 2px 0;
+    border-bottom: 1px dashed #000;
+    padding-bottom: 2px;
+    color: black !important;
+  }
+  body.printing-order .order-print-content p,
+  body.printing-order .order-print-content span,
+  body.printing-order .order-print-content div {
+    color: black !important;
+    background: transparent !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+  }
+  body.printing-order .order-print-content .grid {
+    display: block !important;
+  }
+  body.printing-order .order-print-content section {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 0 4px 0 !important;
+  }
+  body.printing-order .order-print-content [class*="rounded-"] {
+    border-radius: 0 !important;
+  }
+  body.printing-order .order-print-content [class*="bg-"] {
+    background: transparent !important;
+  }
+  body.printing-order .order-print-content [class*="text-"] {
+    color: black !important;
+  }
+  /* Tamaño total del modal debe ser de 80mm, no heredar el max-w-2xl */
   body.printing-order .fixed {
     position: static !important;
     background: white !important;
@@ -1348,6 +1407,12 @@ html.theme-transition *::after {
   body.printing-order .animate-fadeIn,
   body.printing-order .animate-scaleUp {
     animation: none !important;
+  }
+  body.printing-order > div > div {
+    max-width: 80mm !important;
+    width: 80mm !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
 }
 
