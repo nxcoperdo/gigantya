@@ -48,15 +48,11 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
   }, [isOpen, order]);
 
   // Si llega con autoPrint=true, disparamos window.print() una vez que
-  // los datos estén listos. La técnica: clonamos el .order-print-content
-  // y lo movemos al <body> como hijo directo, fuera del modal. Eso
-  // nos permite ocultar TODO el resto del DOM con una regla CSS simple
-  // (body > *:not(.print-ticket)) sin los problemas de visibility:hidden
-  // que mantenía el layout y paginaba de más.
-  //
-  // Usamos un ref para garantizar que la impresión se dispare SOLO una
-  // vez por apertura del modal (los effects con [loading] en deps se
-  // ejecutan varias veces y pueden clonar múltiples veces).
+  // los datos estén listos. La técnica: abrimos un popup con un HTML
+  // mínimo que contiene SOLO el ticket del pedido. El popup tiene su
+  // propio documento, así que el dashboard, el sidebar, el modal, etc.
+  // no contaminan la impresión. Es el enfoque más confiable para
+  // "imprimir solo un componente" en la web.
   useEffect(() => {
     if (!isOpen || !autoPrint) {
       hasAutoPrintedRef.current = false;
@@ -66,16 +62,8 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
     if (hasAutoPrintedRef.current) return undefined;
     hasAutoPrintedRef.current = true;
 
-    let cloneNode = null;
     let cancelled = false;
-
-    const cleanup = () => {
-      if (cloneNode && cloneNode.parentNode) {
-        cloneNode.parentNode.removeChild(cloneNode);
-      }
-      cloneNode = null;
-      document.body.classList.remove('printing-order');
-    };
+    let popup = null;
 
     const doPrint = () => {
       if (cancelled) return;
@@ -84,46 +72,159 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
         console.warn('[OrderDetailsModal] No se encontró .order-print-content para imprimir');
         return;
       }
-      cloneNode = source.cloneNode(true);
-      cloneNode.classList.add('print-ticket');
-      // Resetear estilos heredados del modal en pantalla
-      cloneNode.removeAttribute('style');
-      cloneNode.style.position = 'static';
-      cloneNode.style.width = '80mm';
-      cloneNode.style.maxWidth = '80mm';
-      cloneNode.style.padding = '4mm';
-      cloneNode.style.boxSizing = 'border-box';
-      cloneNode.style.margin = '0';
-      cloneNode.style.background = 'white';
-      cloneNode.style.color = 'black';
-      cloneNode.style.fontFamily = "'Courier New', Courier, monospace";
-      cloneNode.style.fontSize = '11px';
-      cloneNode.style.lineHeight = '1.35';
-      cloneNode.style.overflow = 'visible';
-      cloneNode.style.height = 'auto';
-      cloneNode.style.maxHeight = 'none';
-      document.body.appendChild(cloneNode);
-      document.body.classList.add('printing-order');
 
-      // Delay para que el navegador pinte el clon antes de abrir el diálogo
-      setTimeout(() => {
-        if (!cancelled) window.print();
-      }, 100);
+      // Extraemos el HTML del clon y construimos un documento nuevo
+      // con su propio <style> que define el formato ticket.
+      const ticketHTML = source.outerHTML;
+
+      const docHtml = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pedido - Ticket</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: black;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    body { padding: 4mm; box-sizing: border-box; width: 80mm; }
+    .ticket { width: 80mm; max-width: 80mm; }
+    .ticket * { page-break-inside: avoid; break-inside: avoid; }
+    .ticket h2 {
+      font-size: 14px;
+      margin: 0 0 2px 0;
+      text-align: center;
+      color: black;
+    }
+    .ticket h3 {
+      font-size: 12px;
+      margin: 6px 0 2px 0;
+      border-bottom: 1px dashed #000;
+      padding-bottom: 2px;
+      color: black;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .ticket p, .ticket span, .ticket div {
+      color: black;
+      background: transparent;
+      border-color: #000;
+      box-shadow: none;
+    }
+    .ticket .grid { display: block; }
+    .ticket section {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0 0 4px 0;
+    }
+    .ticket [class*="rounded-"] { border-radius: 0; }
+    .ticket [class*="bg-"] { background: transparent; }
+    .ticket [class*="text-"] { color: black; }
+    .ticket [class*="border-"] {
+      border-color: #000 !important;
+    }
+    /* El header del modal tiene un border-b-2: lo dejamos como separador */
+    .ticket > div:first-child {
+      border-bottom: 1px solid #000;
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+    }
+    /* Cada item del producto: divider sutil */
+    .ticket .item-row {
+      border-bottom: 1px dotted #999;
+      padding: 2px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    .ticket .item-row .left { flex: 1; }
+    .ticket .item-row .right { text-align: right; }
+    /* Subtotal/descuento/envío: filas alineadas */
+    .ticket .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 1px 0;
+    }
+    .ticket .summary-row.total {
+      border-top: 1px solid #000;
+      padding-top: 4px;
+      margin-top: 4px;
+      font-weight: bold;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="ticket">${ticketHTML}</div>
+  <script>
+    window.addEventListener('load', function() {
+      // Reorganizar el HTML del modal al formato ticket. Lo hacemos en
+      // el script porque queremos un layout tabular limpio, no los
+      // cards con border del modal.
+      try {
+        var ticket = document.querySelector('.ticket');
+        // Mover todo el contenido a un contenedor simple
+        var children = Array.prototype.slice.call(ticket.children);
+        // No transformar, solo ajustar el header para que sea título
+        var header = ticket.querySelector('h2');
+        if (header) {
+          header.textContent = 'PEDIDO #' + header.textContent.replace(/[^0-9]/g, '');
+        }
+        // Llamar a print después de un microtask para que pinte
+        setTimeout(function() {
+          window.print();
+          // Cerrar el popup automáticamente al terminar (después de un
+          // delay para que el diálogo no se cierre antes)
+          setTimeout(function() { window.close(); }, 500);
+        }, 100);
+      } catch (e) {
+        console.error('Print popup error:', e);
+        window.print();
+      }
+    });
+  </script>
+</body>
+</html>`;
+
+      popup = window.open('', 'gigantya_print', 'width=400,height=600');
+      if (!popup) {
+        console.warn('[OrderDetailsModal] No se pudo abrir el popup de impresión (¿bloqueador de popups?). Fallback: window.print() en la misma ventana.');
+        // Fallback: imprimir en la misma ventana con el body class
+        document.body.classList.add('printing-order');
+        const source2 = document.querySelector('.printing-modal-wrapper .order-print-content');
+        if (source2) {
+          const clone = source2.cloneNode(true);
+          clone.classList.add('print-ticket');
+          document.body.appendChild(clone);
+          setTimeout(() => window.print(), 100);
+        }
+        return;
+      }
+      popup.document.open();
+      popup.document.write(docHtml);
+      popup.document.close();
     };
 
-    // Doble rAF para asegurar que el modal pintó con los datos
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(doPrint);
     });
 
-    const afterPrint = () => cleanup();
-    window.addEventListener('afterprint', afterPrint);
-
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
-      window.removeEventListener('afterprint', afterPrint);
-      cleanup();
+      // Si el popup todavía está abierto y el modal se cerró, lo cerramos
+      if (popup && !popup.closed) {
+        try { popup.close(); } catch (e) { /* ignore */ }
+      }
     };
   }, [isOpen, autoPrint, loading]);
 
@@ -363,7 +464,31 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
         {/* Footer */}
         <div className="border-t border-[color:var(--border-default)] p-6 bg-[color:var(--bg-subtle)] flex gap-3 justify-end no-print">
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              // Misma técnica que autoPrint: clonar el contenido y
+              // abrir un popup con HTML mínimo. Si los popups están
+              // bloqueados, fallback a window.print() con la clase
+              // printing-order en body.
+              const source = document.querySelector('.printing-modal-wrapper .order-print-content');
+              if (!source) {
+                window.print();
+                return;
+              }
+              const ticketHTML = source.outerHTML;
+              const docHtml = `<!doctype html><html><head><meta charset="UTF-8"><title>Pedido</title><style>@page{size:80mm auto;margin:0}body{margin:0;padding:4mm;box-sizing:border-box;width:80mm;background:white;color:black;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.35}div,span,p,h1,h2,h3{color:black!important;background:transparent!important}section{margin:0 0 4px 0;padding:0;border:none}h2{font-size:14px;text-align:center;margin:0 0 4px 0}h3{font-size:12px;border-bottom:1px dashed #000;padding-bottom:2px;margin:4px 0 2px 0}</style></head><body>${ticketHTML}<script>window.addEventListener('load',function(){setTimeout(function(){window.print();setTimeout(function(){window.close()},500)},100)})<\/script></body></html>`;
+              const popup = window.open('', 'gigantya_print', 'width=400,height=600');
+              if (!popup) {
+                document.body.classList.add('printing-order');
+                const clone = source.cloneNode(true);
+                clone.classList.add('print-ticket');
+                document.body.appendChild(clone);
+                setTimeout(() => window.print(), 100);
+                return;
+              }
+              popup.document.open();
+              popup.document.write(docHtml);
+              popup.document.close();
+            }}
             className="btn btn-outline inline-flex items-center gap-2"
             title="Imprimir este pedido"
           >

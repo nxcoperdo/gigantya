@@ -1337,33 +1337,31 @@ html.theme-transition *::after {
   /* Cuando se imprime desde el modal de detalles de pedido:
      El componente clona el .order-print-content y lo monta como hijo
      directo del <body> con la clase .print-ticket. Entonces ocultamos
-     TODO lo demás del DOM (el dashboard, el sidebar, el modal original,
-     etc.) con una regla universal: cualquier hijo del body que no sea
-     el clon del ticket queda display:none. Esto elimina completamente
-     esos elementos del flow, así que el navegador pagina SOLO el clon. */
+     TODO lo demás del DOM (el <div id="root"> con todo React adentro)
+     con `body > *:not(.print-ticket)` con display:none. */
   body.printing-order > *:not(.print-ticket):not(script):not(style):not(link):not(meta) {
     display: none !important;
   }
+  /* El clon (hijo directo del body) ocupa una sola página de 80mm. */
   body.printing-order > .print-ticket {
     display: block !important;
     position: static !important;
-    top: auto !important;
-    left: auto !important;
-    width: 80mm;
-    max-width: 80mm;
-    background: white;
-    color: black;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 11px;
-    line-height: 1.35;
-    padding: 4mm;
-    box-sizing: border-box;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    background: white !important;
+    color: black !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    padding: 4mm !important;
+    box-sizing: border-box !important;
     margin: 0 !important;
-    /* Evitar saltos de página dentro del ticket. */
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
-  /* Los hijos del clon tampoco deben romperse entre páginas. */
   body.printing-order > .print-ticket * {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
