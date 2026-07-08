@@ -4,6 +4,7 @@ import * as NotificationModel from '../models/Notification.js';
 import * as SubscriptionModel from '../models/Subscription.js';
 import * as PaymentProofModel from '../models/PaymentProof.js';
 import * as OrderModel from '../models/Order.js';
+import * as AddressModel from '../models/Address.js';
 import { query, getConnection } from '../config/database.js';
 import logger from '../utils/logger.js';
 import { recordAudit } from '../middleware/auditMiddleware.js';
@@ -1069,6 +1070,9 @@ export async function getOnlineUsers(req, res) {
  *  - Si es restaurante, conteo de pedidos del local.
  *  - Conteo de pedidos como cliente.
  *  - `ultima_actividad` (que `getUserById` no incluye).
+ *  - `direccion_default` con sector, barrio, dirección formateada y
+ *    coordenadas de Google Maps (si están guardadas). Útil para que
+ *    el admin vea desde qué zona/zona_envio hace pedidos el cliente.
  */
 export async function getUserByIdAdmin(req, res) {
   try {
@@ -1104,6 +1108,16 @@ export async function getUserByIdAdmin(req, res) {
       [id]
     );
     usuario.ultima_actividad = lastRow[0]?.ultima_actividad || null;
+
+    // Dirección por defecto del usuario (si tiene). Sirve para que el
+    // admin vea sector/barrio/zona sin tener que abrir otro endpoint.
+    // Usamos el modelo de Address que ya hace JOIN con barrio+sector
+    // y nos trae direccion_formateada + latitud/longitud de Maps.
+    const direccion = await AddressModel.getDefaultAddress(id);
+    usuario.direccion_default = direccion || null;
+    // Alias para que el frontend lo lea con un nombre más natural
+    // (muchos consumidores de este endpoint ya esperan `direccion`).
+    usuario.direccion = direccion || null;
 
     res.json({ usuario });
   } catch (error) {

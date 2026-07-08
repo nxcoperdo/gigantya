@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, User, ShoppingBag, FileText, Activity, Phone, Mail, BadgeCheck, Calendar, Store, MapPin, History, ShieldAlert, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { X, User, ShoppingBag, FileText, Activity, Phone, Mail, BadgeCheck, Calendar, Store, MapPin, History, ShieldAlert, CheckCircle, XCircle, AlertCircle, Map, Building2, Navigation, ExternalLink, Home } from 'lucide-react';
 import { adminService } from '../services/api';
 import { formatDate, formatDateTime, formatTime } from '../utils/dateHelper';
 import { formatCurrency } from '../utils/formatHelper';
@@ -267,6 +267,11 @@ function TabPerfil({ user }) {
         </section>
       )}
 
+      {/* Dirección por defecto (sector + barrio + Maps).
+          Importante para que el admin vea desde qué zona hace pedidos
+          el cliente, sin tener que abrir otro modal. */}
+      <DireccionSeccion direccion={user.direccion_default || user.direccion} />
+
       {/* Otros datos (JSON libre) */}
       {user.otros_datos && (
         <section>
@@ -279,6 +284,98 @@ function TabPerfil({ user }) {
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Sección que muestra la dirección por defecto del usuario con foco
+ * en sector + barrio (que es lo que el admin necesita ver de un vistazo
+ * para entender la zona desde donde se hacen los pedidos).
+ *
+ * - Si el usuario no tiene dirección: muestra un estado vacío claro.
+ * - Si tiene barrio: muestra "Sector > Barrio" como navegación.
+ * - Si tiene coordenadas de Maps: link externo a Google Maps.
+ * - Si tiene `direccion_formateada` (la que devolvió Places): se prioriza
+ *   sobre `direccion` cruda, porque es más legible.
+ */
+function DireccionSeccion({ direccion }) {
+  const tieneDireccion = !!direccion && (!!direccion.direccion || !!direccion.direccion_formateada);
+
+  return (
+    <section>
+      <h3 className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-muted)] mb-2 flex items-center gap-1.5">
+        <Home size={14} aria-hidden="true" />
+        Dirección registrada
+      </h3>
+
+      {!tieneDireccion ? (
+        <div className="rounded-xl border border-dashed border-[color:var(--border-subtle)] p-4 text-center">
+          <MapPin size={28} className="mx-auto mb-2 opacity-40 text-[color:var(--text-muted)]" aria-hidden="true" />
+          <p className="text-sm text-[color:var(--text-muted)]">
+            Este usuario no tiene una dirección guardada.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-[color:var(--border-subtle)] p-4 space-y-1">
+          {/* Sector + barrio como "breadcrumbs" — lo más importante
+              para el admin. */}
+          {(direccion.sector_nombre || direccion.barrio_nombre) && (
+            <div className="flex items-center gap-2 pb-2 mb-1 border-b border-[color:var(--border-subtle)]">
+              <Building2 size={16} className="text-[color:var(--primary-text)] flex-shrink-0" aria-hidden="true" />
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-[color:var(--text-primary)] flex-wrap">
+                {direccion.sector_nombre && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[color:var(--primary-light)] text-[color:var(--primary-text)]">
+                    {direccion.sector_nombre}
+                  </span>
+                )}
+                {direccion.sector_nombre && direccion.barrio_nombre && (
+                  <Navigation size={12} className="text-[color:var(--text-muted)]" aria-hidden="true" />
+                )}
+                {direccion.barrio_nombre && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)]">
+                    {direccion.barrio_nombre}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Dirección formateada (la que devolvió Google Places al
+              registrarse) tiene prioridad sobre la dirección cruda. */}
+          {direccion.direccion_formateada && (
+            <Field icon={Map} label="Dirección (Google)" value={direccion.direccion_formateada} />
+          )}
+          <Field icon={MapPin} label="Dirección" value={direccion.direccion} />
+          <Field icon={Building2} label="Ciudad" value={direccion.ciudad} />
+          <Field icon={Phone} label="Teléfono de contacto" value={direccion.telefono} />
+          {direccion.notas && <Field icon={FileText} label="Notas" value={direccion.notas} />}
+
+          {/* Coordenadas + link a Google Maps. Se muestran solo si
+              existen, porque muchos usuarios anteriores a la integración
+              con Maps no las tienen. */}
+          {(direccion.latitud !== null && direccion.latitud !== undefined &&
+            direccion.longitud !== null && direccion.longitud !== undefined) && (
+            <div className="pt-2 mt-1 border-t border-[color:var(--border-subtle)]">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)] mb-1">
+                Ubicación
+              </p>
+              <p className="text-xs text-[color:var(--text-secondary)] font-mono">
+                {Number(direccion.latitud).toFixed(6)}, {Number(direccion.longitud).toFixed(6)}
+              </p>
+              <a
+                href={`https://www.google.com/maps?q=${direccion.latitud},${direccion.longitud}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-[color:var(--primary-text)] hover:underline"
+              >
+                Ver en Google Maps
+                <ExternalLink size={12} aria-hidden="true" />
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
