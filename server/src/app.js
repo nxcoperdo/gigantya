@@ -18,8 +18,17 @@ const app = express();
 // Desactivar el header X-Powered-By por seguridad
 app.disable('x-powered-by');
 
-// Confiar en el primer proxy (necesario si vamos detrás de un reverse proxy / load balancer)
-app.set('trust proxy', 1);
+// Confiar en proxies. Con Cloudflare + nginx en frente del Node:
+//   cliente → Cloudflare (edge) → nginx (VPS) → Node
+// son 2 hops de proxy. Subimos trust proxy a 2 para que req.ip y
+// express-rate-limit tomen la IP del cliente real (la que viene en
+// cf-connecting-ip / X-Forwarded-For), no la del proxy intermedio.
+// CUIDADO: no subir a `true` (sin número) porque Express pasaría a
+// confiar en TODOS los headers X-Forwarded-For que mande cualquier
+// cliente, y un atacante podría inyectar una IP falsa para evadir
+// rate-limit. Con un número fijo (2) solo se confía en los proxies
+// que efectivamente están adelante.
+app.set('trust proxy', 2);
 
 // Sentry request handler debe ir antes de cualquier otro middleware
 Sentry.setupExpressErrorHandler(app);
@@ -147,6 +156,14 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
       res.setHeader('Cache-Control', 'public, max-age=604800, must-revalidate');
     } else if (/\.(pdf)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+    // Defensa contra XSS via SVG subido maliciosamente: el browser no
+    // debe poder ejecutar scripts aunque la extensión sea .svg.
+    // SVG puede contener <script> por diseño, así que lo servimos
+    // como image/svg+xml sin permisos de script.
+    if (/\.svg$/i.test(filePath)) {
+      res.setHeader('Content-Security-Policy', "script-src 'none'");
+      res.setHeader('X-Content-Type-Options', 'nosniff');
     }
   }
 }));

@@ -25,13 +25,30 @@ import logger from '../utils/logger.js';
  */
 export async function recordAudit(req, accion, entidadTipo, entidadId, datos = {}) {
   try {
-    // req.ip respeta app.set('trust proxy', ...). Si está detrás de
-    // nginx/cloudflare, asegurar que server.js haga `app.set('trust proxy', 1)`.
-    const ipHeader = req.headers['x-forwarded-for'];
-    const ipFromHeader = typeof ipHeader === 'string'
-      ? ipHeader.split(',')[0]?.trim()
+    // Cadena de IPs en orden de preferencia. Importa el orden: cada
+    // proxy va agregando headers, y queremos el cliente ORIGINAL.
+    //   1. cf-connecting-ip  → Cloudflare (lo más cercano al cliente)
+    //   2. x-forwarded-for   → alternativa genérica, primer hop = cliente
+    //   3. req.ip            → respeta app.set('trust proxy', N)
+    //   4. fallback null
+    // NOTA: cf-connecting-ip SOLO es confiable si el tráfico pasa
+    // efectivamente por Cloudflare. Detrás de Cloudflare + nginx,
+    // cf-connecting-ip trae la IP real del cliente final. Si por
+    // alguna razón Cloudflare no estuviera en frente y alguien
+    // mandara un header cf-connecting-ip falso, quedaría logueado
+    // igual (riesgo aceptable: el atacante no nos ve a nosotros
+    // ganando nada con eso, solo falsea su propio registro).
+    const cfIp = req.headers['cf-connecting-ip'];
+    const ipFromCf = typeof cfIp === 'string' && cfIp.trim().length > 0
+      ? cfIp.trim()
       : null;
-    const ip = req.ip || ipFromHeader || null;
+
+    const xffHeader = req.headers['x-forwarded-for'];
+    const ipFromXff = typeof xffHeader === 'string'
+      ? xffHeader.split(',')[0]?.trim()
+      : null;
+
+    const ip = ipFromCf || ipFromXff || req.ip || null;
 
     const userAgent = req.headers['user-agent']
       ? String(req.headers['user-agent']).slice(0, 255)
