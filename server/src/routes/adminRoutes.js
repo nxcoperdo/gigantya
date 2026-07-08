@@ -104,9 +104,12 @@ async function _deleteBarrio(req, res) {
 // IMPORTANTE: la ruta específica '/users/online' debe ir ANTES de '/users/:id'
 // porque Express matchea por orden. Si se pone después, req.params.id = "online"
 // y `adminController.updateUser` recibe un id no numérico.
+// Misma lógica para '/users/:id/orders' vs '/users/:id'.
 router.get('/users', verifyToken, requireAdmin, adminController.getAllUsers);
 router.get('/users/online', verifyToken, requireAdmin, adminController.getOnlineUsers);
 router.post('/users', verifyToken, requireAdmin, adminController.adminCreateUser);
+router.get('/users/:id', verifyToken, requireAdmin, adminController.getUserByIdAdmin);
+router.get('/users/:id/orders', verifyToken, requireAdmin, adminController.getUserOrdersAdmin);
 router.put('/users/:id/status', verifyToken, requireAdmin, adminController.updateUserStatus);
 router.put('/users/:id', verifyToken, requireAdmin, adminController.updateUser);
 router.delete('/users/:id', verifyToken, requireAdmin, adminController.deleteUser);
@@ -152,6 +155,24 @@ router.delete('/barrios/:id', verifyToken, requireAdmin, _deleteBarrio);
  */
 router.get('/orders', verifyToken, requireAdmin, adminController.getAllOrders);
 router.put('/orders/:id/status', verifyToken, requireAdmin, adminController.updateOrderStatus);
+
+/**
+ * Comprobantes de pago (vista global del admin, no filtrada por local).
+ *
+ * El admin puede ver, aprobar y rechazar comprobantes de CUALQUIER
+ * local — útil cuando un local está inactivo y nadie valida los
+ * comprobantes de sus pedidos. Las rutas `/api/payments/...` (sin
+ * /admin) siguen siendo para el flujo local/cliente.
+ */
+router.get('/comprobantes', verifyToken, requireAdmin, adminController.getAllPaymentProofsAdmin);
+router.post('/comprobantes/:id/approve', verifyToken, requireAdmin, adminController.approvePaymentProofAdmin);
+router.post('/comprobantes/:id/reject', verifyToken, requireAdmin, adminController.rejectPaymentProofAdmin);
+
+/**
+ * Auditoría: log de acciones del admin (aprobar/rechazar locales,
+ * cambiar planes, suspender usuarios, validar comprobantes, etc.).
+ */
+router.get('/audit', verifyToken, requireAdmin, adminController.getAuditLogs);
 
 /**
  * Comunicación y Notificaciones

@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity, FileText, History, Eye, Edit2 } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
+import UserDetailModal from '../components/UserDetailModal';
+import AdminPaymentProofsView from '../components/AdminPaymentProofsView';
+import AuditLogView from '../components/AuditLogView';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 import ZonasAdmin from '../components/ZonasAdmin';
 import CouponsView from '../components/CouponsView';
@@ -35,6 +38,11 @@ export default function AdminDashboardPage() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
+  // ID del usuario cuyo detalle se está viendo (null = modal cerrado).
+  const [userDetailId, setUserDetailId] = useState(null);
+  // Conteo de comprobantes pendientes para el badge del tab "Comprobantes".
+  // Se llena desde AdminPaymentProofsView.onCountChange.
+  const [pendingComprobantesCount, setPendingComprobantesCount] = useState(0);
   const [actionId, setActionId] = useState(null);
   const [actionType, setActionType] = useState('');
   // Modal para asignar plan Profesional/Premium con fecha de vencimiento
@@ -459,6 +467,8 @@ export default function AdminDashboardPage() {
             { id: 'users', label: 'Usuarios', icon: <Users size={16} /> },
             { id: 'restaurants', label: 'Locales', icon: <Store size={16} /> },
             { id: 'orders', label: 'Pedidos', icon: <ClipboardList size={16} /> },
+            { id: 'comprobantes', label: 'Comprobantes', icon: <FileText size={16} />, badge: pendingComprobantesCount },
+            { id: 'auditoria', label: 'Auditoría', icon: <History size={16} /> },
             { id: 'categories', label: 'Categorías', icon: <Tags size={16} /> },
             { id: 'coupons', label: 'Cupones', icon: <Ticket size={16} /> },
             { id: 'zonas', label: 'Zonas', icon: <MapPin size={16} /> },
@@ -467,7 +477,7 @@ export default function AdminDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 relative ${
                 activeTab === tab.id
                   ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
                   : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-base)]/60'
@@ -475,6 +485,15 @@ export default function AdminDashboardPage() {
             >
               {tab.icon}
               {tab.label}
+              {tab.badge > 0 && (
+                <span
+                  className="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full"
+                  style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
+                  aria-label={`${tab.badge} pendientes`}
+                >
+                  {tab.badge}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -704,14 +723,34 @@ export default function AdminDashboardPage() {
                           </select>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => handleEditUser(user)} className="p-2 text-primary hover:bg-primary/10 rounded-lg"><Save size={18} /></button>
+                          <div className="flex justify-end gap-1">
                             <button
+                              type="button"
+                              onClick={() => setUserDetailId(user.id)}
+                              className="p-2 text-primary hover:bg-primary/10 rounded-lg mobile-tap-target"
+                              aria-label={`Ver detalle de ${user.nombre}`}
+                              title="Ver detalle"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEditUser(user)}
+                              className="p-2 text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)] rounded-lg mobile-tap-target"
+                              aria-label={`Editar ${user.nombre}`}
+                              title="Editar"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                            type="button"
                             onClick={() => handleDeleteUser(user.id)}
-                            className="p-2 rounded-lg"
+                            className="p-2 rounded-lg mobile-tap-target"
                             style={{ color: 'var(--danger-text)' }}
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            aria-label={`Eliminar ${user.nombre}`}
+                            title="Eliminar"
                           ><Trash2 size={18} /></button>
                           </div>
                         </td>
@@ -1304,6 +1343,23 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
+          {/* TAB: COMPROBANTES (vista global del admin) */}
+          {activeTab === 'comprobantes' && (
+            <div className="animate-fadeIn">
+              <AdminPaymentProofsView
+                restaurants={restaurants}
+                onCountChange={setPendingComprobantesCount}
+              />
+            </div>
+          )}
+
+          {/* TAB: AUDITORÍA */}
+          {activeTab === 'auditoria' && (
+            <div className="animate-fadeIn">
+              <AuditLogView />
+            </div>
+          )}
+
           {/* TAB: ANALYTICS */}
           {activeTab === 'analytics' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
@@ -1401,6 +1457,12 @@ export default function AdminDashboardPage() {
           }}
           onSucceeded={loadData}
           userToEdit={userToEdit}
+        />
+
+        {/* MODAL DE DETALLE DE USUARIO (4 tabs: Perfil/Pedidos/Comprobantes/Actividad) */}
+        <UserDetailModal
+          userId={userDetailId}
+          onClose={() => setUserDetailId(null)}
         />
 
         {/* TAX & SHIPPING CONFIG MODAL */}

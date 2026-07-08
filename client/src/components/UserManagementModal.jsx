@@ -10,6 +10,9 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
     tipo_usuario: 'cliente',
     telefono: '',
     documento_identidad: '',
+    // Estado del usuario (activo/inactivo/suspendido). Solo editable en
+    // modo edición; en creación siempre se crea como 'activo'.
+    estado: 'activo',
     // Modalidad de servicio (solo aplica cuando tipo_usuario === 'restaurante').
     // El backend lo normaliza a boolean y lo guarda en `restaurantes.ofrece_domicilio`.
     ofrece_domicilio: true,
@@ -25,6 +28,9 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
         // Normalizar `ofrece_domicilio` que viene del backend (puede ser 1/0/true/false).
         setUser({
           ...userToEdit,
+          // Default a 'activo' si el backend no devuelve `estado` (por si
+          // viene de getAllUsers que solo expone 6 columnas).
+          estado: userToEdit.estado || 'activo',
           ofrece_domicilio: userToEdit.ofrece_domicilio === undefined
             ? true
             : Boolean(Number(userToEdit.ofrece_domicilio)),
@@ -38,6 +44,7 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
           tipo_usuario: 'cliente',
           telefono: '',
           documento_identidad: '',
+          estado: 'activo',
           ofrece_domicilio: true,
         });
       }
@@ -55,6 +62,7 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
       tipo_usuario: 'cliente',
       telefono: '',
       documento_identidad: '',
+      estado: 'activo',
       ofrece_domicilio: true,
     });
     setError('');
@@ -161,6 +169,22 @@ export default function UserManagementModal({ isOpen, onClose, onSucceeded, user
                 onChange={(e) => setUser({...user, documento_identidad: e.target.value})}
               />
             </div>
+            {/* Estado del usuario. Solo editable en modo edición porque
+                en creación siempre se crea como 'activo' en el backend. */}
+            {isEditing && (
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-xs font-semibold text-[color:var(--text-muted)] uppercase">Estado</label>
+                <select
+                  className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  value={user.estado || 'activo'}
+                  onChange={(e) => setUser({...user, estado: e.target.value})}
+                >
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                  <option value="suspendido">Suspendido</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Modalidad de servicio: solo aplica cuando el rol es restaurante. */}

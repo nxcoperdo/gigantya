@@ -2,8 +2,12 @@ import * as RestaurantModel from '../models/Restaurant.js';
 import * as UserModel from '../models/User.js';
 import * as NotificationModel from '../models/Notification.js';
 import * as SubscriptionModel from '../models/Subscription.js';
+import * as PaymentProofModel from '../models/PaymentProof.js';
+import * as OrderModel from '../models/Order.js';
 import { query, getConnection } from '../config/database.js';
 import logger from '../utils/logger.js';
+import { recordAudit } from '../middleware/auditMiddleware.js';
+import * as AuditLogModel from '../models/AuditLog.js';
 
 /**
  * Obtener todos los restaurantes (pendientes de aprobación y aprobados)
@@ -80,6 +84,10 @@ export async function approveRestaurant(req, res) {
 
     await RestaurantModel.approveRestaurant(id);
 
+    await recordAudit(req, 'restaurante.approve', 'restaurante', Number(id), {
+      despues: { aprobado: true, nombre: restaurante.nombre },
+    });
+
     res.json({
       mensaje: 'Local aprobado exitosamente'
     });
@@ -114,6 +122,10 @@ export async function rejectRestaurant(req, res) {
     }
 
     await RestaurantModel.rejectRestaurant(id);
+
+    await recordAudit(req, 'restaurante.reject', 'restaurante', Number(id), {
+      despues: { aprobado: false, nombre: restaurante.nombre, razon },
+    });
 
     res.json({
       mensaje: 'Local rechazado'
@@ -267,6 +279,12 @@ export async function updateUserStatus(req, res) {
       return res.status(400).json({ error: 'Estado no válido' });
     }
 
+    // Capturar el estado anterior antes de la mutación para el log.
+    const usuarioAnterior = await UserModel.getUserById(id);
+    if (!usuarioAnterior) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     await query('UPDATE usuarios SET estado = ? WHERE id = ?', [estado, id]);
 
     // Sincronizar `restaurantes.estado` cuando se reactiva un usuario
@@ -281,6 +299,11 @@ export async function updateUserStatus(req, res) {
         [id, id]
       );
     }
+
+    await recordAudit(req, 'user.status_change', 'usuario', Number(id), {
+      antes: { estado: usuarioAnterior.estado },
+      despues: { estado },
+    });
 
     logger.info(`Admin cambió estado del usuario ${id} a ${estado}`);
     res.json({ mensaje: 'Estado actualizado correctamente' });
@@ -301,7 +324,29 @@ export async function updateUser(req, res) {
       return res.status(400).json({ error: 'No se proporcionaron datos para actualizar' });
     }
 
+    const usuarioAnterior = await UserModel.getUserById(id);
+    if (!usuarioAnterior) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     await UserModel.updateUser(id, updateData);
+
+    // Solo auditamos cambios de tipo_usuario o estado (los demás campos —
+    // nombre, telefono, documento — son cambios menores que pueden ser
+    // spam en el log).
+    const cambiosImportantes = {};
+    if (updateData.tipo_usuario && updateData.tipo_usuario !== usuarioAnterior.tipo_usuario) {
+      cambiosImportantes.tipo_usuario = { antes: usuarioAnterior.tipo_usuario, despues: updateData.tipo_usuario };
+    }
+    if (updateData.estado && updateData.estado !== usuarioAnterior.estado) {
+      cambiosImportantes.estado = { antes: usuarioAnterior.estado, despues: updateData.estado };
+    }
+    if (Object.keys(cambiosImportantes).length > 0) {
+      await recordAudit(req, 'user.update', 'usuario', Number(id), {
+        antes: { tipo_usuario: usuarioAnterior.tipo_usuario, estado: usuarioAnterior.estado },
+        despues: cambiosImportantes,
+      });
+    }
 
     logger.info(`Admin actualizó datos del usuario ${id}`);
     res.json({ mensaje: 'Usuario actualizado exitosamente' });
@@ -316,7 +361,15 @@ export async function updateUser(req, res) {
 export async function deleteUser(req, res) {
   try {
     const { id } = req.params;
+
+    // Capturar el usuario ANTES de borrar para que el log tenga contexto.
+    const usuario = await UserModel.getUserById(id);
+
     await query('DELETE FROM usuarios WHERE id = ?', [id]);
+
+    await recordAudit(req, 'user.delete', 'usuario', Number(id), {
+      antes: usuario ? { nombre: usuario.nombre, email: usuario.email, tipo_usuario: usuario.tipo_usuario } : null,
+    });
 
     logger.info(`Admin eliminó el usuario ${id}`);
     res.json({ mensaje: 'Usuario eliminado exitosamente' });
@@ -559,6 +612,15 @@ export async function updateRestaurantPlan(req, res) {
 
     logger.info(`Admin ${req.user.id} cambió plan del restaurante ${id} a ${plan}`);
 
+    await recordAudit(req, 'plan.change', 'restaurante', Number(id), {
+      antes: { plan: restaurante.plan },
+      despues: {
+        plan,
+        fecha_vencimiento: plan === 'basico' ? null : fecha_vencimiento,
+        monto_pagado,
+      },
+    });
+
     const historial = await SubscriptionModel.getSubscriptionHistory(id);
     res.json({
       mensaje: 'Plan de suscripción actualizado exitosamente',
@@ -670,6 +732,11 @@ export async function updateRestaurantDomicilio(req, res) {
 
     await RestaurantModel.updateRestaurant(id, { ofrece_domicilio: nuevoValor });
 
+    await recordAudit(req, 'modalidad.toggle', 'restaurante', Number(id), {
+      antes: { ofrece_domicilio: Boolean(restaurante.ofrece_domicilio) },
+      despues: { ofrece_domicilio: nuevoValor, campo: 'ofrece_domicilio' },
+    });
+
     logger.info(`Admin ${req.user.id} cambió modalidad del restaurante ${id} a ofrece_domicilio=${nuevoValor}`);
 
     res.json({
@@ -715,6 +782,11 @@ export async function updateRestaurantConsumoEnLocal(req, res) {
 
     await RestaurantModel.updateRestaurant(id, { ofrece_consumo_en_local: nuevoValor });
 
+    await recordAudit(req, 'modalidad.toggle', 'restaurante', Number(id), {
+      antes: { ofrece_consumo_en_local: Boolean(restaurante.ofrece_consumo_en_local) },
+      despues: { ofrece_consumo_en_local: nuevoValor, campo: 'ofrece_consumo_en_local' },
+    });
+
     logger.info(`Admin ${req.user.id} cambió modalidad del restaurante ${id} a ofrece_consumo_en_local=${nuevoValor}`);
 
     res.json({
@@ -757,6 +829,11 @@ export async function updateRestaurantEsMercado(req, res) {
 
     await RestaurantModel.updateRestaurant(id, { es_mercado_abarrotes: nuevoValor });
 
+    await recordAudit(req, 'modalidad.toggle', 'restaurante', Number(id), {
+      antes: { es_mercado_abarrotes: Boolean(restaurante.es_mercado_abarrotes) },
+      despues: { es_mercado_abarrotes: nuevoValor, campo: 'es_mercado_abarrotes' },
+    });
+
     logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_mercado_abarrotes=${nuevoValor}`);
 
     res.json({
@@ -798,6 +875,11 @@ export async function updateRestaurantEsComidaRapida(req, res) {
     const nuevoValor = Boolean(es_comida_rapida);
 
     await RestaurantModel.updateRestaurant(id, { es_comida_rapida: nuevoValor });
+
+    await recordAudit(req, 'modalidad.toggle', 'restaurante', Number(id), {
+      antes: { es_comida_rapida: Boolean(restaurante.es_comida_rapida) },
+      despues: { es_comida_rapida: nuevoValor, campo: 'es_comida_rapida' },
+    });
 
     logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_comida_rapida=${nuevoValor}`);
 
@@ -846,6 +928,11 @@ export async function updateRestaurantEsRestaurante(req, res) {
     const nuevoValor = Boolean(es_restaurante);
 
     await RestaurantModel.updateRestaurant(id, { es_restaurante: nuevoValor });
+
+    await recordAudit(req, 'modalidad.toggle', 'restaurante', Number(id), {
+      antes: { es_restaurante: Boolean(restaurante.es_restaurante) },
+      despues: { es_restaurante: nuevoValor, campo: 'es_restaurante' },
+    });
 
     logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_restaurante=${nuevoValor}`);
 
@@ -896,6 +983,11 @@ export async function updateRestaurantEsPanaderiaPasteleria(req, res) {
     const nuevoValor = Boolean(es_panaderia_pasteleria);
 
     await RestaurantModel.updateRestaurant(id, { es_panaderia_pasteleria: nuevoValor });
+
+    await recordAudit(req, 'modalidad.toggle', 'restaurante', Number(id), {
+      antes: { es_panaderia_pasteleria: Boolean(restaurante.es_panaderia_pasteleria) },
+      despues: { es_panaderia_pasteleria: nuevoValor, campo: 'es_panaderia_pasteleria' },
+    });
 
     logger.info(`Admin ${req.user.id} cambió tipo de negocio del restaurante ${id} a es_panaderia_pasteleria=${nuevoValor}`);
 
@@ -956,6 +1048,287 @@ export async function getOnlineUsers(req, res) {
   }
 }
 
+/**
+ * Detalle completo de un usuario para el modal de detalle del admin.
+ *
+ * Enriquece el `getUserProfile` con:
+ *  - Si es restaurante, conteo de pedidos del local.
+ *  - Conteo de pedidos como cliente.
+ *  - `ultima_actividad` (que `getUserById` no incluye).
+ */
+export async function getUserByIdAdmin(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const { id } = req.params;
+    const usuario = await UserModel.getUserProfile(id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Conteo de pedidos como cliente.
+    const pedidosClienteRow = await query(
+      'SELECT COUNT(*) AS total FROM pedidos WHERE usuario_id = ?',
+      [id]
+    );
+    usuario.pedidos_count = pedidosClienteRow[0]?.total || 0;
+
+    // Si es restaurante, conteo de pedidos del local.
+    if (usuario.tipo_usuario === 'restaurante' && usuario.restaurante) {
+      const pedidosRestRow = await query(
+        'SELECT COUNT(*) AS total FROM pedidos WHERE restaurante_id = ?',
+        [usuario.restaurante.id]
+      );
+      usuario.restaurante.pedidos_count = pedidosRestRow[0]?.total || 0;
+    }
+
+    // Última actividad explícita (getUserById no la devuelve).
+    const lastRow = await query(
+      'SELECT ultima_actividad FROM usuarios WHERE id = ?',
+      [id]
+    );
+    usuario.ultima_actividad = lastRow[0]?.ultima_actividad || null;
+
+    res.json({ usuario });
+  } catch (error) {
+    res.status(500).json({ error: 'Error obteniendo usuario', detalles: error.message });
+  }
+}
+
+/**
+ * Pedidos de un usuario (cliente) o de un restaurante. Usado por el
+ * tab "Pedidos" del modal de detalle.
+ *
+ * Query params:
+ *  - `rol` (opcional): 'cliente' (default) o 'restaurante' para saber
+ *    qué FK usar.
+ *  - `limit` (opcional, default 50).
+ */
+export async function getUserOrdersAdmin(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    const { id } = req.params;
+    const { rol = 'cliente', limit = 50 } = req.query;
+    const lim = Math.max(1, Math.min(200, parseInt(limit, 10) || 50));
+
+    let sql;
+    let params;
+    if (rol === 'restaurante') {
+      sql = `
+        SELECT p.*, u.nombre AS cliente, r.nombre AS restaurante
+          FROM pedidos p
+          LEFT JOIN usuarios u ON p.usuario_id = u.id
+          INNER JOIN restaurantes r ON p.restaurante_id = r.id
+         WHERE r.usuario_id = ?
+         ORDER BY p.creado_en DESC
+         LIMIT ?`;
+      params = [id, lim];
+    } else {
+      sql = `
+        SELECT p.*, u.nombre AS cliente, r.nombre AS restaurante
+          FROM pedidos p
+          LEFT JOIN usuarios u ON p.usuario_id = u.id
+          LEFT JOIN restaurantes r ON p.restaurante_id = r.id
+         WHERE p.usuario_id = ?
+         ORDER BY p.creado_en DESC
+         LIMIT ?`;
+      params = [id, lim];
+    }
+
+    const pedidos = await query(sql, params);
+    res.json({ total: pedidos.length, pedidos });
+  } catch (error) {
+    res.status(500).json({ error: 'Error obteniendo pedidos del usuario', detalles: error.message });
+  }
+}
+
+/**
+ * Comprobantes de pago de TODA la plataforma (no filtrados por restaurante).
+ * Usado por la pestaña "Comprobantes" del admin.
+ *
+ * Query params:
+ *  - `estado`: 'pendiente' | 'aprobado' | 'rechazado'
+ *  - `restaurante_id`
+ *  - `cliente_id` (filtra por usuario_id del pedido)
+ *  - `metodo_pago`: 'nequi' | 'daviplata' | 'bre_b' | 'contra_entrega'
+ *  - `desde`, `hasta` (ISO date)
+ *  - `limit` (default 100), `offset` (default 0)
+ */
+export async function getAllPaymentProofsAdmin(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const {
+      estado,
+      restaurante_id,
+      cliente_id,
+      metodo_pago,
+      desde,
+      hasta,
+      limit = 100,
+      offset = 0,
+    } = req.query;
+
+    const lim = Math.max(1, Math.min(500, parseInt(limit, 10) || 100));
+    const off = Math.max(0, parseInt(offset, 10) || 0);
+
+    let sql = `
+      SELECT
+        cp.*,
+        p.total AS pedido_total,
+        p.estado AS pedido_estado,
+        p.restaurante_id,
+        p.usuario_id AS cliente_id,
+        u.nombre AS cliente_nombre,
+        u.telefono AS cliente_telefono,
+        r.nombre AS restaurante_nombre,
+        vu.nombre AS validado_por_nombre
+      FROM comprobantes_pago cp
+      INNER JOIN pedidos p ON cp.pedido_id = p.id
+      INNER JOIN usuarios u ON p.usuario_id = u.id
+      LEFT JOIN restaurantes r ON p.restaurante_id = r.id
+      LEFT JOIN usuarios vu ON cp.validado_por = vu.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (estado) {
+      sql += ' AND cp.estado_validacion = ?';
+      params.push(estado);
+    }
+    if (restaurante_id) {
+      sql += ' AND p.restaurante_id = ?';
+      params.push(restaurante_id);
+    }
+    if (cliente_id) {
+      sql += ' AND p.usuario_id = ?';
+      params.push(cliente_id);
+    }
+    if (metodo_pago) {
+      sql += ' AND cp.metodo_pago = ?';
+      params.push(metodo_pago);
+    }
+    if (desde) {
+      sql += ' AND cp.fecha_subida >= ?';
+      params.push(desde);
+    }
+    if (hasta) {
+      sql += ' AND cp.fecha_subida <= ?';
+      params.push(hasta);
+    }
+
+    sql += ' ORDER BY cp.fecha_subida DESC LIMIT ? OFFSET ?';
+    params.push(lim, off);
+
+    const comprobantes = await query(sql, params);
+    res.json({ total: comprobantes.length, comprobantes });
+  } catch (error) {
+    res.status(500).json({ error: 'Error obteniendo comprobantes', detalles: error.message });
+  }
+}
+
+/**
+ * Aprobar un comprobante de pago desde el panel admin.
+ * El admin puede aprobar comprobantes de cualquier local (no solo del suyo).
+ */
+export async function approvePaymentProofAdmin(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const { id } = req.params;
+    const proof = await PaymentProofModel.getProofById(id);
+    if (!proof) {
+      return res.status(404).json({ error: 'Comprobante no encontrado' });
+    }
+
+    await PaymentProofModel.updateProofStatus(id, 'aprobado', req.user.id, null);
+    await OrderModel.updatePaymentValidation(proof.pedido_id, 'aprobado');
+
+    await recordAudit(req, 'comprobante.approve', 'comprobante', Number(id), {
+      antes: { estado_validacion: proof.estado_validacion },
+      despues: { estado_validacion: 'aprobado', pedido_id: proof.pedido_id },
+    });
+
+    res.json({ mensaje: 'Comprobante aprobado por admin' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error aprobando comprobante', detalles: error.message });
+  }
+}
+
+/**
+ * Rechazar un comprobante de pago desde el panel admin.
+ * Body: { motivo_rechazo: string }.
+ */
+export async function rejectPaymentProofAdmin(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const { id } = req.params;
+    const { motivo_rechazo } = req.body;
+    if (!motivo_rechazo || !String(motivo_rechazo).trim()) {
+      return res.status(400).json({ error: 'El motivo de rechazo es obligatorio' });
+    }
+
+    const proof = await PaymentProofModel.getProofById(id);
+    if (!proof) {
+      return res.status(404).json({ error: 'Comprobante no encontrado' });
+    }
+
+    await PaymentProofModel.updateProofStatus(id, 'rechazado', req.user.id, motivo_rechazo);
+    await OrderModel.updatePaymentValidation(proof.pedido_id, 'rechazado');
+
+    await recordAudit(req, 'comprobante.reject', 'comprobante', Number(id), {
+      antes: { estado_validacion: proof.estado_validacion },
+      despues: { estado_validacion: 'rechazado', motivo_rechazo, pedido_id: proof.pedido_id },
+    });
+
+    res.json({ mensaje: 'Comprobante rechazado por admin' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error rechazando comprobante', detalles: error.message });
+  }
+}
+
+/**
+ * Listar logs de auditoría con filtros y paginación. Usado por el
+ * tab "Auditoría" del panel admin.
+ *
+ * Query params (todos opcionales): admin_id, accion, entidad_tipo,
+ * entidad_id, desde, hasta, limit (default 100), offset (default 0).
+ */
+export async function getAuditLogs(req, res) {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const filtros = {
+      admin_id: req.query.admin_id || undefined,
+      accion: req.query.accion || undefined,
+      entidad_tipo: req.query.entidad_tipo || undefined,
+      entidad_id: req.query.entidad_id || undefined,
+      desde: req.query.desde || undefined,
+      hasta: req.query.hasta || undefined,
+      limit: Math.max(1, Math.min(500, parseInt(req.query.limit, 10) || 100)),
+      offset: Math.max(0, parseInt(req.query.offset, 10) || 0),
+    };
+
+    const resultado = await AuditLogModel.getLogs(filtros);
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({ error: 'Error obteniendo logs de auditoría', detalles: error.message });
+  }
+}
+
 export default {
   getAllRestaurants,
   getPendingRestaurants,
@@ -981,4 +1354,10 @@ export default {
   updateRestaurantEsRestaurante,
   updateRestaurantEsPanaderiaPasteleria,
   getOnlineUsers,
+  getUserByIdAdmin,
+  getUserOrdersAdmin,
+  getAllPaymentProofsAdmin,
+  approvePaymentProofAdmin,
+  rejectPaymentProofAdmin,
+  getAuditLogs,
 };

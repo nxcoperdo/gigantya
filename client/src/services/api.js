@@ -154,6 +154,22 @@ export const adminService = {
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { estado: status }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  // Detalle completo de un usuario para el modal de detalle.
+  // Devuelve el usuario con restaurante anidado (si aplica),
+  // pedidos_count y ultima_actividad.
+  getUserById: (id) => api.get(`/admin/users/${id}`),
+  // Pedidos de un usuario (cliente o restaurante).
+  // params: { rol: 'cliente' | 'restaurante', limit }
+  getUserOrders: (id, params = {}) => api.get(`/admin/users/${id}/orders`, { params }),
+  // Comprobantes de pago (vista global del admin, no filtrada por local).
+  // filters: { estado, restaurante_id, cliente_id, metodo_pago, desde, hasta, limit, offset }
+  getPaymentProofs: (filters = {}) => api.get('/admin/comprobantes', { params: filters }),
+  approvePaymentProofAdmin: (id) => api.post(`/admin/comprobantes/${id}/approve`),
+  rejectPaymentProofAdmin: (id, motivo_rechazo) =>
+    api.post(`/admin/comprobantes/${id}/reject`, { motivo_rechazo }),
+  // Auditoría: log de acciones del admin.
+  // filters: { admin_id, accion, entidad_tipo, entidad_id, desde, hasta, limit, offset }
+  getAuditLogs: (filters = {}) => api.get('/admin/audit', { params: filters }),
   // Category management
   getCategories: () => api.get('/admin/categorias'),
   createCategory: (data) => api.post('/admin/categorias', data),

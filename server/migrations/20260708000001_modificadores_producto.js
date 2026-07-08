@@ -27,7 +27,7 @@ export async function up(knex) {
   if (!(await knex.schema.hasTable('producto_grupos_adiciones'))) {
     await knex.schema.createTable('producto_grupos_adiciones', (table) => {
       table.increments('id').primary();
-      table.integer('producto_id').unsigned().notNullable();
+      table.integer('producto_id').notNullable();
       table.string('nombre', 100).notNullable();
       table.integer('orden').notNullable().defaultTo(0);
       table.boolean('activo').notNullable().defaultTo(true);
@@ -43,7 +43,7 @@ export async function up(knex) {
   if (!(await knex.schema.hasTable('producto_adiciones'))) {
     await knex.schema.createTable('producto_adiciones', (table) => {
       table.increments('id').primary();
-      table.integer('producto_id').unsigned().notNullable();
+      table.integer('producto_id').notNullable();
       // grupo_id NULL = adición suelta (sin grupo)
       table.integer('grupo_id').unsigned().nullable();
       table.string('nombre', 150).notNullable();
@@ -69,7 +69,7 @@ export async function up(knex) {
   if (!(await knex.schema.hasTable('producto_ingredientes_removibles'))) {
     await knex.schema.createTable('producto_ingredientes_removibles', (table) => {
       table.increments('id').primary();
-      table.integer('producto_id').unsigned().notNullable();
+      table.integer('producto_id').notNullable();
       table.string('nombre', 150).notNullable();
       table.integer('orden').notNullable().defaultTo(0);
       table.boolean('activo').notNullable().defaultTo(true);
