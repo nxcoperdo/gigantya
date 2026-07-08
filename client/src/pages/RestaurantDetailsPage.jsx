@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Star, MapPin, Clock, Clock3, Phone, Plus, Minus, User, Facebook, Instagram, Store, Maximize2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
@@ -32,7 +32,18 @@ export default function RestaurantDetailsPage() {
   });
   // Producto actualmente siendo customizado (null si no hay modal abierto)
   const [customizing, setCustomizing] = useState(null);
+  // IDs de productos cuya descripción está expandida en móvil
+  const [expandedDescs, setExpandedDescs] = useState(new Set());
   const { addToCart } = useCart();
+
+  const toggleDescExpanded = (productoId) => {
+    setExpandedDescs((prev) => {
+      const next = new Set(prev);
+      if (next.has(productoId)) next.delete(productoId);
+      else next.add(productoId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetchRestaurant();
@@ -487,9 +498,11 @@ export default function RestaurantDetailsPage() {
                          <h3 className="text-base sm:text-lg md:text-xl font-bold text-[color:var(--text-primary)] mb-1.5 sm:mb-2 line-clamp-2 min-h-[44px]">
                            {producto.nombre}
                          </h3>
-                         <p className="text-[color:var(--text-secondary)] text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 min-h-[36px]">
-                           {producto.descripcion}
-                         </p>
+                         <DescripcionProducto
+                           texto={producto.descripcion}
+                           expandido={expandedDescs.has(producto.id)}
+                           onToggle={() => toggleDescExpanded(producto.id)}
+                         />
 
                          <div className="flex justify-between items-end mb-3">
                            <p className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>
@@ -621,4 +634,47 @@ export default function RestaurantDetailsPage() {
        </div>
      </div>
    );
+}
+
+// Descripción de producto: en móvil colapsable (2 líneas + Ver más / Ver menos);
+// en PC (md:) siempre completa.
+function DescripcionProducto({ texto, expandido, onToggle }) {
+  const [esLarga, setEsLarga] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // "Larga" = la descripción sobrepasa las 2 líneas del clamp a 12px (móvil).
+    // En PC no hay clamp, así que ningún texto se considera largo para colapsar.
+    setEsLarga(el.scrollHeight > el.clientHeight + 1);
+  }, [texto]);
+
+  if (!texto) return null;
+
+  const clasesClamp = expandido
+    ? 'whitespace-pre-line'
+    : 'line-clamp-2 md:line-clamp-none whitespace-pre-line';
+
+  return (
+    <div className="mb-3 sm:mb-4">
+      <p
+        ref={ref}
+        className={`text-[color:var(--text-secondary)] text-xs sm:text-sm ${clasesClamp}`}
+      >
+        {texto}
+      </p>
+      {esLarga && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="md:hidden text-xs font-semibold mt-1 hover:underline focus:outline-none"
+          style={{ color: 'var(--color-primary)' }}
+          aria-expanded={expandido}
+        >
+          {expandido ? 'Ver menos' : 'Ver más'}
+        </button>
+      )}
+    </div>
+  );
 }
