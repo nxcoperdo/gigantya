@@ -1,5 +1,5 @@
 import { X, Clock, MapPin, Phone, User, DollarSign, Package, Loader, Tag, Printer } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { orderService } from '../services/api';
 import AddressMapPreview from './AddressMapPreview';
 import { formatDateTime } from '../utils/dateHelper';
@@ -22,6 +22,7 @@ const PAYMENT_METHOD_LABELS = {
 export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = false }) {
   const [fullOrderData, setFullOrderData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const hasAutoPrintedRef = useRef(false);
 
   useEffect(() => {
     if (isOpen && order?.id && !order.items) {
@@ -52,11 +53,21 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
   // nos permite ocultar TODO el resto del DOM con una regla CSS simple
   // (body > *:not(.print-ticket)) sin los problemas de visibility:hidden
   // que mantenía el layout y paginaba de más.
+  //
+  // Usamos un ref para garantizar que la impresión se dispare SOLO una
+  // vez por apertura del modal (los effects con [loading] en deps se
+  // ejecutan varias veces y pueden clonar múltiples veces).
   useEffect(() => {
-    if (!isOpen || !autoPrint) return undefined;
+    if (!isOpen || !autoPrint) {
+      hasAutoPrintedRef.current = false;
+      return undefined;
+    }
     if (loading) return undefined;
+    if (hasAutoPrintedRef.current) return undefined;
+    hasAutoPrintedRef.current = true;
 
     let cloneNode = null;
+    let cancelled = false;
 
     const cleanup = () => {
       if (cloneNode && cloneNode.parentNode) {
@@ -67,7 +78,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
     };
 
     const doPrint = () => {
-      // Buscar el .order-print-content dentro del modal y clonarlo
+      if (cancelled) return;
       const source = document.querySelector('.printing-modal-wrapper .order-print-content');
       if (!source) {
         console.warn('[OrderDetailsModal] No se encontró .order-print-content para imprimir');
@@ -75,22 +86,32 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
       }
       cloneNode = source.cloneNode(true);
       cloneNode.classList.add('print-ticket');
-      // Resetear estilos de position que el modal en pantalla pueda tener
+      // Resetear estilos heredados del modal en pantalla
+      cloneNode.removeAttribute('style');
       cloneNode.style.position = 'static';
-      cloneNode.style.left = '';
-      cloneNode.style.top = '';
-      cloneNode.style.width = '';
-      cloneNode.style.maxWidth = '';
+      cloneNode.style.width = '80mm';
+      cloneNode.style.maxWidth = '80mm';
+      cloneNode.style.padding = '4mm';
+      cloneNode.style.boxSizing = 'border-box';
+      cloneNode.style.margin = '0';
+      cloneNode.style.background = 'white';
+      cloneNode.style.color = 'black';
+      cloneNode.style.fontFamily = "'Courier New', Courier, monospace";
+      cloneNode.style.fontSize = '11px';
+      cloneNode.style.lineHeight = '1.35';
+      cloneNode.style.overflow = 'visible';
+      cloneNode.style.height = 'auto';
+      cloneNode.style.maxHeight = 'none';
       document.body.appendChild(cloneNode);
       document.body.classList.add('printing-order');
 
-      // Pequeño delay para que el navegador pinte el clon antes de abrir el diálogo
+      // Delay para que el navegador pinte el clon antes de abrir el diálogo
       setTimeout(() => {
-        window.print();
-      }, 50);
+        if (!cancelled) window.print();
+      }, 100);
     };
 
-    // Doble rAF para asegurar que el modal ya pintó con los datos
+    // Doble rAF para asegurar que el modal pintó con los datos
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(doPrint);
     });
@@ -99,6 +120,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
     window.addEventListener('afterprint', afterPrint);
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('afterprint', afterPrint);
       cleanup();

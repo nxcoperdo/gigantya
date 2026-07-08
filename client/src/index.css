@@ -1359,6 +1359,14 @@ html.theme-transition *::after {
     padding: 4mm;
     box-sizing: border-box;
     margin: 0 !important;
+    /* Evitar saltos de página dentro del ticket. */
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* Los hijos del clon tampoco deben romperse entre páginas. */
+  body.printing-order > .print-ticket * {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Tipografía compacta para ticket: */
