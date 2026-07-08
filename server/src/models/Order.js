@@ -83,14 +83,21 @@ export function normalizeOrderItems(items) {
       .filter((a) => Number.isInteger(a.adicion_id) && a.adicion_id > 0 && a.cantidad > 0)
       .sort((a, b) => a.adicion_id - b.adicion_id);
 
-    // Normalizar removidos: [id, ...]
+    // Normalizar removidos: [{ id, nombre }].
+    // Acepta el shape "liviano" (id solo) que viene del cliente y el
+    // shape "completo" (con nombre) que ya usamos en otros lugares.
+    // El nombre lo resolvemos más abajo (en createOrderWithItems)
+    // contra la tabla producto_ingredientes_removibles, porque acá
+    // todavía no sabemos el producto_id del item.
     const removidosRaw = Array.isArray(item.removidos_ids)
-      ? item.removidos_ids
-      : (Array.isArray(item.removidos) ? item.removidos.map((r) => (typeof r === 'object' ? r.id : r)) : []);
+      ? item.removidos_ids.map((r) => ({ id: Number(r) }))
+      : (Array.isArray(item.removidos)
+          ? item.removidos.map((r) => (typeof r === 'object' ? { id: Number(r.id) } : { id: Number(r) }))
+          : []);
     const removidos = removidosRaw
-      .map((r) => Number(r))
-      .filter((id) => Number.isInteger(id) && id > 0)
-      .sort((a, b) => a - b);
+      .map((r) => ({ id: r.id }))
+      .filter((r) => Number.isInteger(r.id) && r.id > 0)
+      .sort((a, b) => a.id - b.id);
 
     // Nota libre: string, máximo 200 caracteres (defensa)
     const notaRaw = typeof item.notas_item === 'string'
@@ -98,11 +105,14 @@ export function normalizeOrderItems(items) {
       : (typeof item.nota === 'string' ? item.nota : '');
     const nota = notaRaw.slice(0, 200);
 
-    // Firma estable (JSON string) — igual a la del CartContext
+    // Firma estable (JSON string). Los removidos van como array
+    // de IDs (forma canónica del CartContext del cliente), no
+    // como {id, nombre} — para que la firma matchee entre ambos
+    // lados. El nombre se snapshottea en otra parte del pipeline.
     const firma = JSON.stringify({
       id: producto_id,
       ad: adiciones.map((a) => ({ id: a.adicion_id, c: a.cantidad })),
-      re: removidos,
+      re: removidos.map((r) => r.id),
       nota,
     });
 
@@ -375,9 +385,46 @@ export async function createOrderWithItems(orderData) {
           });
         }
         const sumaAdiciones = snapshot.reduce((s, a) => s + a.subtotal, 0);
+
+        // Validar removibles: que existan, estén activos y pertenezcan
+        // al producto. Hacemos snapshot del `nombre` para guardarlo en
+        // `removidos_json` como [{id, nombre}] — así el ticket puede
+        // renderizar el nombre del ingrediente quitado aunque el local
+        // edite o elimine el removible después.
+        let removibles_snapshot = [];
+        if (item.removidos && item.removidos.length > 0) {
+          const removibleIds = item.removidos.map((r) => r.id);
+          const remPlaceholders = removibleIds.map(() => '?').join(',');
+          const [remRows] = await connection.query(
+            `SELECT id, producto_id, nombre
+             FROM producto_ingredientes_removibles
+             WHERE id IN (${remPlaceholders}) AND activo = 1`,
+            removibleIds
+          );
+          const removiblesById = new Map(remRows.map((r) => [Number(r.id), r]));
+          for (const r of item.removidos) {
+            const row = removiblesById.get(r.id);
+            if (!row) {
+              throw createValidationError(
+                `Ingrediente removible ${r.id} no existe o no está activo`
+              );
+            }
+            if (Number(row.producto_id) !== Number(item.producto_id)) {
+              throw createValidationError(
+                `El removible ${r.id} no pertenece al producto ${item.producto_id}`
+              );
+            }
+            removibles_snapshot.push({
+              id: r.id,
+              nombre: row.nombre,
+            });
+          }
+        }
+
         return {
           ...item,
           adiciones_snapshot: snapshot,
+          removibles_snapshot,
           suma_adiciones: Number(sumaAdiciones.toFixed(2)),
         };
       })
@@ -571,8 +618,8 @@ export async function createOrderWithItems(orderData) {
       const subtotal = Number(
         ((item.precio_unitario + item.suma_adiciones) * item.cantidad).toFixed(2)
       );
-      const removidosJson = item.removidos && item.removidos.length > 0
-        ? JSON.stringify(item.removidos)
+      const removidosJson = item.removibles_snapshot && item.removibles_snapshot.length > 0
+        ? JSON.stringify(item.removibles_snapshot)
         : null;
       const [insertResult] = await connection.query(
         `
