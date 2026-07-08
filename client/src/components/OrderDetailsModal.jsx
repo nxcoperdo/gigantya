@@ -47,29 +47,61 @@ export default function OrderDetailsModal({ isOpen, onClose, order, autoPrint = 
   }, [isOpen, order]);
 
   // Si llega con autoPrint=true, disparamos window.print() una vez que
-  // los datos estén listos. Marcamos el body con `printing-order` para que
-  // el CSS @media print oculte el chrome del modal y muestre solo el
-  // contenido. Limpiamos al cerrar (afterprint o unmount).
+  // los datos estén listos. La técnica: clonamos el .order-print-content
+  // y lo movemos al <body> como hijo directo, fuera del modal. Eso
+  // nos permite ocultar TODO el resto del DOM con una regla CSS simple
+  // (body > *:not(.print-ticket)) sin los problemas de visibility:hidden
+  // que mantenía el layout y paginaba de más.
   useEffect(() => {
     if (!isOpen || !autoPrint) return undefined;
     if (loading) return undefined;
 
-    document.body.classList.add('printing-order');
-    const afterPrint = () => {
+    let cloneNode = null;
+
+    const cleanup = () => {
+      if (cloneNode && cloneNode.parentNode) {
+        cloneNode.parentNode.removeChild(cloneNode);
+      }
+      cloneNode = null;
       document.body.classList.remove('printing-order');
     };
+
+    const doPrint = () => {
+      // Buscar el .order-print-content dentro del modal y clonarlo
+      const source = document.querySelector('.printing-modal-wrapper .order-print-content');
+      if (!source) {
+        console.warn('[OrderDetailsModal] No se encontró .order-print-content para imprimir');
+        return;
+      }
+      cloneNode = source.cloneNode(true);
+      cloneNode.classList.add('print-ticket');
+      // Resetear estilos de position que el modal en pantalla pueda tener
+      cloneNode.style.position = 'static';
+      cloneNode.style.left = '';
+      cloneNode.style.top = '';
+      cloneNode.style.width = '';
+      cloneNode.style.maxWidth = '';
+      document.body.appendChild(cloneNode);
+      document.body.classList.add('printing-order');
+
+      // Pequeño delay para que el navegador pinte el clon antes de abrir el diálogo
+      setTimeout(() => {
+        window.print();
+      }, 50);
+    };
+
+    // Doble rAF para asegurar que el modal ya pintó con los datos
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(doPrint);
+    });
+
+    const afterPrint = () => cleanup();
     window.addEventListener('afterprint', afterPrint);
 
-    // Pequeño delay para que el navegador renderice el modal con el contenido
-    // completo antes de abrir el diálogo de impresión.
-    const timer = setTimeout(() => {
-      window.print();
-    }, 100);
-
     return () => {
-      clearTimeout(timer);
+      cancelAnimationFrame(raf);
       window.removeEventListener('afterprint', afterPrint);
-      document.body.classList.remove('printing-order');
+      cleanup();
     };
   }, [isOpen, autoPrint, loading]);
 

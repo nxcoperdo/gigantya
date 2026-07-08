@@ -1335,46 +1335,20 @@ html.theme-transition *::after {
   }
 
   /* Cuando se imprime desde el modal de detalles de pedido:
-     Truco estándar de "imprimir solo un componente":
-     1. visibility:hidden en TODO (saca del render visible).
-     2. visibility:visible solo en el subtree de .order-print-content
-        y en sus ancestros directos (backdrop, wrapper) para que la
-        cadena de visibilidad no se corte.
-     El .printing-modal-wrapper solo tiene como hijo directo al
-     .order-print-content (header+content), y el footer está afuera
-     del wrapper con no-print. No hay más hermanos a ocultar. */
-  body.printing-order * {
-    visibility: hidden;
+     El componente clona el .order-print-content y lo monta como hijo
+     directo del <body> con la clase .print-ticket. Entonces ocultamos
+     TODO lo demás del DOM (el dashboard, el sidebar, el modal original,
+     etc.) con una regla universal: cualquier hijo del body que no sea
+     el clon del ticket queda display:none. Esto elimina completamente
+     esos elementos del flow, así que el navegador pagina SOLO el clon. */
+  body.printing-order > *:not(.print-ticket):not(script):not(style):not(link):not(meta) {
+    display: none !important;
   }
-  body.printing-order .printing-modal-backdrop,
-  body.printing-order .printing-modal-wrapper,
-  body.printing-order .order-print-content,
-  body.printing-order .order-print-content * {
-    visibility: visible;
-  }
-
-  /* El .order-print-content se posiciona absoluto en la página.
-     Como sus ancestros tienen visibility:visible pero son position:static
-     con su layout normal (max-w-2xl = ~672px), necesitamos sacarlo del
-     flow con absolute. El padre más cercano con position:relative sería
-     ideal; usamos el body como contenedor final. */
-  body.printing-order .printing-modal-backdrop,
-  body.printing-order .printing-modal-wrapper {
+  body.printing-order > .print-ticket {
+    display: block !important;
     position: static !important;
-    background: white !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    max-width: 100% !important;
-    max-height: none !important;
-    overflow: visible !important;
-    inset: auto !important;
-  }
-  body.printing-order .order-print-content {
-    position: absolute;
-    top: 0;
-    left: 0;
+    top: auto !important;
+    left: auto !important;
     width: 80mm;
     max-width: 80mm;
     background: white;
@@ -1384,46 +1358,47 @@ html.theme-transition *::after {
     line-height: 1.35;
     padding: 4mm;
     box-sizing: border-box;
+    margin: 0 !important;
   }
 
   /* Tipografía compacta para ticket: */
-  body.printing-order .order-print-content h2 {
+  body.printing-order > .print-ticket h2 {
     font-size: 14px;
     margin: 0 0 2px 0;
     text-align: center;
     color: black !important;
   }
-  body.printing-order .order-print-content h3 {
+  body.printing-order > .print-ticket h3 {
     font-size: 12px;
     margin: 4px 0 2px 0;
     border-bottom: 1px dashed #000;
     padding-bottom: 2px;
     color: black !important;
   }
-  body.printing-order .order-print-content p,
-  body.printing-order .order-print-content span,
-  body.printing-order .order-print-content div {
+  body.printing-order > .print-ticket p,
+  body.printing-order > .print-ticket span,
+  body.printing-order > .print-ticket div {
     color: black !important;
     background: transparent !important;
     border-color: #000 !important;
     box-shadow: none !important;
   }
-  body.printing-order .order-print-content .grid {
+  body.printing-order > .print-ticket .grid {
     display: block !important;
   }
-  body.printing-order .order-print-content section {
+  body.printing-order > .print-ticket section {
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
     margin: 0 0 4px 0 !important;
   }
-  body.printing-order .order-print-content [class*="rounded-"] {
+  body.printing-order > .print-ticket [class*="rounded-"] {
     border-radius: 0 !important;
   }
-  body.printing-order .order-print-content [class*="bg-"] {
+  body.printing-order > .print-ticket [class*="bg-"] {
     background: transparent !important;
   }
-  body.printing-order .order-print-content [class*="text-"] {
+  body.printing-order > .print-ticket [class*="text-"] {
     color: black !important;
   }
 
