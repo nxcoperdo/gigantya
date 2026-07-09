@@ -15,6 +15,26 @@ const router = express.Router();
 router.get('/', restaurantController.listRestaurants);
 
 /**
+ * Rutas /me y /me/stats van ANTES de /:id.
+ *
+ * En Express las rutas se matchean en orden de declaración. Si declarás
+ * `router.get('/:id', ...)` antes que `router.get('/me', ...)`, Express
+ * matchea `id="me"` contra el handler genérico y nunca llega a /me.
+ * Por eso las rutas estáticas/con prefijos más específicos van primero.
+ *
+ * Si en el futuro agregás más rutas como /me/..., mantené este bloque
+ * agrupado arriba de las rutas con `:id`.
+ */
+router.get('/me', verifyToken, restaurantController.getMyRestaurant);
+
+/**
+ * @route   GET /api/restaurants/me/stats
+ * @desc    Obtener estadísticas del restaurante propio
+ * @access  Private - Restaurant
+ */
+router.get('/me/stats', verifyToken, requireRestaurant, restaurantController.getRestaurantStats);
+
+/**
  * @route   GET /api/restaurants/:id
  * @desc    Obtener detalles de un restaurante con su menú
  * @access  Public
@@ -37,24 +57,6 @@ router.put('/:id', verifyToken, requireRestaurant, upload.fields([
   { name: 'imagen_url', maxCount: 1 },
   { name: 'banner_url', maxCount: 1 }
 ]), restaurantController.updateRestaurant);
-
-/**
- * @route   GET /api/restaurants/me
- * @desc    Devuelve el restaurante asociado al usuario autenticado.
- *          Lo usa el POSLayout del frontend para saber el `plan` del local
- *          sin tener que hidratarlo en el payload del login (que se cachea
- *          en localStorage y puede quedar desactualizado al cambiar de plan).
- * @access  Private - Restaurant o staff (cajero/mesero/cocina)
- *          Para clientes devuelve 404 (no tienen restaurante asociado).
- */
-router.get('/me', verifyToken, restaurantController.getMyRestaurant);
-
-/**
- * @route   GET /api/restaurants/me/stats
- * @desc    Obtener estadísticas del restaurante propio
- * @access  Private - Restaurant
- */
-router.get('/me/stats', verifyToken, requireRestaurant, restaurantController.getRestaurantStats);
 
 /**
  * Costos de envío por sector — accesibles también por el dueño del restaurante.
