@@ -55,6 +55,7 @@ import posStaffRoutes from './routes/posStaffRoutes.js';
 import posTableRoutes from './routes/posTableRoutes.js';
 import posOrderRoutes from './routes/posOrderRoutes.js';
 import posCustomerRoutes from './routes/posCustomerRoutes.js';
+import posCashRoutes from './routes/posCashRoutes.js';
 import printRoutes from './routes/printRoutes.js';
 
 
@@ -196,6 +197,7 @@ app.use('/api/pos/staff', posStaffRoutes);
 app.use('/api/pos/tables', posTableRoutes);
 app.use('/api/pos/orders', posOrderRoutes);
 app.use('/api/pos/customers', posCustomerRoutes);
+app.use('/api/pos', posCashRoutes);
 app.use('/api/print', printRoutes);
 
 // Ruta de bienvenida

@@ -368,5 +368,21 @@ export const printService = {
   receipt:       (id) => api.get(`/print/receipt/${id}`,        { responseType: 'blob' }),
 };
 
+/** Caja POS (Fase 5). Sesiones de caja + cobros de pedidos. */
+export const posCashService = {
+  openSession:    (data) => api.post('/pos/cash-sessions', data),
+  currentSession: () => api.get('/pos/cash-sessions/current'),
+  sessionById:    (id) => api.get(`/pos/cash-sessions/${id}`),
+  sessionSummary: (id) => api.get(`/pos/cash-sessions/${id}/summary`),
+  // closeSession acepta opcionalmente `idempotencyKey` que se manda como
+  // header Idempotency-Key. axios v1 lo permite vía `headers`.
+  closeSession:   (id, data, idempotencyKey) => {
+    const cfg = idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined;
+    return api.post(`/pos/cash-sessions/${id}/close`, data, cfg);
+  },
+  chargeOrder:    (id, data) => api.post(`/pos/orders/${id}/charge`, data),
+  orderPayments:  (id) => api.get(`/pos/orders/${id}/pagos`),
+};
+
 export default api;
 
