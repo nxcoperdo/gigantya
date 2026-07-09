@@ -352,5 +352,13 @@ export const posTablesService = {
   remove: (id)            => api.delete(`/pos/tables/${id}`),
 };
 
+/** Pedidos POS (Fase 3). Reutiliza `pedidos` con `canal='pos'`.
+ *  El backend crea walk-in si no viene `cliente_id`. */
+export const posOrdersService = {
+  list:   (params)     => api.get('/pos/orders', { params }),
+  get:    (id)         => api.get(`/pos/orders/${id}`),
+  create: (data)       => api.post('/pos/orders', data),
+};
+
 export default api;
 

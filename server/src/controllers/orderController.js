@@ -3,10 +3,20 @@ import * as RestaurantModel from '../models/Restaurant.js';
 import * as NotificationModel from '../models/Notification.js';
 import * as CouponModel from '../models/Coupon.js';
 import notificationService from '../services/notificationService.js';
+import { createOrderCore, notificarNuevoPedido } from '../services/orderService.js';
 import pool from '../config/database.js';
 
 /**
- * Crear nuevo pedido
+ * Crear nuevo pedido (cliente web).
+ *
+ * El grueso de la lógica (validar items, snapshot de adiciones, INSERT en
+ * transacción) vive en `orderService.createOrderCore`. Acá solo:
+ *   1) Validamos que el caller sea un cliente.
+ *   2) Resolvemos la modalidad (`es_retiro_local` / `es_consumo_en_local`)
+ *      según los flags del local y la elección del cliente.
+ *   3) Validamos el cupón (si trae).
+ *   4) Llamamos al service con `canal='web'`, `mesa_id=null`, `creado_por=null`.
+ *   5) Notificamos al restaurante.
  */
 export async function createOrder(req, res) {
   try {
@@ -178,9 +188,11 @@ export async function createOrder(req, res) {
       }
     }
 
-    // Crear pedido de forma transaccional. El total y los precios se recalculan desde la BD.
-    // Si el frontend envió un total válido, lo usamos; sino, recalculamos desde la BD.
-    const pedidoId = await OrderModel.createOrderWithItems({
+    // Crear pedido de forma transaccional. El service maneja: validación de
+    // productos, snapshot de adiciones/removibles, INSERT, y reserva de mesa
+    // (no aplica para flujo web — `mesa_id` queda null). El `total` se respeta
+    // si el frontend lo mandó válido.
+    const pedidoId = await createOrderCore({
       usuario_id: req.user.id,
       restaurante_id,
       items,
@@ -191,21 +203,17 @@ export async function createOrder(req, res) {
       metodo_pago: paymentMethod,
       costo_envio: costo_envio || 0,
       barrio_id: barrio_id || null,
-      // Campos opcionales de Google Maps — si vienen, el modelo intentará geocoding
-      // para resolver el sector por punto geográfico.
       latitud: latitud ?? null,
       longitud: longitud ?? null,
       direccion_formateada: direccion_formateada ?? null,
       place_id: place_id ?? null,
-      // Modalidad del pedido: si el local es solo retiro, el modelo ignora
-      // dirección/barrio/sector y fuerza costo_envio=0 aunque el body los traiga.
       esRetiroLocal,
-      // Modalidad "consumo en el local" (comer en la mesa). Si está activa,
-      // el modelo también ignora dirección/barrio/sector y costo_envio.
-      // Persiste en pedidos.es_consumo_en_local.
       esConsumoEnLocal,
-      total: (typeof totalFromFrontend === 'number' && totalFromFrontend > 0) ? totalFromFrontend : null
-    });
+      total: (typeof totalFromFrontend === 'number' && totalFromFrontend > 0) ? totalFromFrontend : null,
+      canal: 'web',  // flujo del cliente
+      mesa_id: null, // web no usa mesas
+      creado_por: null,
+    }, { clientSource: 'web' });
 
     // Registrar uso del cupón si se aplicó
     if (couponId) {
@@ -214,32 +222,9 @@ export async function createOrder(req, res) {
 
     const pedido = await OrderModel.getOrderById(pedidoId);
 
-    // Notificar al restaurante (interna y externa)
-    try {
-      const restauranteData = await RestaurantModel.getRestaurantById(restaurante_id);
-      if (restauranteData && restauranteData.usuario_id) {
-        // Notificación interna
-        await NotificationModel.createNotification({
-          usuario_id: restauranteData.usuario_id,
-          tipo: 'pedido',
-          titulo: 'Nuevo Pedido Recibido',
-          mensaje: `Has recibido un nuevo pedido #${pedidoId}`,
-          data: { pedido_id: pedidoId }
-        });
-
-        // Notificación externa (email) - obtenemos el email del usuario del restaurante
-        const restauranteUsuario = await RestaurantModel.getRestaurantUser(restaurante_id);
-        if (restauranteUsuario?.email) {
-          notificationService.notifyNewOrder({
-            pedido,
-            restauranteEmail: restauranteUsuario.email,
-            clienteEmail: req.user.email
-          }).catch(err => console.error('Error enviando email de nuevo pedido:', err));
-        }
-      }
-    } catch (notifError) {
-      console.error('Error enviando notificación de nuevo pedido:', notifError);
-    }
+    // Notificar al restaurante (interna + email). El service lo hace
+    // best-effort y no rompe la respuesta si falla.
+    notificarNuevoPedido(pedidoId);
 
     res.status(201).json({
       mensaje: 'Pedido creado exitosamente',

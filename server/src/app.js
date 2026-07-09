@@ -53,6 +53,8 @@ import zonaRoutes from './routes/zonaRoutes.js';
 // POS (Fase 1+)
 import posStaffRoutes from './routes/posStaffRoutes.js';
 import posTableRoutes from './routes/posTableRoutes.js';
+import posOrderRoutes from './routes/posOrderRoutes.js';
+import posCustomerRoutes from './routes/posCustomerRoutes.js';
 
 
 // ========== MIDDLEWARES DE SEGURIDAD ==========
@@ -191,6 +193,8 @@ app.use('/api/exports', exportRoutes);
 app.use('/api/zonas', zonaRoutes);
 app.use('/api/pos/staff', posStaffRoutes);
 app.use('/api/pos/tables', posTableRoutes);
+app.use('/api/pos/orders', posOrderRoutes);
+app.use('/api/pos/customers', posCustomerRoutes);
 
 // Ruta de bienvenida
 app.get('/api', (req, res) => {
