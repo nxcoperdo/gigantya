@@ -12,14 +12,15 @@ import {
 } from '../src/utils/planFeatures.js';
 
 test('planFeatures — constantes del plan', async (t) => {
-  await t.test('los 3 planes están definidos', () => {
-    assert.deepStrictEqual([...PLANES], ['basico', 'profesional', 'premium']);
+  await t.test('los 4 planes están definidos (basico, profesional, premium, golden_plus)', () => {
+    assert.deepStrictEqual([...PLANES], ['basico', 'profesional', 'premium', 'golden_plus']);
   });
 
   await t.test('precios coinciden con la propuesta comercial', () => {
     assert.strictEqual(PLAN_PRICES.basico, 70000);
     assert.strictEqual(PLAN_PRICES.profesional, 120000);
     assert.strictEqual(PLAN_PRICES.premium, 200000);
+    assert.strictEqual(PLAN_PRICES.golden_plus, 150000);
   });
 
   await t.test('plan Básico NO tiene cupones, destacados, ni banner', () => {
@@ -30,6 +31,10 @@ test('planFeatures — constantes del plan', async (t) => {
     assert.strictEqual(PLAN_FEATURES.basico.estadisticas, false);
   });
 
+  await t.test('plan Básico NO tiene POS (solo Golden Plus)', () => {
+    assert.strictEqual(PLAN_FEATURES.basico.pos, false);
+  });
+
   await t.test('plan Profesional SÍ tiene cupones/destacados/estadísticas pero NO banner', () => {
     assert.strictEqual(PLAN_FEATURES.profesional.cupones, true);
     assert.strictEqual(PLAN_FEATURES.profesional.productos_destacados, true);
@@ -37,36 +42,63 @@ test('planFeatures — constantes del plan', async (t) => {
     assert.strictEqual(PLAN_FEATURES.profesional.banner_home, false);
   });
 
-  await t.test('plan Premium tiene TODO', () => {
-    for (const [, value] of Object.entries(PLAN_FEATURES.premium)) {
-      assert.strictEqual(value, true, `Premium debería tener la feature activa`);
+  await t.test('plan Profesional NO tiene POS (sigue siendo para delivery)', () => {
+    assert.strictEqual(PLAN_FEATURES.profesional.pos, false);
+  });
+
+  await t.test('plan Premium tiene TODO excepto POS', () => {
+    for (const [key, value] of Object.entries(PLAN_FEATURES.premium)) {
+      if (key === 'pos') {
+        assert.strictEqual(value, false, `Premium NO debería tener POS — eso es Golden Plus`);
+      } else {
+        assert.strictEqual(value, true, `Premium debería tener la feature "${key}" activa`);
+      }
     }
   });
 
-  await t.test('límite de fotos: básico=1, profesional=5, premium=5', () => {
+  await t.test('plan Golden Plus tiene TODO incluyendo POS', () => {
+    for (const [key, value] of Object.entries(PLAN_FEATURES.golden_plus)) {
+      assert.strictEqual(value, true, `Golden Plus debería tener la feature "${key}" activa`);
+    }
+    // Sanity: la feature `pos` sí está
+    assert.strictEqual(PLAN_FEATURES.golden_plus.pos, true);
+  });
+
+  await t.test('límite de fotos: básico=1, profesional=5, premium=5, golden_plus=5', () => {
     assert.strictEqual(getPlanLimit('basico', 'fotos_por_producto'), 1);
     assert.strictEqual(getPlanLimit('profesional', 'fotos_por_producto'), 5);
     assert.strictEqual(getPlanLimit('premium', 'fotos_por_producto'), 5);
+    assert.strictEqual(getPlanLimit('golden_plus', 'fotos_por_producto'), 5);
   });
 });
 
 test('planFeatures — canAccessPlan', async (t) => {
-  await t.test('basico no accede a cupones', () => {
+  await t.test('basico no accede a cupones ni a pos', () => {
     assert.strictEqual(canAccessPlan('basico', 'cupones'), false);
+    assert.strictEqual(canAccessPlan('basico', 'pos'), false);
   });
 
-  await t.test('profesional accede a cupones pero no a banner', () => {
+  await t.test('profesional accede a cupones pero no a banner ni a pos', () => {
     assert.strictEqual(canAccessPlan('profesional', 'cupones'), true);
     assert.strictEqual(canAccessPlan('profesional', 'banner_home'), false);
+    assert.strictEqual(canAccessPlan('profesional', 'pos'), false);
   });
 
-  await t.test('premium accede a todo', () => {
+  await t.test('premium accede a todo excepto pos', () => {
     assert.strictEqual(canAccessPlan('premium', 'cupones'), true);
     assert.strictEqual(canAccessPlan('premium', 'banner_home'), true);
+    assert.strictEqual(canAccessPlan('premium', 'pos'), false);
+  });
+
+  await t.test('golden_plus accede a TODO incluyendo pos', () => {
+    assert.strictEqual(canAccessPlan('golden_plus', 'cupones'), true);
+    assert.strictEqual(canAccessPlan('golden_plus', 'banner_home'), true);
+    assert.strictEqual(canAccessPlan('golden_plus', 'pos'), true);
   });
 
   await t.test('plan inexistente → false', () => {
     assert.strictEqual(canAccessPlan('inexistente', 'cupones'), false);
+    assert.strictEqual(canAccessPlan('inexistente', 'pos'), false);
   });
 });
 

@@ -37,7 +37,13 @@ export default function KDSPage() {
   const [lastSeenId, setLastSeenId] = useState(null);
 
   const fetchPedidos = useCallback(async () => {
-    if (!user?.restaurante_id) return;
+    if (!user?.restaurante_id) {
+      // Sin restaurante no hay pedidos que mostrar. Salimos del loading con
+      // error explícito en vez de quedar en "Cargando…" para siempre.
+      setError('Tu cuenta no está asociada a un restaurante. Pídele al dueño que te invite desde Personal.');
+      setLoading(false);
+      return;
+    }
     try {
       const r = await posOrdersService.list({ estado: 'Pendiente,Preparando,Listo' });
       setPedidos(r.data.pedidos || []);

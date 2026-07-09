@@ -9,6 +9,7 @@ import { query, getConnection } from '../config/database.js';
 import logger from '../utils/logger.js';
 import { recordAudit } from '../middleware/auditMiddleware.js';
 import * as AuditLogModel from '../models/AuditLog.js';
+import { PLANES } from '../utils/planFeatures.js';
 
 /**
  * Obtener todos los restaurantes (pendientes de aprobación y aprobados)
@@ -564,8 +565,10 @@ export async function updateRestaurantPlan(req, res) {
       notas = null,
     } = req.body;
 
-    if (!plan || !['basico', 'profesional', 'premium'].includes(plan)) {
-      return res.status(400).json({ error: 'Plan no válido. Opciones: basico, profesional, premium' });
+    if (!plan || !PLANES.includes(plan)) {
+      return res.status(400).json({
+        error: `Plan no válido. Opciones: ${PLANES.join(', ')}`,
+      });
     }
 
     const restaurante = await RestaurantModel.getRestaurantById(id);
@@ -579,8 +582,8 @@ export async function updateRestaurantPlan(req, res) {
       fecha_vencimiento_plan: plan === 'basico' ? null : fecha_vencimiento,
     };
 
-    // Si baja de Premium a Profesional o Básico, eliminar el banner
-    if (restaurante.plan === 'premium' && plan !== 'premium') {
+    // Si baja de Golden Plus o Premium a otro plan, eliminar el banner
+    if ((restaurante.plan === 'premium' || restaurante.plan === 'golden_plus') && plan !== 'premium' && plan !== 'golden_plus') {
       restauranteUpdateData.banner_url = null;
     }
 
@@ -600,7 +603,7 @@ export async function updateRestaurantPlan(req, res) {
     } else {
       if (!fecha_vencimiento) {
         return res.status(400).json({
-          error: 'Para asignar un plan Profesional o Premium se requiere fecha_vencimiento',
+          error: `Para asignar un plan de pago (Profesional, Premium o Golden Plus) se requiere fecha_vencimiento`,
         });
       }
       const fechaInicio = new Date();

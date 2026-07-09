@@ -39,6 +39,17 @@ router.put('/:id', verifyToken, requireRestaurant, upload.fields([
 ]), restaurantController.updateRestaurant);
 
 /**
+ * @route   GET /api/restaurants/me
+ * @desc    Devuelve el restaurante asociado al usuario autenticado.
+ *          Lo usa el POSLayout del frontend para saber el `plan` del local
+ *          sin tener que hidratarlo en el payload del login (que se cachea
+ *          en localStorage y puede quedar desactualizado al cambiar de plan).
+ * @access  Private - Restaurant o staff (cajero/mesero/cocina)
+ *          Para clientes devuelve 404 (no tienen restaurante asociado).
+ */
+router.get('/me', verifyToken, restaurantController.getMyRestaurant);
+
+/**
  * @route   GET /api/restaurants/me/stats
  * @desc    Obtener estadísticas del restaurante propio
  * @access  Private - Restaurant

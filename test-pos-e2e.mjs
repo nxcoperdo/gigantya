@@ -354,6 +354,19 @@ async function setupDb() {
   // 4. Resetear mesas a libre.
   await conn.query(`UPDATE mesas SET estado='libre' WHERE restaurante_id=?`, [RESTAURANTE_ID]);
 
+  // 5. Forzar plan Golden Plus en el local del test. El POS (Fase 1-8) está
+  // gateado con `requirePlanFeatureForStaff('pos')` desde Fase 9, y solo
+  // Golden Plus incluye `pos: true`. Si el local quedó en `premium` o
+  // `basico` de un run anterior, todos los pasos fallarían con 403.
+  await conn.query(
+    `UPDATE restaurantes
+        SET plan='golden_plus',
+            fecha_vencimiento_plan = DATE_ADD(NOW(), INTERVAL 30 DAY)
+      WHERE id = ?`,
+    [RESTAURANTE_ID],
+  );
+  console.log('  [setup] restaurante forzado a plan=golden_plus con 30 días');
+
   return conn;
 }
 

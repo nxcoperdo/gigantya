@@ -391,11 +391,42 @@ export async function getRestaurantStats(req, res) {
   }
 }
 
+/**
+ * Devuelve el restaurante asociado al usuario autenticado (dueño o staff).
+ * Usado por el POSLayout del frontend para conocer el `plan` actual del
+ * local y mostrar `<PosLockedScreen />` si no tiene Golden Plus.
+ *
+ * - Para dueño (`tipo_usuario === 'restaurante'`): busca por
+ *   `restaurantes.usuario_id = req.user.id`.
+ * - Para staff (`cajero`/`mesero`/`cocina`): busca por
+ *   `usuarios.restaurante_id` (campo directo del staff, no por dueño).
+ * - Para admin o cliente: 404 (admin no tiene local; cliente no usa POS).
+ */
+export async function getMyRestaurant(req, res) {
+  try {
+    const restaurante = await RestaurantModel.getRestaurantForUser(
+      req.user.id,
+      req.user.tipo_usuario
+    );
+    if (!restaurante) {
+      return res.status(404).json({ error: 'No tienes un restaurante asociado' });
+    }
+    res.json({ restaurante });
+  } catch (error) {
+    console.error('Error obteniendo mi restaurante:', error);
+    res.status(500).json({
+      error: 'Error obteniendo restaurante',
+      detalles: error.message,
+    });
+  }
+}
+
 export default {
   listRestaurants,
   getRestaurant,
   createRestaurant,
   updateRestaurant,
-  getRestaurantStats
+  getRestaurantStats,
+  getMyRestaurant,
 };
 

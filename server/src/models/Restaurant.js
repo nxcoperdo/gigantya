@@ -364,11 +364,52 @@ export async function getRestaurantById(id) {
 }
 
 /**
- * Obtener restaurante por usuario_id
+ * Obtener restaurante por usuario_id (dueño)
  */
 export async function getRestaurantByUserId(usuario_id) {
   const sql = 'SELECT * FROM restaurantes WHERE usuario_id = ? LIMIT 1';
   return queryOne(sql, [usuario_id]);
+}
+
+/**
+ * Obtener el restaurante asociado a un usuario, sin importar si es dueño
+ * o staff (cajero/mesero/cocina).
+ *
+ * Lógica:
+ *   - Si el usuario es dueño del local, vive en `restaurantes.usuario_id`.
+ *   - Si es staff del local, vive en `usuarios.restaurante_id` (seteado
+ *     por el dueño al crearlo via POS Fase 1).
+ *   - Un usuario admin sin restaurante asociado devuelve `null` (no es un
+ *     error: el caller decide qué hacer).
+ *
+ * Usado por el middleware `requirePlanFeatureForStaff` (Fase 9 — Golden Plus)
+ * porque el factory `requirePlanFeature` solo sirve para el dueño, y el POS
+ * lo usan tanto el dueño como el staff.
+ */
+export async function getRestaurantForUser(usuario_id, tipo_usuario) {
+  // Para admin no buscamos restaurante: se le bypass el chequeo de plan
+  // en el middleware. Devolvemos null para que el caller lo maneje.
+  if (tipo_usuario === 'admin') return null;
+
+  // 1) Si es dueño, intentar primero por `restaurantes.usuario_id`
+  const dueno = await queryOne(
+    'SELECT * FROM restaurantes WHERE usuario_id = ? LIMIT 1',
+    [usuario_id],
+  );
+  if (dueno) return dueno;
+
+  // 2) Si no es dueño, ver si es staff: `usuarios.restaurante_id` apunta
+  //    al local al que está atado.
+  const usuario = await queryOne(
+    'SELECT restaurante_id FROM usuarios WHERE id = ? LIMIT 1',
+    [usuario_id],
+  );
+  if (!usuario || !usuario.restaurante_id) return null;
+
+  return queryOne(
+    'SELECT * FROM restaurantes WHERE id = ? LIMIT 1',
+    [usuario.restaurante_id],
+  );
 }
 
 /**
@@ -526,6 +567,7 @@ export default {
   getRestaurants,
   getRestaurantById,
   getRestaurantByUserId,
+  getRestaurantForUser,
   getRestaurantUser,
   getUserById,
   updateRestaurant,

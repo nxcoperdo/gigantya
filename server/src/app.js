@@ -9,6 +9,8 @@ import { fileURLToPath } from 'url';
 import { UPLOADS_DIR } from './middleware/uploadMiddleware.js';
 import logger from './utils/logger.js';
 import Sentry from './utils/sentry.js';
+import { requirePlanFeature, requirePlanFeatureForStaff } from './middleware/planMiddleware.js';
+import { verifyToken } from './middleware/authMiddleware.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -197,15 +199,33 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/zonas', zonaRoutes);
-app.use('/api/pos/staff', posStaffRoutes);
-app.use('/api/pos/tables', posTableRoutes);
-app.use('/api/pos/orders', posOrderRoutes);
-app.use('/api/pos/customers', posCustomerRoutes);
-app.use('/api/pos', posCashRoutes);
-app.use('/api/pos/inventory', posInventoryRoutes);
-app.use('/api/pos/reports', posReportsRoutes);
-app.use('/api/pos', posSplitTransferRoutes);
-app.use('/api/pos/config', posConfigRoutes);
+
+// POS (Fase 1-8): todas las rutas bajo /api/pos/* requieren plan 'pos' en
+// su restaurante (o ser admin global). Usamos un sub-router con:
+//   1) verifyToken (carga req.user con tipo_usuario/restaurante_id frescos)
+//   2) requirePlanFeatureForStaff('pos') (gate de plan, con req.user ya seteado)
+// Si mañana hay que tocar el gating del POS, se hace en un solo lugar.
+//
+// Por qué `verifyToken` va ACÁ y no en cada sub-router: cuando movimos el
+// gate de plan al prefix, descubrimos que `requirePlanFeatureForStaff` necesita
+// `req.user.tipo_usuario` para decidir. Si el gate corre antes de verifyToken,
+// `req.user` es `undefined` y el gate responde 403 sin que el log aparezca.
+// Centralizar verifyToken + gate en el posRouter evita esa trampa y ahorra
+// una llamada duplicada a verifyToken por request (cada sub-router antes
+// también lo hacía).
+const posRouter = express.Router();
+posRouter.use(verifyToken, requirePlanFeatureForStaff('pos'));
+posRouter.use('/staff',     posStaffRoutes);
+posRouter.use('/tables',    posTableRoutes);
+posRouter.use('/orders',    posOrderRoutes);
+posRouter.use('/customers', posCustomerRoutes);
+posRouter.use('/',          posCashRoutes);          // /api/pos/cash-sessions/...
+posRouter.use('/inventory', posInventoryRoutes);
+posRouter.use('/reports',   posReportsRoutes);
+posRouter.use('/',          posSplitTransferRoutes); // /api/pos/orders/:id/..., /api/pos/tables/merge
+posRouter.use('/config',    posConfigRoutes);
+
+app.use('/api/pos', posRouter);
 app.use('/api/print', printRoutes);
 
 // Ruta de bienvenida

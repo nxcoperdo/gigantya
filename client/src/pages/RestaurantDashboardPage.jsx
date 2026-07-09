@@ -1196,7 +1196,8 @@ function InfoRow({ label, value }) {
 }
 
 function StatsView({ statsData, restaurant, handleExport, exporting, exportError }) {
-  const isPremium = restaurant?.plan === 'premium';
+  const isGoldenPlus = restaurant?.plan === 'golden_plus';
+  const isPremium = restaurant?.plan === 'premium' || isGoldenPlus; // Golden Plus hereda todo Premium
   const isProfessional = restaurant?.plan === 'profesional';
 
   if (!statsData) {
@@ -1229,7 +1230,14 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
             </h2>
             <p className="text-sm text-[color:var(--text-secondary)]">
               Plan actual: <span className="font-bold text-primary capitalize">{restaurant?.plan || 'básico'}</span>
-              {isPremium && (
+              {isGoldenPlus ? (
+                <span
+                  className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff' }}
+                >
+                  👑 Golden Plus
+                </span>
+              ) : isPremium && (
                 <span
                   className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold"
                   style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}
@@ -1266,6 +1274,48 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
           </div>
         )}
       </section>
+
+      {/* ========== BANNER UPGRADE A GOLDEN PLUS (antes que Premium) ========== */}
+      {/* Golden Plus incluye TODO Premium + el POS. Si el local aún no tiene
+          Golden Plus, mostramos este banner más prominente. El de Premium
+          queda como segunda opción (por si el local no quiere POS). */}
+      {!isGoldenPlus && (
+        <section
+          className="card-lg border-2 relative overflow-hidden"
+          style={{
+            borderColor: '#f59e0b',
+            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          }}
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+            >
+              👑
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-amber-900">
+                Desbloquea el POS completo con Golden Plus
+              </h3>
+              <p className="text-sm text-amber-800">
+                Plano de mesas, KDS, caja registradora, inventario con BOM/kardex,
+                reportes, split bill, transfer de mesa y más. <strong>$150.000/mes</strong>.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const mensaje = `Hola, soy un local con plan ${(restaurant?.plan || 'basico').toUpperCase()} y quiero actualizar al Plan Golden Plus de GigantYA para activar el POS. ¿Me pueden dar información?`;
+              window.open(`https://wa.me/573115320211?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+            }}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm text-white shadow-md transition-all hover:scale-[1.02]"
+            style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+          >
+            👑 Actualizar a Golden Plus · $150.000/mes
+          </button>
+        </section>
+      )}
 
       {/* ========== BANNER UPGRADE A PREMIUM (solo para planes no-Premium) ========== */}
       {!isPremium && (

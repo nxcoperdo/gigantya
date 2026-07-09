@@ -1121,6 +1121,7 @@ export default function AdminDashboardPage() {
                                 <option value="basico">🥉 Básico</option>
                                 <option value="profesional">🥈 Profesional</option>
                                 <option value="premium">🥇 Premium</option>
+                                <option value="golden_plus">👑 Golden Plus</option>
                               </select>
                             </td>
                             <td className="px-6 py-4 text-xs text-[color:var(--text-secondary)]">
@@ -1525,7 +1526,7 @@ function PlanAssignmentModal({ plan, onClose, onSubmit }) {
         <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck size={20} />
-            <h2 className="text-xl font-bold">Asignar Plan {plan === 'premium' ? '🥇 Premium' : '🥈 Profesional'}</h2>
+            <h2 className="text-xl font-bold">Asignar Plan {plan === 'golden_plus' ? '👑 Golden Plus' : plan === 'premium' ? '🥇 Premium' : plan === 'profesional' ? '🥈 Profesional' : '🥉 Básico'}</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg"><X size={20} /></button>
         </div>

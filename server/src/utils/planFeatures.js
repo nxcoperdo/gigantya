@@ -4,9 +4,13 @@
  * Cualquier comprobación de feature en el backend debe pasar por `canAccessPlan`
  * o `getPlanLimit` — nunca hacer `plan === 'premium'` en controladores,
  * porque añade features nuevas al Profesional cambiaría múltiples archivos.
+ * Plan Golden Plus (Fase 9):
+ *   Es el plan que desbloquea el POS completo (Fases 1-8). Premium sigue
+ *   existiendo (locales que NO quieren POS); Golden Plus = Premium + POS.
+ *   Precio $150.000/mes (por debajo de Premium — el POS es el diferenciador).
  */
 
-export const PLANES = ['basico', 'profesional', 'premium'];
+export const PLANES = ['basico', 'profesional', 'premium', 'golden_plus'];
 
 export const PLAN_FEATURES = {
   basico: {
@@ -18,6 +22,8 @@ export const PLAN_FEATURES = {
     reportes: false,
     promociones: false,
     etiqueta_destacado: false,
+    redes_sociales: false,
+    pos: false,
   },
   profesional: {
     cupones: true,
@@ -28,6 +34,8 @@ export const PLAN_FEATURES = {
     reportes: true,
     promociones: true,
     etiqueta_destacado: true,
+    redes_sociales: false,
+    pos: false,
   },
   premium: {
     cupones: true,
@@ -39,6 +47,19 @@ export const PLAN_FEATURES = {
     promociones: true,
     etiqueta_destacado: true,
     redes_sociales: true,
+    pos: false,
+  },
+  golden_plus: {
+    cupones: true,
+    productos_destacados: true,
+    multiples_fotos: true,
+    banner_home: true,
+    estadisticas: true,
+    reportes: true,
+    promociones: true,
+    etiqueta_destacado: true,
+    redes_sociales: true,
+    pos: true,
   },
 };
 
@@ -46,12 +67,14 @@ export const PLAN_LIMITS = {
   basico: { fotos_por_producto: 1 },
   profesional: { fotos_por_producto: 5 },
   premium: { fotos_por_producto: 5 },
+  golden_plus: { fotos_por_producto: 5 },
 };
 
 export const PLAN_PRICES = {
   basico: 70000,
   profesional: 120000,
   premium: 200000,
+  golden_plus: 150000,
 };
 
 export const PLAN_INFO = {
@@ -72,6 +95,12 @@ export const PLAN_INFO = {
     precio: 200000,
     color: 'yellow',
     emoji: '🥇',
+  },
+  golden_plus: {
+    nombre: 'Plan Golden Plus',
+    precio: 150000,
+    color: 'amber',
+    emoji: '👑',
   },
 };
 
