@@ -63,6 +63,13 @@
     <!-- Preload de fuentes críticas (Google Fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Shim de `process` para libs que lo referencian en runtime
+         (react-rnd, re-resizable). Sin esto, el bundle tira
+         "ReferenceError: process is not defined" en el navegador. -->
+    <script>
+      window.process = window.process || { env: { NODE_ENV: 'development' } };
+    </script>
   </head>
   <body>
     <div id="root"></div>

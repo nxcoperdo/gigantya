@@ -52,6 +52,8 @@ import * as OrderModel from '../models/Order.js';
 import * as RestaurantModel from '../models/Restaurant.js';
 import * as NotificationModel from '../models/Notification.js';
 import notificationService from './notificationService.js';
+import * as posInventoryService from './posInventoryService.js';
+import { emitToRestaurant } from '../socket/socketHandler.js';
 
 const VALID_FORMAS_PAGO = ['contra_entrega', 'nequi', 'daviplata', 'bre_b'];
 const VALID_ESTADOS_PEDIDO = ['Pendiente', 'Preparando', 'Listo', 'Entregado', 'Cancelado'];
@@ -335,7 +337,48 @@ export async function createOrderCore(orderData, options = {}) {
       }
     }
 
+    // 11) Fase 6 — descontar stock de ingredientes según el BOM de cada
+    //     item. Se hace DENTRO de la misma transacción: si algún
+    //     ingrediente no tiene stock suficiente, este llamado lanza 409
+    //     y el rollback del padre tira abajo el pedido entero.
+    //
+    //     La función devuelve un resumen con el detalle de ingredientes
+    //     tocados (incluye stock_anterior / stock_nuevo / stock_minimo)
+    //     que usamos post-commit para emitir los sockets. NO emitimos
+    //     sockets acá porque estamos dentro de la transacción.
+    const descuentoStock = await posInventoryService.descontarStockPorPedido({
+      pedidoId,
+      restauranteId: Number(restaurante_id),
+      creadoPor: Number(creado_por) || null,
+      connection,
+    });
+
     await connection.commit();
+
+    // 11.b) Post-commit: emitir sockets de inventario si el descuento
+    //       efectivamente ocurrió. Si no, no se emite nada (no hay
+    //       cambio de stock que reportar).
+    if (descuentoStock.descontado && descuentoStock.detalle) {
+      for (const ing of descuentoStock.detalle) {
+        emitToRestaurant(Number(restaurante_id), 'pos:stock_updated', {
+          ingrediente_id: ing.ingrediente_id,
+          nombre: ing.nombre,
+          stock_actual: ing.stock_nuevo,
+          timestamp: new Date().toISOString(),
+        });
+        // Alerta: emitir SOLO si cruzó el umbral (antes >= min, ahora < min).
+        if (ing.stock_nuevo < ing.stock_minimo) {
+          emitToRestaurant(Number(restaurante_id), 'pos:inventory_low', {
+            ingrediente_id: ing.ingrediente_id,
+            nombre: ing.nombre,
+            stock_actual: ing.stock_nuevo,
+            stock_minimo: ing.stock_minimo,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
     return pedidoId;
   } catch (err) {
     try { await connection.rollback(); } catch (_) { /* noop */ }

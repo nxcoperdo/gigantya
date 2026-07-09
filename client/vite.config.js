@@ -45,7 +45,19 @@ export default defineConfig({
   },
   // Optimizar dependencias en dev
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', 'axios', 'lucide-react', 'socket.io-client']
+    // react-rnd y re-resizable referencian `process.env.NODE_ENV` en runtime.
+    // Incluirlas acá fuerza a Vite a pre-bundlearlas con esbuild, que sí
+    // reemplaza esos accesos por shims que no rompen en el navegador.
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'axios',
+      'lucide-react',
+      'socket.io-client',
+      'react-rnd',
+      're-resizable',
+    ]
   },
   esbuild: {
     // Eliminar console.log y debugger solo en producción

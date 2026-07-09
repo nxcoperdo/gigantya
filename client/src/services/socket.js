@@ -138,6 +138,33 @@ export const socketService = {
     socket.on('pos:kitchen_ticket_ready', callback);
   },
 
+  // ========== POS (Fase 6): inventario ==========
+  // Suscribirse a un evento arbitrario del namespace /orders. Útil para
+  // componentes que necesitan escuchar eventos `pos:*` y des-suscribirse
+  // en cleanup. El socket se mantiene singleton; múltiples suscriptores
+  // del mismo evento son posibles (cada uno con su callback).
+
+  subscribeToEvent: (event, callback) => {
+    const socket = socketService.connectOrders();
+    socket.on(event, callback);
+  },
+
+  unsubscribeFromEvent: (event, callback) => {
+    if (ordersSocket) {
+      ordersSocket.off(event, callback);
+    }
+  },
+
+  onStockUpdated: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('pos:stock_updated', callback);
+  },
+
+  onInventoryLow: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('pos:inventory_low', callback);
+  },
+
   // ========== RESTAURANTES ==========
 
   joinRestaurantRoom: (restaurante_id) => {
@@ -175,6 +202,11 @@ export const socketService = {
     }
   },
 };
+
+// Named exports para componentes que prefieran destructurar (ej.
+// useEffect cleanup). Equivalentes a los métodos de socketService.
+export const subscribeToEvent = (event, callback) => socketService.subscribeToEvent(event, callback);
+export const unsubscribeFromEvent = (event, callback) => socketService.unsubscribeFromEvent(event, callback);
 
 export default socketService;
 
