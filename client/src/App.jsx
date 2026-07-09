@@ -30,6 +30,7 @@ const POSHomePage = lazy(() => import('./pages/pos/POSHomePage'));
 const StaffPage = lazy(() => import('./pages/pos/StaffPage'));
 const FloorPlanPage = lazy(() => import('./pages/pos/FloorPlanPage'));
 const TakeOrderPage = lazy(() => import('./pages/pos/TakeOrderPage'));
+const KDSPage = lazy(() => import('./pages/pos/KDSPage'));
 const POSComingSoon = lazy(() => import('./pages/pos/POSComingSoon'));
 
 export default function App() {
@@ -124,7 +125,7 @@ export default function App() {
                     <Route path="mesas"    element={<FloorPlanPage />} />
                     <Route path="pedidos"  element={<POSComingSoon titulo="Pedidos" fase="3" />} />
                     <Route path="pedidos/nuevo" element={<TakeOrderPage />} />
-                    <Route path="cocina"   element={<POSComingSoon titulo="Cocina (KDS)" fase="4" />} />
+                    <Route path="cocina"   element={<KDSPage />} />
                     <Route path="caja"     element={<POSComingSoon titulo="Caja"    fase="5" />} />
                     <Route
                       path="personal"

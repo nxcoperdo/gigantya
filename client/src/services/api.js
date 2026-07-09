@@ -358,6 +358,14 @@ export const posOrdersService = {
   list:   (params)     => api.get('/pos/orders', { params }),
   get:    (id)         => api.get(`/pos/orders/${id}`),
   create: (data)       => api.post('/pos/orders', data),
+  updateStatus: (id, estado) => api.patch(`/pos/orders/${id}/status`, { estado }),
+};
+
+/** Impresión (Fase 4). Devuelve blob PDF que el caller puede embeber
+ *  en un iframe / object URL. */
+export const printService = {
+  kitchenTicket: (id) => api.get(`/print/kitchen-ticket/${id}`, { responseType: 'blob' }),
+  receipt:       (id) => api.get(`/print/receipt/${id}`,        { responseType: 'blob' }),
 };
 
 export default api;

@@ -19,11 +19,12 @@ import { Search, ShoppingCart, Send, X, Trash2, Plus, Minus, User as UserIcon } 
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { POSTicketProvider, usePOSTicket } from '../../context/POSTicketContext';
-import { posTablesService, posOrdersService } from '../../services/api';
+import { posTablesService, posOrdersService, printService } from '../../services/api';
 import socketService from '../../services/socket';
 import ProductCustomizationModal from '../../components/ProductCustomizationModal';
 import TablePickerModal from '../../components/pos/TablePickerModal';
 import WalkInCustomerModal from '../../components/pos/WalkInCustomerModal';
+import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
 import { formatCurrency } from '../../utils/formatHelper';
 
 function TakeOrderInner() {
@@ -40,6 +41,7 @@ function TakeOrderInner() {
   const [showWalkIn, setShowWalkIn] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmSent, setConfirmSent] = useState(null);
+  const [printUrl, setPrintUrl] = useState(null);
 
   // Cargar categorías y productos del restaurante del staff.
   useEffect(() => {
@@ -156,6 +158,16 @@ function TakeOrderInner() {
       };
       const r = await posOrdersService.create(payload);
       setConfirmSent(r.data.pedido);
+      // Auto-imprimir la comanda en la tablet del mesero (no es la de
+      // cocina — esa la dispara el KDS por socket). Si falla, el mesero
+      // puede re-imprimir desde el detalle del pedido (Fase 5).
+      if (r.data.print_url) {
+        try {
+          const pdfBlob = await printService.kitchenTicket(r.data.pedido.id);
+          const url = URL.createObjectURL(pdfBlob.data);
+          setPrintUrl(url);
+        } catch (e) { /* noop */ }
+      }
       ticket.clear();
     } catch (e2) {
       setError(e2.response?.data?.error || e2.message || 'Error enviando pedido');
@@ -373,6 +385,10 @@ function TakeOrderInner() {
           </div>
         </div>
       )}
+
+      <AutoPrintIframe url={printUrl} onPrinted={() => {
+        setTimeout(() => setPrintUrl(null), 3000);
+      }} />
     </div>
   );
 }

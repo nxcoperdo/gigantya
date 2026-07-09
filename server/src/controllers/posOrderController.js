@@ -29,6 +29,7 @@ import * as RestaurantModel from '../models/Restaurant.js';
 import * as UserModel from '../models/User.js';
 import { createOrderCore, notificarNuevoPedido } from '../services/orderService.js';
 import { emitToRestaurant } from '../socket/socketHandler.js';
+import { canTransition } from '../utils/orderStates.js';
 
 const VALID_TIPOS = new Set(['dine_in', 'pickup', 'delivery']);
 
@@ -148,9 +149,25 @@ export async function createPosOrder(req, res) {
       timestamp: new Date().toISOString(),
     });
 
+    // Avisar a la cocina que hay un PDF de comanda listo. La URL la arma
+    // el frontend (con su Authorization header) — acá solo informamos
+    // el ID del pedido. El PDF no requiere token en URL: el cliente
+    // hace GET con `Authorization: Bearer ...` y `responseType: 'blob'`,
+    // luego crea un object URL y lo embebe en un iframe.
+    emitToRestaurant(restauranteId, 'pos:kitchen_ticket_ready', {
+      pedido_id: pedidoId,
+      pdf_url: `/api/print/kitchen-ticket/${pedidoId}`,
+      mesa_id: mesa_id || null,
+      tipo,
+      timestamp: new Date().toISOString(),
+    });
+
     res.status(201).json({
       mensaje: 'Pedido POS creado exitosamente',
       pedido,
+      // También devolvemos la URL para que el caller (frontend) pueda
+      // disparar la impresión sin esperar el socket.
+      print_url: `/api/print/kitchen-ticket/${pedidoId}`,
     });
   } catch (err) {
     console.error('[posOrder] create error:', err);
@@ -172,7 +189,17 @@ export async function listPosOrders(req, res) {
     const { estado, mesa_id, canal = 'pos' } = req.query;
     const filters = [];
     const params = [restauranteId];
-    if (estado) { filters.push('p.estado = ?'); params.push(estado); }
+    if (estado) {
+      // Acepta un estado puntual o CSV de varios: 'Pendiente,Preparando,Listo'.
+      const estados = String(estado).split(',').map((s) => s.trim()).filter(Boolean);
+      if (estados.length === 1) {
+        filters.push('p.estado = ?');
+        params.push(estados[0]);
+      } else if (estados.length > 1) {
+        filters.push(`p.estado IN (${estados.map(() => '?').join(',')})`);
+        params.push(...estados);
+      }
+    }
     if (mesa_id) { filters.push('p.mesa_id = ?'); params.push(Number(mesa_id)); }
     if (canal)   { filters.push('p.canal = ?');   params.push(canal); }
     const where = filters.length > 0 ? `AND ${filters.join(' AND ')}` : '';
@@ -226,8 +253,57 @@ export async function getPosOrder(req, res) {
   }
 }
 
+/** PATCH /api/pos/orders/:id/status — cambio de estado desde el KDS.
+ *  Valida transición con `canTransition` (no se puede pasar de Listo a
+ *  Pendiente, ni resucitar un Cancelado). */
+export async function updatePosOrderStatus(req, res) {
+  try {
+    const restauranteId = resolveRestauranteId(req);
+    if (!restauranteId) {
+      return res.status(400).json({ error: 'No se pudo determinar el restaurante' });
+    }
+    const pedidoId = Number(req.params.id);
+    const { estado: nuevoEstado } = req.body || {};
+    if (!nuevoEstado) {
+      return res.status(400).json({ error: 'estado es requerido' });
+    }
+    const pedido = await OrderModel.getOrderById(pedidoId);
+    if (!pedido || Number(pedido.restaurante_id) !== Number(restauranteId)) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+    if (!canTransition(pedido.estado, nuevoEstado)) {
+      return res.status(400).json({
+        error: `Transición inválida: ${pedido.estado} → ${nuevoEstado}`,
+      });
+    }
+    await OrderModel.updateOrderStatus(pedidoId, nuevoEstado);
+    // Liberar mesa si el pedido pasa a "Entregado" (la cocina no
+    // necesariamente lo hace; el cajero en Fase 5 también puede).
+    if (nuevoEstado === 'Entregado' && pedido.mesa_id) {
+      const { query } = await import('../config/database.js');
+      await query(
+        `UPDATE mesas SET estado = 'libre' WHERE id = ? AND estado = 'ocupada'`,
+        [pedido.mesa_id]
+      );
+    }
+    const pedidoActualizado = await OrderModel.getOrderById(pedidoId);
+    // Notificar al restaurante (otros dispositivos KDS deben refrescar).
+    emitToRestaurant(restauranteId, 'pos:order_status_changed', {
+      pedido_id: pedidoId,
+      estado: nuevoEstado,
+      estado_anterior: pedido.estado,
+      timestamp: new Date().toISOString(),
+    });
+    res.json({ pedido: pedidoActualizado });
+  } catch (err) {
+    console.error('[posOrder] update status error:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Error actualizando estado' });
+  }
+}
+
 export default {
   createPosOrder,
   listPosOrders,
   getPosOrder,
+  updatePosOrderStatus,
 };

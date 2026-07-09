@@ -16,8 +16,9 @@ import * as ctrl from '../controllers/posOrderController.js';
 const router = express.Router();
 router.use(verifyToken, requireStaff);
 
-router.post('/',       ctrl.createPosOrder);
-router.get('/',        ctrl.listPosOrders);
-router.get('/:id',     ctrl.getPosOrder);
+router.post('/',              ctrl.createPosOrder);
+router.get('/',                ctrl.listPosOrders);
+router.get('/:id',             ctrl.getPosOrder);
+router.patch('/:id/status',    ctrl.updatePosOrderStatus);
 
 export default router;
