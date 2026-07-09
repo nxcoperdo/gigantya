@@ -391,11 +391,25 @@ export async function createOrderCore(orderData, options = {}) {
 /**
  * Notifica al restaurante (interna + email) por un pedido nuevo.
  * Idempotente: si falla, logueamos y seguimos (el pedido ya está creado).
+ *
+ * Pedidos POS (canal='pos') NO disparan esta notificación: el staff del
+ * local ya está viendo el NewOrderToast en su pantalla del POS, y
+ * además tiene el KDS refrescándose cada 10s. La notificación del
+ * NotificationCenter está pensada para el dueño/admin cuando NO está
+ * físicamente en el POS (ej: está revisando su dashboard desde otro lado).
+ * Si la disparáramos para POS, sería duplicada con el toast.
+ *
+ * Si querés que el dueño también la vea en su NotificationCenter cuando
+ * está en el POS, el camino a usar es el `pos:order_created` por socket
+ * (el frontend puede decidir si encolar ahí también).
  */
 export async function notificarNuevoPedido(pedidoId) {
   try {
     const pedido = await OrderModel.getOrderById(pedidoId);
     if (!pedido) return;
+    // Cortar acá si es un pedido POS. Ver JSDoc arriba.
+    if (pedido.canal === 'pos') return;
+
     const restauranteData = await RestaurantModel.getRestaurantById(pedido.restaurante_id);
     if (!restauranteData?.usuario_id) return;
 
