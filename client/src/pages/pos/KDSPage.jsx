@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { ChefHat, Printer, RefreshCw, ArrowRight, Check, X } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import socketService from '../../services/socket';
 import { posOrdersService, printService } from '../../services/api';
 import { ORDER_STATES, KDS_COLUMNS, labelFor, canTransition } from '../../utils/orderStates';
@@ -28,7 +28,10 @@ import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
 const POLL_MS = 10_000;
 
 export default function KDSPage() {
-  const { user } = useAuth();
+  // usePosRestaurante combina `user.restaurante_id` (poblado para staff,
+  // null para dueños) con el restaurante hidratado del Outlet context
+  // (poblado para dueños, hidratado por el POSLayout via /api/restaurants/me).
+  const { user, restauranteId } = usePosRestaurante();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,7 +40,7 @@ export default function KDSPage() {
   const [lastSeenId, setLastSeenId] = useState(null);
 
   const fetchPedidos = useCallback(async () => {
-    if (!user?.restaurante_id) {
+    if (!restauranteId) {
       // Sin restaurante no hay pedidos que mostrar. Salimos del loading con
       // error explícito en vez de quedar en "Cargando…" para siempre.
       setError('Tu cuenta no está asociada a un restaurante. Pídele al dueño que te invite desde Personal.');
@@ -53,7 +56,7 @@ export default function KDSPage() {
     } finally {
       setLoading(false);
     }
-  }, [user?.restaurante_id]);
+  }, [restauranteId]);
 
   // Carga inicial + polling.
   useEffect(() => {
@@ -64,9 +67,9 @@ export default function KDSPage() {
 
   // Socket: nuevo pedido → toast + sonido + auto-print.
   useEffect(() => {
-    if (!user?.restaurante_id) return;
+    if (!restauranteId) return;
     socketService.connectOrders();
-    socketService.joinRestaurant(user.restaurante_id, user.id);
+    socketService.joinRestaurant(restauranteId, user.id);
 
     const onNew = (data) => {
       setToastData({ ...data, _stamp: Date.now() });
@@ -87,7 +90,7 @@ export default function KDSPage() {
       // acumulan. Para Fase 4 es aceptable; si en el futuro hay leaks
       // visibles, agregamos `socketService.off` específico.
     };
-  }, [user?.restaurante_id, user?.id, fetchPedidos, lastSeenId]);
+  }, [restauranteId, user?.id, fetchPedidos, lastSeenId]);
 
   // Genera la URL blob del PDF y la setea para que AutoPrintIframe la
   // monte y dispare `window.print()`.

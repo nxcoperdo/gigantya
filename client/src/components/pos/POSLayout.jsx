@@ -204,7 +204,14 @@ export default function POSLayout() {
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {posHabilitado ? (
-            <Outlet />
+            // Outlet context: pasamos el `restaurante` hidratado a las
+            // páginas hijas (KDSPage, OrdersListPage, CashierPage, etc).
+            // Esto resuelve el bug donde `user.restaurante_id` es null
+            // para dueños (ellos están vinculados via
+            // `restaurantes.usuario_id`, no `usuarios.restaurante_id`):
+            // el POSLayout ya hizo el fetch via `/api/restaurants/me`,
+            // y las páginas pueden leerlo de acá en vez de fallar.
+            <Outlet context={{ restaurante, user }} />
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-amber-600">

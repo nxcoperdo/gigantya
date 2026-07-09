@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ShoppingCart, Send, X, Trash2, Plus, Minus, User as UserIcon } from 'lucide-react';
 import axios from 'axios';
-import { useAuth } from '../../context/AuthContext';
+import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import { POSTicketProvider, usePOSTicket } from '../../context/POSTicketContext';
 import { posTablesService, posOrdersService, printService } from '../../services/api';
 import socketService from '../../services/socket';
@@ -28,7 +28,7 @@ import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
 import { formatCurrency } from '../../utils/formatHelper';
 
 function TakeOrderInner() {
-  const { user } = useAuth();
+  const { user, restauranteId } = usePosRestaurante();
   const ticket = usePOSTicket();
   const [categorias, setCategorias] = useState([]);
   const [categoriaId, setCategoriaId] = useState(null);
@@ -45,7 +45,7 @@ function TakeOrderInner() {
 
   // Cargar categorías y productos del restaurante del staff.
   useEffect(() => {
-    if (!user?.restaurante_id) return;
+    if (!restauranteId) return;
     const api = axios.create({
       baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -59,9 +59,9 @@ function TakeOrderInner() {
             // /api/categorias devuelve TODAS las categorías con su restaurante.
             // Filtramos en cliente las del restaurante del staff.
             const list = r.data.categorias || r.data || [];
-            return list.filter((c) => Number(c.restaurante_id) === Number(user.restaurante_id));
+            return list.filter((c) => Number(c.restaurante_id) === Number(restauranteId));
           }).catch(() => []),
-          api.get(`/products/restaurant/${user.restaurante_id}`).then((r) => r.data.productos || []).catch(() => []),
+          api.get(`/products/restaurant/${restauranteId}`).then((r) => r.data.productos || []).catch(() => []),
         ]);
         if (cancelled) return;
         setCategorias(Array.isArray(cats) ? cats : (cats.categorias || []));
@@ -73,15 +73,15 @@ function TakeOrderInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user?.restaurante_id]);
+  }, [restauranteId]);
 
   // Socket: escuchar nuevos pedidos del restaurante (para que el mesero
   // vea confirmación visual de que "su" pedido llegó a cocina).
   useEffect(() => {
-    if (!user?.restaurante_id) return;
+    if (!restauranteId) return;
     socketService.connectOrders();
-    socketService.joinRestaurant(user.restaurante_id, user.id);
-  }, [user?.restaurante_id, user?.id]);
+    socketService.joinRestaurant(restauranteId, user.id);
+  }, [restauranteId, user?.id]);
 
   const productosFiltrados = useMemo(() => {
     return productos.filter((p) => {

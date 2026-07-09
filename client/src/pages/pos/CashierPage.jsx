@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Banknote, RefreshCw, Receipt, Check, X, Plus, Printer,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import socketService from '../../services/socket';
 import { posCashService, posOrdersService, printService } from '../../services/api';
 import { formatCurrency } from '../../utils/formatHelper';
@@ -34,7 +34,10 @@ import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
 const POLL_MS = 15_000;
 
 export default function CashierPage() {
-  const { user } = useAuth();
+  // Mismo hook que KDS/OrdersList: para dueños `user.restaurante_id` es
+  // null en el localStorage; el POSLayout hidrata el restaurante via
+  // /api/restaurants/me y usePosRestaurante lo combina.
+  const { user, restauranteId } = usePosRestaurante();
   const navigate = useNavigate();
   const [tab, setTab] = useState('pendientes');
 
@@ -137,9 +140,9 @@ export default function CashierPage() {
 
   // Socket: si llega un cambio de estado o un cargo nuevo, refrescar.
   useEffect(() => {
-    if (!user?.restaurante_id) return undefined;
+    if (!restauranteId) return undefined;
     socketService.connectOrders();
-    socketService.joinRestaurant(user.restaurante_id, user.id);
+    socketService.joinRestaurant(restauranteId, user.id);
     const onStatus = () => { loadPendientes(); loadCobradosHoy(); };
     const onCharged = () => { loadPendientes(); loadCobradosHoy(); };
     socketService.onStatusUpdate(onStatus);
@@ -149,7 +152,7 @@ export default function CashierPage() {
       socketService.onOrderCharged(onCharged);
     }
     return undefined;
-  }, [user?.restaurante_id, user?.id, loadPendientes, loadCobradosHoy]);
+  }, [restauranteId, user?.id, loadPendientes, loadCobradosHoy]);
 
   // ===== Acciones =====
   const abrirCaja = async (montoApertura) => {

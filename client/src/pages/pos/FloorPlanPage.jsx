@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Plus, Trash2, Edit3, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import { posTablesService } from '../../services/api';
 import socketService from '../../services/socket';
 import DraggableTable from '../../components/pos/DraggableTable';
@@ -39,6 +40,9 @@ const STATUS_LABEL = {
 
 export default function FloorPlanPage() {
   const { user } = useAuth();
+  // Mismo hook que el resto del POS: combina user.restaurante_id (staff)
+  // con el restaurante hidratado del Outlet context (dueños).
+  const { restauranteId } = usePosRestaurante();
   const editable = EDITABLE_ROLES.includes(user?.tipo_usuario);
   const [mesas, setMesas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,12 +72,12 @@ export default function FloorPlanPage() {
 
   useEffect(() => { loadMesas(); }, [loadMesas]);
 
-  // Suscripción a sockets: solo si hay restaurante_id en el token.
+  // Suscripción a sockets: solo si hay restaurante asociado.
   // Para `admin` sin restaurante, no abrimos la sala.
   useEffect(() => {
-    if (!user?.restaurante_id) return;
+    if (!restauranteId) return;
     socketService.connectOrders();
-    socketService.joinRestaurant(user.restaurante_id, user.id);
+    socketService.joinRestaurant(restauranteId, user.id);
 
     const onUpdated = (payload) => {
       if (!payload?.mesa) return;
@@ -97,7 +101,7 @@ export default function FloorPlanPage() {
       socketService.off('orders', 'pos:tables_updated');
       socketService.off('orders', 'pos:table_status_changed');
     };
-  }, [user?.restaurante_id, user?.id]);
+  }, [restauranteId, user?.id]);
 
   const scheduleSave = useCallback((mesa) => {
     if (!editable) return;

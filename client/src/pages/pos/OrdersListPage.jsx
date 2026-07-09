@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Plus, RefreshCw, Receipt, Printer, X, Check } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import socketService from '../../services/socket';
 import { posOrdersService, printService } from '../../services/api';
 import { ORDER_STATES, labelFor } from '../../utils/orderStates';
@@ -29,7 +29,10 @@ const TAB_ACTIVOS = ['Pendiente', 'Preparando', 'Listo'];
 const TAB_CERRADOS = ['Entregado', 'Cancelado'];
 
 export default function OrdersListPage() {
-  const { user } = useAuth();
+  // Mismo hook que KDSPage: combina user.restaurante_id (staff) con el
+  // restaurante hidratado del Outlet context (dueños). Sin esto, un
+  // dueño ve "no estás asociado a un restaurante" en cada página POS.
+  const { user, restauranteId } = usePosRestaurante();
   const navigate = useNavigate();
   const [tab, setTab] = useState('activos');
   const [pedidos, setPedidos] = useState([]);
@@ -39,7 +42,7 @@ export default function OrdersListPage() {
   const [printUrl, setPrintUrl] = useState(null);
 
   const fetchPedidos = useCallback(async () => {
-    if (!user?.restaurante_id) {
+    if (!restauranteId) {
       setError('Tu cuenta no está asociada a un restaurante. Pídele al dueño que te invite desde Personal.');
       setLoading(false);
       return;
@@ -53,7 +56,7 @@ export default function OrdersListPage() {
     } finally {
       setLoading(false);
     }
-  }, [user?.restaurante_id]);
+  }, [restauranteId]);
 
   useEffect(() => {
     fetchPedidos();
@@ -63,13 +66,13 @@ export default function OrdersListPage() {
 
   // Socket: refrescar al crear/cambiar estado
   useEffect(() => {
-    if (!user?.restaurante_id) return;
+    if (!restauranteId) return;
     socketService.connectOrders();
-    socketService.joinRestaurant(user.restaurante_id, user.id);
+    socketService.joinRestaurant(restauranteId, user.id);
     const handler = () => fetchPedidos();
     socketService.onPosOrderCreated(handler);
     socketService.onStatusUpdate(handler);
-  }, [user?.restaurante_id, user?.id, fetchPedidos]);
+  }, [restauranteId, user?.id, fetchPedidos]);
 
   const reimprimir = useCallback(async (pedidoId, tipo = 'kitchen') => {
     try {
