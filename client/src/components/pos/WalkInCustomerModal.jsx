@@ -4,17 +4,19 @@
  * Cuando un pedido se hace sin cliente registrado, el POS necesita al menos
  * nombre y teléfono (para avisar cuando el pedido esté listo o entregado).
  * El backend crea un `usuarios` con `tipo_usuario='cliente'` y email fake
- * `walkin_<ts>@local.gigantya` (helper `getOrCreateWalkIn`).
+ * `walkin_<ts>@local.gigantya`.
  *
  * Estrategia:
- *   1) Buscar por teléfono (los walk-in suelen ser recurrentes, no
- *      necesariamente clientes registrados — pero si ya están en la BD,
- *      los reusamos para no duplicar usuarios).
- *   2) Si no hay match, crear nuevo walk-in con nombre + teléfono.
+ *   1) Buscar por teléfono via `GET /api/pos/customers?telefono=...`
+ *      (los walk-in suelen ser recurrentes, no necesariamente clientes
+ *      registrados — pero si ya están en la BD, los reusamos para no
+ *      duplicar usuarios).
+ *   2) Si no hay match, crear nuevo walk-in con nombre + teléfono
+ *      via `POST /api/pos/customers` (idempotente: si el teléfono ya
+ *      existe, devuelve el existente con reused=true).
  *
- * El endpoint `POST /api/pos/customers/search-or-create` se ocupa de la
- * lógica. Si no existe aún, se hace fallback a `GET /users?telefono=...` +
- * `POST /users` con `tipo_usuario='cliente'`.
+ * Antes había un fallback a `GET /api/users?telefono=...` que NO existe
+ * en el backend → 404. Lo sacamos y usamos siempre el endpoint POS.
  */
 import { useState } from 'react';
 import { X, Search, UserPlus } from 'lucide-react';
@@ -39,13 +41,16 @@ export default function WalkInCustomerModal({ onClose, onPicked }) {
   const [error, setError] = useState(null);
 
   const buscar = async () => {
-    if (!telefono.trim()) return;
+    const tel = telefono.trim();
+    if (!tel) return;
     setBuscando(true);
     setError(null);
     try {
-      const r = await API.get(`/users?telefono=${encodeURIComponent(telefono.trim())}`);
-      const list = r.data.usuarios || r.data.users || r.data || [];
-      setResultados(Array.isArray(list) ? list : []);
+      // Usamos el endpoint POS dedicado. Antes llamaba /users?telefono=
+      // que NO existe → 404. /api/pos/customers filtra ya por
+      // tipo_usuario='cliente' y hace LIKE sobre teléfono.
+      const r = await API.get('/pos/customers', { params: { telefono: tel } });
+      setResultados(Array.isArray(r.data?.clientes) ? r.data.clientes : []);
     } catch (e) {
       setError(e.response?.data?.error || e.message);
     } finally {

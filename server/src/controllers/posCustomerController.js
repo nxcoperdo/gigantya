@@ -24,7 +24,10 @@ export async function createPosCustomer(req, res) {
       return res.status(400).json({ error: 'nombre y telefono son requeridos' });
     }
     // Si ya existe un usuario con este teléfono, devolverlo.
-    const [existing] = await query(
+    // query() ya devuelve el array de filas (NO un wrapper tipo
+    // [rows, fields]); el unwrap se hace en database.js. Asignación
+    // directa, no destructurar `[existing]`.
+    const existing = await query(
       `SELECT id, nombre, telefono, email
          FROM usuarios
         WHERE telefono = ? AND estado = 'activo'
@@ -32,18 +35,20 @@ export async function createPosCustomer(req, res) {
       [telefono]
     );
     if (existing) {
-      return res.status(200).json({ cliente: existing, reused: true });
+      return res.status(200).json({ cliente: existing[0], reused: true });
     }
     // Crear walk-in.
+    // INSERT devuelve un ResultSetHeader ({ insertId, affectedRows, ... }),
+    // no un array de filas. Hay que tomarlo directo, no destructurar.
     const stamp = Date.now();
     const email = `walkin_${stamp}_${Math.random().toString(36).slice(2, 8)}@local.gigantya`;
     const randomHash = `walkin_no_login_${stamp}_${Math.random().toString(36).slice(2, 16)}`;
-    const [r] = await query(
+    const r = await query(
       `INSERT INTO usuarios (nombre, email, contrasena_hash, telefono, tipo_usuario, estado, creado_en)
        VALUES (?, ?, ?, ?, 'cliente', 'activo', NOW())`,
       [nombre, email, randomHash, telefono]
     );
-    const [cliente] = await query(
+    const cliente = await queryOne(
       `SELECT id, nombre, telefono, email FROM usuarios WHERE id = ?`,
       [r.insertId]
     );
@@ -54,14 +59,23 @@ export async function createPosCustomer(req, res) {
   }
 }
 
-/** GET /api/pos/customers?telefono=... */
+/** GET /api/pos/customers?telefono=...
+ *
+ * Busca clientes (usuarios con tipo_usuario='cliente') por LIKE sobre
+ * el teléfono. Devuelve un array de hasta 20 resultados ordenados por id
+ * descendente (más recientes primero).
+ *
+ * NOTA: query() ya devuelve el array de filas directamente (database.js
+ * hace el unwrap del `[rows, fields]` de mysql2). No desestructurar
+ * `const [rows] = await query(...)` — eso daría `rows = undefined`.
+ */
 export async function searchPosCustomers(req, res) {
   try {
     const { telefono } = req.query;
-    if (!telefono) {
+    if (!telefono || typeof telefono !== 'string' || telefono.trim() === '') {
       return res.status(400).json({ error: 'telefono (query) es requerido' });
     }
-    const rows = await query(
+    const clientes = await query(
       `SELECT id, nombre, telefono, email
          FROM usuarios
         WHERE tipo_usuario = 'cliente'
@@ -69,9 +83,9 @@ export async function searchPosCustomers(req, res) {
           AND telefono LIKE ?
         ORDER BY id DESC
         LIMIT 20`,
-      [`%${telefono}%`]
+      [`%${telefono.trim()}%`]
     );
-    res.json({ clientes: rows });
+    res.json({ clientes });
   } catch (err) {
     console.error('[posCustomer] search error:', err);
     res.status(500).json({ error: err.message || 'Error buscando clientes' });
