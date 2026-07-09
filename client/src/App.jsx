@@ -33,6 +33,9 @@ const TakeOrderPage = lazy(() => import('./pages/pos/TakeOrderPage'));
 const KDSPage = lazy(() => import('./pages/pos/KDSPage'));
 const CashierPage = lazy(() => import('./pages/pos/CashierPage'));
 const CashClosingPage = lazy(() => import('./pages/pos/CashClosingPage'));
+const InventoryPage = lazy(() => import('./pages/pos/InventoryPage'));
+const ReportsPage = lazy(() => import('./pages/pos/ReportsPage'));
+const ConfigPage = lazy(() => import('./pages/pos/ConfigPage'));
 const POSComingSoon = lazy(() => import('./pages/pos/POSComingSoon'));
 
 export default function App() {
@@ -130,6 +133,30 @@ export default function App() {
                     <Route path="cocina"   element={<KDSPage />} />
                     <Route path="caja"     element={<CashierPage />} />
                     <Route path="caja/cierre/:sesionId" element={<CashClosingPage />} />
+                    <Route
+                      path="inventario"
+                      element={
+                        <ProtectedRoute allowedRoles={['restaurante','admin']}>
+                          <InventoryPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="reportes"
+                      element={
+                        <ProtectedRoute allowedRoles={['restaurante','admin']}>
+                          <ReportsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="configuracion"
+                      element={
+                        <ProtectedRoute allowedRoles={['restaurante','admin']}>
+                          <ConfigPage />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route
                       path="personal"
                       element={

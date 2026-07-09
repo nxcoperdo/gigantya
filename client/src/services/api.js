@@ -384,5 +384,76 @@ export const posCashService = {
   orderPayments:  (id) => api.get(`/pos/orders/${id}/pagos`),
 };
 
+/**
+ * Inventario POS (Fase 6). Ingredientes, BOM, kardex y movimientos.
+ *  - listIngredientes():                GET    /pos/inventory/ingredientes
+ *  - getIngrediente(id):                GET    /pos/inventory/ingredientes/:id
+ *  - createIngrediente(data):           POST   /pos/inventory/ingredientes
+ *  - updateIngrediente(id, data):       PUT    /pos/inventory/ingredientes/:id
+ *  - deleteIngrediente(id):             DELETE /pos/inventory/ingredientes/:id
+ *  - getBOM(productoId):                GET    /pos/inventory/bom/producto/:id
+ *  - setBOM(productoId, items):         PUT    /pos/inventory/bom/producto/:id
+ *  - listKardex(filters):               GET    /pos/inventory/kardex
+ *  - crearMovimiento(data):             POST   /pos/inventory/movimientos
+ *  - listAlertas():                     GET    /pos/inventory/alertas
+ */
+export const posInventoryService = {
+  // Ingredientes
+  listIngredientes:  () => api.get('/pos/inventory/ingredientes'),
+  getIngrediente:    (id) => api.get(`/pos/inventory/ingredientes/${id}`),
+  createIngrediente: (data) => api.post('/pos/inventory/ingredientes', data),
+  updateIngrediente: (id, data) => api.put(`/pos/inventory/ingredientes/${id}`, data),
+  deleteIngrediente: (id) => api.delete(`/pos/inventory/ingredientes/${id}`),
+  // BOM
+  getBOM:            (productoId) => api.get(`/pos/inventory/bom/producto/${productoId}`),
+  setBOM:            (productoId, items) => api.put(`/pos/inventory/bom/producto/${productoId}`, { items }),
+  // Kardex
+  listKardex:        (params) => api.get('/pos/inventory/kardex', { params }),
+  // Movimientos manuales
+  crearMovimiento:   (data) => api.post('/pos/inventory/movimientos', data),
+  // Alertas
+  listAlertas:       () => api.get('/pos/inventory/alertas'),
+};
+
+/**
+ * Servicio de Reportes POS (Fase 7).
+ *  - topProductos({ desde, hasta, limite }):    GET    /pos/reports/top-productos
+ *  - revenue({ desde, hasta, agrupadoPor }):    GET    /pos/reports/revenue
+ *  - metodosPago({ desde, hasta }):             GET    /pos/reports/metodos-pago
+ *  - estadisticas({ desde, hasta }):            GET    /pos/reports/estadisticas
+ *  - sesion(id):                                GET    /pos/reports/sesion/:id
+ */
+export const posReportsService = {
+  topProductos:  (params) => api.get('/pos/reports/top-productos', { params }).then((r) => r.data),
+  revenue:       (params) => api.get('/pos/reports/revenue',       { params }).then((r) => r.data),
+  metodosPago:   (params) => api.get('/pos/reports/metodos-pago',  { params }).then((r) => r.data),
+  estadisticas:  (params) => api.get('/pos/reports/estadisticas',  { params }).then((r) => r.data),
+  sesion:        (id)     => api.get(`/pos/reports/sesion/${id}`).then((r) => r.data),
+};
+
+/**
+ * Servicio de Split / Transfer / Merge POS (Fase 8).
+ *  - chargePartial(pedidoId, body):  POST /pos/orders/:id/charge-partial
+ *  - splitByItems(pedidoId, body):   POST /pos/orders/:id/split
+ *  - transferOrder(pedidoId, body):  POST /pos/orders/:id/transfer
+ *  - mergeTables(body):              POST /pos/tables/merge
+ */
+export const posSplitTransferService = {
+  chargePartial: (pedidoId, body) => api.post(`/pos/orders/${pedidoId}/charge-partial`, body).then((r) => r.data),
+  splitByItems:  (pedidoId, body) => api.post(`/pos/orders/${pedidoId}/split`, body).then((r) => r.data),
+  transferOrder: (pedidoId, body) => api.post(`/pos/orders/${pedidoId}/transfer`, body).then((r) => r.data),
+  mergeTables:   (body)           => api.post('/pos/tables/merge', body).then((r) => r.data),
+};
+
+/**
+ * Servicio de Configuración POS (Fase 8).
+ *  - get():      GET  /pos/config
+ *  - update(patch): PUT /pos/config (solo dueño)
+ */
+export const posConfigService = {
+  get:    ()        => api.get('/pos/config').then((r) => r.data),
+  update: (patch)   => api.put('/pos/config', patch).then((r) => r.data),
+};
+
 export default api;
 

@@ -56,7 +56,11 @@ import posTableRoutes from './routes/posTableRoutes.js';
 import posOrderRoutes from './routes/posOrderRoutes.js';
 import posCustomerRoutes from './routes/posCustomerRoutes.js';
 import posCashRoutes from './routes/posCashRoutes.js';
+import posInventoryRoutes from './routes/posInventoryRoutes.js';
 import printRoutes from './routes/printRoutes.js';
+import posReportsRoutes from './routes/posReportsRoutes.js';
+import posSplitTransferRoutes from './routes/posSplitTransferRoutes.js';
+import posConfigRoutes from './routes/posConfigRoutes.js';
 
 
 // ========== MIDDLEWARES DE SEGURIDAD ==========
@@ -198,6 +202,10 @@ app.use('/api/pos/tables', posTableRoutes);
 app.use('/api/pos/orders', posOrderRoutes);
 app.use('/api/pos/customers', posCustomerRoutes);
 app.use('/api/pos', posCashRoutes);
+app.use('/api/pos/inventory', posInventoryRoutes);
+app.use('/api/pos/reports', posReportsRoutes);
+app.use('/api/pos', posSplitTransferRoutes);
+app.use('/api/pos/config', posConfigRoutes);
 app.use('/api/print', printRoutes);
 
 // Ruta de bienvenida

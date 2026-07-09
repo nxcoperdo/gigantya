@@ -8,9 +8,13 @@ import {
   Users,
   LogOut,
   Store,
+  Boxes,
+  BarChart3,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Loading from '../Loading';
+import InventoryAlertsBanner from './InventoryAlertsBanner';
 
 /**
  * Layout del POS: sidebar con items filtrados por rol + outlet para las
@@ -22,11 +26,14 @@ import Loading from '../Loading';
  * común y un `<Outlet />` que renderiza la sub-ruta activa.
  */
 const NAV_ITEMS = [
-  { to: '/pos/mesas',    label: 'Mesas',         Icon: LayoutGrid,  roles: ['mesero','restaurante','admin'] },
-  { to: '/pos/pedidos',  label: 'Pedidos',       Icon: ClipboardList, roles: ['mesero','cajero','restaurante','admin'] },
-  { to: '/pos/cocina',   label: 'Cocina (KDS)',  Icon: ChefHat,     roles: ['cocina','restaurante','admin'] },
-  { to: '/pos/caja',     label: 'Caja',          Icon: Banknote,    roles: ['cajero','restaurante','admin'] },
-  { to: '/pos/personal', label: 'Personal',      Icon: Users,       roles: ['restaurante','admin'] },
+  { to: '/pos/mesas',      label: 'Mesas',         Icon: LayoutGrid,    roles: ['mesero','restaurante','admin'] },
+  { to: '/pos/pedidos',    label: 'Pedidos',       Icon: ClipboardList, roles: ['mesero','cajero','restaurante','admin'] },
+  { to: '/pos/cocina',     label: 'Cocina (KDS)',  Icon: ChefHat,       roles: ['cocina','restaurante','admin'] },
+  { to: '/pos/caja',       label: 'Caja',          Icon: Banknote,      roles: ['cajero','restaurante','admin'] },
+  { to: '/pos/reportes',   label: 'Reportes',      Icon: BarChart3,     roles: ['restaurante','admin'] },
+  { to: '/pos/inventario', label: 'Inventario',    Icon: Boxes,         roles: ['restaurante','admin'] },
+  { to: '/pos/personal',   label: 'Personal',      Icon: Users,         roles: ['restaurante','admin'] },
+  { to: '/pos/configuracion', label: 'Configuración', Icon: Settings,   roles: ['restaurante','admin'] },
 ];
 
 export default function POSLayout() {
@@ -126,6 +133,10 @@ export default function POSLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Banner de alertas de inventario (toast emergente). Solo visible
+          para dueño/admin; el componente filtra por rol internamente. */}
+      <InventoryAlertsBanner />
     </div>
   );
 }
