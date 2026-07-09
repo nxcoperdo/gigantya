@@ -50,6 +50,9 @@ import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 import zonaRoutes from './routes/zonaRoutes.js';
+// POS (Fase 1+)
+import posStaffRoutes from './routes/posStaffRoutes.js';
+import posTableRoutes from './routes/posTableRoutes.js';
 
 
 // ========== MIDDLEWARES DE SEGURIDAD ==========
@@ -186,6 +189,8 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/zonas', zonaRoutes);
+app.use('/api/pos/staff', posStaffRoutes);
+app.use('/api/pos/tables', posTableRoutes);
 
 // Ruta de bienvenida
 app.get('/api', (req, res) => {

@@ -1,14 +1,41 @@
 /**
  * Manejador de Socket.IO para actualizaciones en tiempo real
- * 
+ *
  * Namespaces:
- * - /orders: Eventos de pedidos
+ * - /orders: Eventos de pedidos (y del POS en general — el POS reusa este
+ *   namespace para no multiplicar conexiones; los eventos del POS se
+ *   distinguen por prefijo `pos:*`).
  * - /restaurants: Información de restaurantes
+ *
+ * Helper público:
+ *   - `emitToRestaurant(restaurante_id, event, payload)`: emite un evento
+ *     a todos los clientes en la sala `restaurant_<id>` del namespace
+ *     `/orders`. Se usa desde controllers POS (mesas, pedidos, KDS) sin
+ *     necesidad de importar `io` directamente.
  */
+
+// Referencia al namespace /orders que se setea en `socketHandler(io)`.
+// Los controllers importan `emitToRestaurant` y este helper usa `ordersNs`.
+let ordersNs = null;
+let restaurantsNs = null;
+
+export function emitToRestaurant(restaurante_id, event, payload) {
+  if (!ordersNs) {
+    console.warn('[socket] emitToRestaurant llamado antes de inicializar Socket.IO');
+    return;
+  }
+  ordersNs.to(`restaurant_${restaurante_id}`).emit(event, payload);
+}
+
+export function emitToOrder(pedido_id, event, payload) {
+  if (!ordersNs) return;
+  ordersNs.to(`order_${pedido_id}`).emit(event, payload);
+}
 
 export default function socketHandler(io) {
   // Namespace de pedidos
   const ordersNamespace = io.of('/orders');
+  ordersNs = ordersNamespace;
 
   ordersNamespace.on('connection', (socket) => {
     console.log(`📱 Cliente conectado: ${socket.id}`);
@@ -98,6 +125,7 @@ export default function socketHandler(io) {
 
   // Namespace de restaurantes
   const restaurantsNamespace = io.of('/restaurants');
+  restaurantsNs = restaurantsNamespace;
 
   restaurantsNamespace.on('connection', (socket) => {
     console.log(`🏪 Restaurante conectado: ${socket.id}`);

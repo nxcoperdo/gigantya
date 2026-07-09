@@ -330,5 +330,27 @@ export const restaurantShippingService = {
     api.put(`/restaurants/${restauranteId}/envios-sectores`, { sectores }),
 };
 
+// ========== POS (Fase 1+) ==========
+//
+// Servicios para el Punto de Venta. Mantener agrupados para no contaminar
+// los servicios existentes del cliente (`orderService`, etc.).
+
+/** Staff del restaurante (cajero/mesero/cocina). */
+export const posStaffService = {
+  list: () => api.get('/pos/staff'),
+  create: (data) => api.post('/pos/staff', data),
+  setStatus: (id, estado) => api.patch(`/pos/staff/${id}/status`, { estado }),
+};
+
+/** Mesas del POS (Fase 2). El backend ya valida que restaurante_id coincida
+ *  con el del token, así que no hace falta pasarlo por query. */
+export const posTablesService = {
+  list:   ()              => api.get('/pos/tables'),
+  create: (data)          => api.post('/pos/tables', data),
+  update: (id, data)      => api.put(`/pos/tables/${id}`, data),
+  setStatus: (id, estado) => api.put(`/pos/tables/${id}/status`, { estado }),
+  remove: (id)            => api.delete(`/pos/tables/${id}`),
+};
+
 export default api;
 

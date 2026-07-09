@@ -117,7 +117,24 @@ export async function getUserByEmailIgnoreStatus(email) {
  * inspeccionar (causa raíz del bug de "loop de login" tras suspensión).
  */
 export async function getUserById(id) {
-  const sql = 'SELECT id, nombre, email, telefono, tipo_usuario, estado, documento_identidad, creado_en FROM usuarios WHERE id = ?';
+  // `restaurante_id` se incluye para que el frontend POS pueda saber a qué
+  // local está atado el staff (cajero/mesero/cocina) o el dueño. Para
+  // clientes es NULL y se ignora.
+  //
+  // COALESCE(usuarios.restaurante_id, r.id) cubre los dos casos:
+  //   - staff: `usuarios.restaurante_id` lo setea el dueño al crearlos.
+  //   - dueño: la columna es NULL; el id del local vive en `restaurantes.usuario_id`.
+  // El LEFT JOIN a `restaurantes` siempre es 1 fila a lo sumo (hay UNIQUE
+  // sobre `usuario_id` o, en su defecto, usamos LIMIT 1 por seguridad).
+  const sql = `
+    SELECT u.id, u.nombre, u.email, u.telefono, u.tipo_usuario, u.estado,
+           u.documento_identidad, u.creado_en,
+           COALESCE(u.restaurante_id, r.id) AS restaurante_id
+      FROM usuarios u
+      LEFT JOIN restaurantes r ON r.usuario_id = u.id
+     WHERE u.id = ?
+     LIMIT 1
+  `;
   return queryOne(sql, [id]);
 }
 

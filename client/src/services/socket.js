@@ -114,6 +114,30 @@ export const socketService = {
     socket.on('order_updated', callback);
   },
 
+  // ========== POS (Fase 2+): mesas, cocina, turnos ==========
+  // El backend emite los eventos `pos:*` en el namespace /orders, reusando
+  // la conexión existente para no multiplicar sockets en el cliente.
+
+  onTablesUpdated: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('pos:tables_updated', callback);
+  },
+
+  onTableStatusChanged: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('pos:table_status_changed', callback);
+  },
+
+  onPosOrderCreated: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('pos:order_created', callback);
+  },
+
+  onKitchenTicketReady: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('pos:kitchen_ticket_ready', callback);
+  },
+
   // ========== RESTAURANTES ==========
 
   joinRestaurantRoom: (restaurante_id) => {

@@ -24,6 +24,13 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const RestaurantDashboardPage = lazy(() => import('./pages/RestaurantDashboardPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 
+// POS (Fase 1+)
+const POSLayout = lazy(() => import('./components/pos/POSLayout'));
+const POSHomePage = lazy(() => import('./pages/pos/POSHomePage'));
+const StaffPage = lazy(() => import('./pages/pos/StaffPage'));
+const FloorPlanPage = lazy(() => import('./pages/pos/FloorPlanPage'));
+const POSComingSoon = lazy(() => import('./pages/pos/POSComingSoon'));
+
 export default function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -101,6 +108,31 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
+
+                  {/* POS (Fase 1+): personal del restaurante. Cubre cualquier
+                      rol staff (cajero/mesero/cocina/restaurante/admin). */}
+                  <Route
+                    path="/pos"
+                    element={
+                      <ProtectedRoute allowedRoles={['cajero','mesero','cocina','restaurante','admin']}>
+                        <POSLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<POSHomePage />} />
+                    <Route path="mesas"    element={<FloorPlanPage />} />
+                    <Route path="pedidos"  element={<POSComingSoon titulo="Pedidos" fase="3" />} />
+                    <Route path="cocina"   element={<POSComingSoon titulo="Cocina (KDS)" fase="4" />} />
+                    <Route path="caja"     element={<POSComingSoon titulo="Caja"    fase="5" />} />
+                    <Route
+                      path="personal"
+                      element={
+                        <ProtectedRoute allowedRoles={['restaurante','admin']}>
+                          <StaffPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                  </Route>
 
                   {/* Ruta 404 */}
                   <Route path="*" element={<NotFoundPage />} />

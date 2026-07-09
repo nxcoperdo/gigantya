@@ -141,7 +141,8 @@ export async function register(req, res) {
         id: usuario.id,
         nombre: usuario.nombre,
         email: usuario.email,
-        tipo_usuario: usuario.tipo_usuario
+        tipo_usuario: usuario.tipo_usuario,
+        restaurante_id: usuario.restaurante_id ?? null,
       },
       token,
       refreshToken
@@ -219,7 +220,10 @@ export async function login(req, res) {
         id: usuario.id,
         nombre: usuario.nombre,
         email: usuario.email,
-        tipo_usuario: usuario.tipo_usuario
+        tipo_usuario: usuario.tipo_usuario,
+        // POS: el frontend lo necesita para saber a qué restaurante está
+        // atado el staff. Para clientes es NULL.
+        restaurante_id: usuario.restaurante_id ?? null,
       },
       token,
       refreshToken
