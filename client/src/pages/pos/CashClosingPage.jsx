@@ -107,7 +107,7 @@ export default function CashClosingPage() {
           <Receipt className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">Cierre de caja #{sesion.id}</h1>
+          <h1 className="text-2xl font-heading font-extrabold leading-tight">Cierre de caja #{sesion.id}</h1>
           <p className="text-xs text-[color:var(--text-muted)]">
             Resumen del arqueo realizado al final de la sesión
           </p>
@@ -141,7 +141,7 @@ export default function CashClosingPage() {
         <div className="flex-1 min-w-0">
           <h2
             className={[
-              'font-bold text-lg',
+              'font-heading font-bold text-lg',
               cuadra ? 'text-emerald-300' : falta ? 'text-rose-300' : 'text-amber-300',
             ].join(' ')}
           >
@@ -185,7 +185,7 @@ export default function CashClosingPage() {
       </section>
 
       <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
-        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+        <h3 className="font-heading font-semibold text-sm mb-3 flex items-center gap-2">
           <Banknote className="w-4 h-4 text-[color:var(--primary,#3b82f6)]" aria-hidden="true" />
           Resumen del cierre
         </h3>
@@ -215,7 +215,7 @@ export default function CashClosingPage() {
 
       {desglose && Object.keys(desglose).length > 0 && (
         <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
-          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          <h3 className="font-heading font-semibold text-sm mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-[color:var(--primary,#3b82f6)]" aria-hidden="true" />
             Desglose de billetes y monedas
           </h3>
@@ -242,7 +242,7 @@ export default function CashClosingPage() {
 
       {sesion.notas_cierre && (
         <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
-          <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+          <h3 className="font-heading font-semibold text-sm mb-2 flex items-center gap-2">
             <StickyNote className="w-4 h-4 text-[color:var(--primary,#3b82f6)]" aria-hidden="true" />
             Notas del cierre
           </h3>

@@ -97,7 +97,7 @@ export default function ConfigForm() {
     <div className="card max-w-2xl space-y-6">
       <div className="flex items-center gap-2">
         <Settings className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Configuración del POS</h2>
+        <h2 className="text-lg font-heading font-semibold">Configuración del POS</h2>
         {!isOwner && (
           <span className="ml-auto text-xs px-2 py-1 rounded bg-amber-100 text-amber-800">
             Solo lectura (no sos dueño)

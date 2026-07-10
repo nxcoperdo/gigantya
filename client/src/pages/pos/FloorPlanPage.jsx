@@ -178,7 +178,7 @@ export default function FloorPlanPage() {
             <LayoutGrid className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[color:var(--text)]">Plano de mesas</h1>
+            <h1 className="text-2xl font-heading font-extrabold text-[color:var(--text)]">Plano de mesas</h1>
             <p className="text-xs text-[color:var(--text-muted)]">
               {stats.total} mesas · <span className="text-emerald-400 font-semibold">{stats.libre || 0} libres</span> · <span className="text-rose-400 font-semibold">{stats.ocupada || 0} ocupadas</span>
               {stats.reservada ? <> · <span className="text-amber-400 font-semibold">{stats.reservada} reservadas</span></> : ''}

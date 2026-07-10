@@ -127,7 +127,7 @@ export default function ReportsPage() {
             <BarChart3 className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold leading-tight">Reportes</h1>
+            <h1 className="text-2xl font-heading font-extrabold leading-tight">Reportes</h1>
             <p className="text-xs text-[color:var(--text-muted)]">
               Ventas, productos más vendidos y métodos de pago del restaurante.
             </p>
@@ -219,7 +219,7 @@ export default function ReportsPage() {
 
       {/* Revenue por período */}
       <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+        <h2 className="text-lg font-heading font-semibold mb-3 flex items-center gap-2">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
@@ -267,7 +267,7 @@ export default function ReportsPage() {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Top productos */}
         <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-heading font-semibold mb-3 flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
@@ -309,7 +309,7 @@ export default function ReportsPage() {
 
         {/* Métodos de pago */}
         <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-heading font-semibold mb-3 flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}

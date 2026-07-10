@@ -241,7 +241,7 @@ export default function CashierPage() {
           <Banknote className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">Caja</h1>
+          <h1 className="text-2xl font-heading font-extrabold leading-tight">Caja</h1>
           <p className="text-xs text-[color:var(--text-muted)]">
             {pendientes.length} pendientes · {cobradosHoy.length} cobrados hoy
           </p>
@@ -540,7 +540,7 @@ function OpenCajaModal({ onClose, onConfirm }) {
             >
               <Banknote className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-lg font-bold">Abrir caja</h2>
+            <h2 className="text-lg font-heading font-bold">Abrir caja</h2>
           </div>
           <button
             onClick={onClose}

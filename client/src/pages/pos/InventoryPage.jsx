@@ -135,7 +135,7 @@ export default function InventoryPage() {
             <Boxes className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold leading-tight">Inventario</h1>
+            <h1 className="text-2xl font-heading font-extrabold leading-tight">Inventario</h1>
             <p className="text-xs text-[color:var(--text-muted)]">
               {ingredientes.length} ingredientes · {alertas.length} alertas
             </p>
@@ -477,7 +477,7 @@ function AlertasTab({ alertas, onAdjust }) {
               <AlertTriangle className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-base">{a.nombre}</h3>
+              <h3 className="font-heading font-semibold text-base">{a.nombre}</h3>
               <div className="mt-1.5 text-sm flex items-center gap-2 flex-wrap">
                 <span className="text-[color:var(--text-muted)]">Stock:</span>
                 <span className="font-mono font-bold text-amber-300">

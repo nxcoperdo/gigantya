@@ -54,7 +54,7 @@ export default function PosLockedScreen({ restaurant }) {
             <Crown className="w-7 h-7 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-amber-900 leading-tight">
+            <h2 className="text-2xl md:text-3xl font-heading font-extrabold text-amber-900 leading-tight">
               POS no disponible en tu plan
             </h2>
             <p className="text-sm text-amber-800 mt-1 flex items-center gap-1.5 flex-wrap">

@@ -154,7 +154,7 @@ export default function OrdersListPage() {
           <ClipboardList className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">Pedidos</h1>
+          <h1 className="text-2xl font-heading font-extrabold leading-tight">Pedidos</h1>
           <p className="text-xs text-[color:var(--text-muted)]">
             {countActivos} activos · {countCerrados} cerrados
           </p>
@@ -273,7 +273,7 @@ export default function OrdersListPage() {
           <aside className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-xl p-4 space-y-3 lg:sticky lg:top-4 h-fit shadow-sm animate-fadeIn">
             <header className="flex items-start justify-between gap-2">
               <div>
-                <h2 className="font-bold text-lg">Pedido #{detalle.id}</h2>
+                <h2 className="font-heading font-bold text-lg">Pedido #{detalle.id}</h2>
                 <p className="text-xs text-[color:var(--text-muted)]">
                   {formatDateTime(detalle.creado_en)} · {labelFor(detalle.estado)}
                 </p>

@@ -128,7 +128,7 @@ export default function ChargeModal({ pedido, onClose, onCharged }) {
               <Banknote className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 id="charge-title" className="text-lg font-bold">Cobrar pedido #{pedido.id}</h2>
+              <h2 id="charge-title" className="text-lg font-heading font-bold">Cobrar pedido #{pedido.id}</h2>
               <p className="text-xs text-[color:var(--text-muted)]">Total: <span className="font-mono font-bold text-[color:var(--text)]">{formatCurrency(total)}</span></p>
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function ChargeModal({ pedido, onClose, onCharged }) {
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto">
           {/* Columna izquierda: selección de método + input */}
           <section>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-muted)] mb-2">Agregar pago</h3>
+            <h3 className="text-xs font-heading font-bold uppercase tracking-wider text-[color:var(--text-muted)] mb-2">Agregar pago</h3>
             <div className="grid grid-cols-3 gap-2 mb-3">
               {METODOS.map((m) => {
                 const Icon = m.icon;
@@ -235,7 +235,7 @@ export default function ChargeModal({ pedido, onClose, onCharged }) {
 
           {/* Columna derecha: lista de pagos acumulados + total */}
           <section>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-muted)] mb-2">
+            <h3 className="text-xs font-heading font-bold uppercase tracking-wider text-[color:var(--text-muted)] mb-2">
               Pagos agregados {pagos.length > 0 && <span className="text-[color:var(--primary,#3b82f6)]">({pagos.length})</span>}
             </h3>
             {pagos.length === 0 ? (

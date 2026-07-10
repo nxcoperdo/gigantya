@@ -77,7 +77,7 @@ export default function MergeTableModal({ mesaInicial, onClose, onMerged }) {
             >
               <Combine className="w-5 h-5 text-white" />
             </div>
-            <h2 id="merge-title" className="text-lg font-bold">Fusionar mesas</h2>
+            <h2 id="merge-title" className="text-lg font-heading font-bold">Fusionar mesas</h2>
           </div>
           <button
             onClick={onClose}

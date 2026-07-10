@@ -20,7 +20,7 @@ export default function ConfigPage() {
           <Settings className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">Configuración POS</h1>
+          <h1 className="text-2xl font-heading font-extrabold leading-tight">Configuración POS</h1>
           <p className="text-xs text-[color:var(--text-muted)]">
             Ajustes globales del Punto de Venta del local.
           </p>

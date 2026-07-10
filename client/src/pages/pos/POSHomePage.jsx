@@ -45,7 +45,7 @@ export default function POSHomePage() {
   if (!restauranteId && user?.tipo_usuario !== 'admin') {
     return (
       <div className="p-8 max-w-md mx-auto text-center">
-        <h1 className="text-2xl font-bold mb-2">Sin restaurante asignado</h1>
+        <h1 className="text-2xl font-heading font-extrabold mb-2">Sin restaurante asignado</h1>
         <p className="text-[color:var(--text-muted)]">
           Tu cuenta no está asociada a un restaurante. Pídele al dueño que
           te invite desde el panel de Personal.

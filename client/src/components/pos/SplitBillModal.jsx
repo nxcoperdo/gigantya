@@ -118,7 +118,7 @@ export default function SplitBillModal({ pedido, onClose, onCharged }) {
             >
               <Divide className="w-5 h-5 text-white" />
             </div>
-            <h2 id="split-title" className="text-lg font-bold">Dividir cuenta</h2>
+            <h2 id="split-title" className="text-lg font-heading font-bold">Dividir cuenta</h2>
           </div>
           <button
             onClick={onClose}

@@ -86,7 +86,7 @@ export default function StaffPage() {
           <UserCog className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold leading-tight">Personal del POS</h1>
+          <h1 className="text-2xl font-heading font-extrabold leading-tight">Personal del POS</h1>
           <p className="text-xs text-[color:var(--text-muted)]">
             {counts.activos} activos · {counts.inactivos} inactivos
           </p>
@@ -272,7 +272,7 @@ function CreateStaffModal({ onClose, onCreated }) {
             >
               <UsersIcon className="w-5 h-5 text-white" />
             </div>
-            <h2 id="new-staff-title" className="text-lg font-bold">Nuevo personal</h2>
+            <h2 id="new-staff-title" className="text-lg font-heading font-bold">Nuevo personal</h2>
           </div>
           <button
             onClick={onClose}
@@ -384,7 +384,7 @@ function TempPasswordModal({ staff, onClose, onCopy, copiado }) {
           >
             <ShieldCheck className="w-5 h-5 text-white" />
           </div>
-          <h2 id="temp-pass-title" className="text-lg font-bold">Personal creado</h2>
+          <h2 id="temp-pass-title" className="text-lg font-heading font-bold">Personal creado</h2>
         </header>
         <div className="p-4 space-y-3">
           <p className="text-sm text-[color:var(--text-muted)]">

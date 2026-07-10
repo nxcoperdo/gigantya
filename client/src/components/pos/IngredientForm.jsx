@@ -84,7 +84,7 @@ export default function IngredientForm({ ingrediente = null, onClose, onSaved })
             >
               <Package className="w-5 h-5 text-white" />
             </div>
-            <h2 id="ing-form-title" className="text-lg font-bold">
+            <h2 id="ing-form-title" className="text-lg font-heading font-bold">
               {isEdit ? 'Editar ingrediente' : 'Nuevo ingrediente'}
             </h2>
           </div>

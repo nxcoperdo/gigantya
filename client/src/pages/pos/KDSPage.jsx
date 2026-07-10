@@ -201,7 +201,7 @@ export default function KDSPage() {
           <ChefHat className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">Cocina (KDS)</h1>
+          <h1 className="text-2xl font-heading font-extrabold leading-tight">Cocina (KDS)</h1>
           <p className="text-xs text-[color:var(--text-muted)]">
             {pedidos.length} {pedidos.length === 1 ? 'pedido activo' : 'pedidos activos'}
           </p>
@@ -239,7 +239,7 @@ export default function KDSPage() {
             >
               <h2
                 id={`kds-col-${estado}`}
-                className="font-bold text-sm mb-3 flex items-center justify-between"
+                className="font-heading font-bold text-sm mb-3 flex items-center justify-between"
               >
                 <span className="inline-flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${meta.dot}`} aria-hidden="true" />

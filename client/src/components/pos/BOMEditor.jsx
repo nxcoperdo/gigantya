@@ -126,7 +126,7 @@ export default function BOMEditor({ productoId, onClose, onSaved }) {
               <ChefHat className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 id="bom-title" className="text-lg font-bold">Receta del producto</h2>
+              <h2 id="bom-title" className="text-lg font-heading font-bold">Receta del producto</h2>
               <p className="text-xs text-[color:var(--text-muted)]">Producto #{productoId}</p>
             </div>
           </div>

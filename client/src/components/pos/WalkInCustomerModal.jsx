@@ -101,7 +101,7 @@ export default function WalkInCustomerModal({ onClose, onPicked }) {
             >
               <UserPlus className="w-5 h-5 text-white" />
             </div>
-            <h2 id="walkin-title" className="text-lg font-bold">Cliente walk-in</h2>
+            <h2 id="walkin-title" className="text-lg font-heading font-bold">Cliente walk-in</h2>
           </div>
           <button
             onClick={onClose}

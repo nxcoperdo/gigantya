@@ -6,7 +6,7 @@
 export default function POSComingSoon({ titulo, fase = 'próxima' }) {
   return (
     <div className="max-w-md mx-auto text-center py-16">
-      <h1 className="text-2xl font-bold mb-2">{titulo}</h1>
+      <h1 className="text-2xl font-heading font-extrabold mb-2">{titulo}</h1>
       <p className="text-[color:var(--text-muted)]">
         Esta sección del POS llega en la {fase} fase del plan.
         Por ahora solo está disponible Personal.

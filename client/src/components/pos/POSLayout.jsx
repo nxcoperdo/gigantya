@@ -138,7 +138,7 @@ export default function POSLayout() {
   const planLabel = restaurante?.plan ? restaurante.plan.replace('_', ' ') : null;
 
   return (
-    <div className="flex h-screen bg-[color:var(--bg)] text-[color:var(--text)] overflow-hidden">
+    <div className="flex h-screen bg-[color:var(--bg)] text-[color:var(--text)] font-sans overflow-hidden">
       {/* Sidebar desktop + mobile */}
       <aside
         aria-label="Menú principal del POS"
@@ -159,7 +159,7 @@ export default function POSLayout() {
             <Store className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate">POS · GigantYA</p>
+            <p className="text-sm font-heading font-bold truncate">POS · GigantYA</p>
             <p className="text-xs text-[color:var(--text-muted)] truncate">{user.nombre}</p>
           </div>
           <button
@@ -306,7 +306,7 @@ export default function POSLayout() {
                   <Lock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-[color:var(--text)]">Acceso al POS bloqueado</h1>
+                  <h1 className="text-xl font-heading font-extrabold text-[color:var(--text)]">Acceso al POS bloqueado</h1>
                   <p className="text-xs text-[color:var(--text-muted)]">Tu plan actual no incluye esta sección.</p>
                 </div>
               </div>

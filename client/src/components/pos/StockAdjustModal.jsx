@@ -100,7 +100,7 @@ export default function StockAdjustModal({ ingrediente, onClose, onSaved }) {
               <Sliders className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h2 id="stock-adjust-title" className="text-lg font-bold">Ajustar stock</h2>
+              <h2 id="stock-adjust-title" className="text-lg font-heading font-bold">Ajustar stock</h2>
               <p className="text-xs text-[color:var(--text-muted)] truncate">{ingrediente.nombre}</p>
             </div>
           </div>

@@ -68,7 +68,7 @@ export default function TransferTableModal({ pedido, onClose, onTransferred }) {
             >
               <ArrowRightLeft className="w-5 h-5 text-white" />
             </div>
-            <h2 id="transfer-title" className="text-lg font-bold">Transferir pedido</h2>
+            <h2 id="transfer-title" className="text-lg font-heading font-bold">Transferir pedido</h2>
           </div>
           <button
             onClick={onClose}

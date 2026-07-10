@@ -206,7 +206,7 @@ function TakeOrderInner() {
             >
               <ChefHat className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-2xl font-bold">Tomar pedido</h1>
+            <h1 className="text-2xl font-heading font-extrabold">Tomar pedido</h1>
           </div>
           <button
             onClick={() => setShowTablePicker(true)}
@@ -279,7 +279,7 @@ function TakeOrderInner() {
       <aside className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-xl p-3 flex flex-col h-fit lg:sticky lg:top-3 shadow-sm">
         <header className="flex items-center gap-2 mb-2 pb-2 border-b border-[color:var(--border)]">
           <ShoppingCart className="w-5 h-5 text-[color:var(--primary,#3b82f6)]" aria-hidden="true" />
-          <h2 className="font-bold">Ticket en curso</h2>
+          <h2 className="font-heading font-bold">Ticket en curso</h2>
           <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-[color:var(--primary,#3b82f6)]/15 text-[color:var(--primary,#3b82f6)]">
             {ticket.items.length}
           </span>
@@ -434,7 +434,7 @@ function TakeOrderInner() {
             >
               <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-lg font-bold mb-1">Pedido #{confirmSent.id} enviado</h3>
+            <h3 className="text-lg font-heading font-bold mb-1">Pedido #{confirmSent.id} enviado</h3>
             <p className="text-sm text-[color:var(--text-muted)] mb-5">La cocina ya lo está viendo. Te avisamos cuando esté listo.</p>
             <button
               onClick={() => setConfirmSent(null)}

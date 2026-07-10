@@ -122,7 +122,7 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
             >
               <Calculator className="w-5 h-5 text-white" />
             </div>
-            <h2 id="arqueo-title" className="text-lg font-bold">Arqueo de caja</h2>
+            <h2 id="arqueo-title" className="text-lg font-heading font-bold">Arqueo de caja</h2>
           </div>
           <button
             onClick={onClose}

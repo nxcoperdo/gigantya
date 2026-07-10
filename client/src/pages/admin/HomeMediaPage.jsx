@@ -135,7 +135,7 @@ export default function HomeMediaPage() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Banner de la Home</h1>
+              <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[color:var(--text-primary)] tracking-tight">Banner de la Home</h1>
               <p className="text-sm text-[color:var(--text-muted)] mt-1">
                 Subí varios archivos y elegí cuál se muestra en la página principal.
               </p>
@@ -201,7 +201,7 @@ export default function HomeMediaPage() {
         {items.length === 0 ? (
           <div className="p-12 text-center rounded-2xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-elevated)]">
             <Upload size={48} className="mx-auto text-[color:var(--text-muted)] mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No hay banners subidos</h3>
+            <h3 className="text-lg font-heading font-semibold mb-2">No hay banners subidos</h3>
             <p className="text-sm text-[color:var(--text-muted)] mb-4">
               Subí tu primera imagen o video para empezar.
             </p>
@@ -237,7 +237,7 @@ export default function HomeMediaPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
         >
           <div className="bg-[color:var(--bg-elevated)] rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold mb-2">¿Borrar "{confirmDelete.nombre}"?</h3>
+            <h3 className="text-lg font-heading font-bold mb-2">¿Borrar "{confirmDelete.nombre}"?</h3>
             <p className="text-sm text-[color:var(--text-muted)] mb-4">
               Esta acción no se puede deshacer. El archivo también se borra del disco.
             </p>
@@ -319,7 +319,7 @@ function BannerCard({ item, isActive, isLoading, onActivate, onDelete }) {
 
       {/* Info */}
       <div className="p-3">
-        <h3 className="font-semibold text-sm truncate" title={item.nombre}>
+        <h3 className="font-heading font-semibold text-sm truncate" title={item.nombre}>
           {item.nombre}
         </h3>
         <p className="text-xs text-[color:var(--text-muted)] mt-1 font-mono truncate" title={item.archivo}>

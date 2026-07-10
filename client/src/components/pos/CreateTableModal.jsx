@@ -71,7 +71,7 @@ export default function CreateTableModal({ onClose, onCreated }) {
             >
               <Armchair className="w-5 h-5 text-white" />
             </div>
-            <h2 id="create-table-title" className="text-lg font-bold">Nueva mesa</h2>
+            <h2 id="create-table-title" className="text-lg font-heading font-bold">Nueva mesa</h2>
           </div>
           <button
             onClick={onClose}

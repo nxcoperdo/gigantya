@@ -68,7 +68,7 @@ export default function TablePickerModal({ onClose, onPicked }) {
     >
       <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-md border border-[color:var(--border)] shadow-2xl">
         <header className="flex items-center justify-between p-4 border-b border-[color:var(--border)]">
-          <h2 id="picker-title" className="text-lg font-bold">¿Para dónde es el pedido?</h2>
+          <h2 id="picker-title" className="text-lg font-heading font-bold">¿Para dónde es el pedido?</h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-[color:var(--bg)] transition-colors"
