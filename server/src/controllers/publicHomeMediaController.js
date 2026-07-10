@@ -20,11 +20,13 @@ export async function getActivo(_req, res) {
     }
     // Devolvemos solo lo que el cliente necesita para renderizar
     // (omitimos `subido_por` y `size_bytes` que no se usan en la UI).
+    // El cliente arma la URL como `/media/${archivo}` (servido por
+    // app.use('/media', ...) en app.js).
     res.json({
       media: {
         id: activo.id,
         nombre: activo.nombre,
-        archivo_path: activo.archivo_path,
+        archivo: activo.archivo,
         tipo: activo.tipo,
         mime: activo.mime,
       },
