@@ -9,6 +9,7 @@ import * as BarrioModel from '../models/Barrio.js';
 import { query, queryOne } from '../config/database.js';
 import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 import * as adminHomeMediaController from '../controllers/adminHomeMediaController.js';
+import { createUploader } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -226,17 +227,27 @@ router.get('/coupons/:id', couponController.adminGetCoupon);
 router.put('/coupons/:id', couponController.adminUpdateCoupon);
 router.delete('/coupons/:id', couponController.adminDeleteCoupon);
 
-// ========== CMS Banner de Home (Fase 12b) ==========
-// Los banners son assets estáticos commiteados en client/public/media/.
-// El super-admin solo VE la lista y marca UNO como activo. Sin uploads
-// ni deletes (los archivos viven en el repo).
+// ========== CMS Banner de Home (Fase 12c) ==========
+// El super-admin puede subir, listar, activar y borrar banners desde
+// la UI. Los archivos viven en server/uploads/home-media-uploaded/
+// (mismo createUploader que el resto del proyecto) y se sirven por
+// /media/<archivo> (montado en app.js).
 //
 // Endpoints:
-//   - GET  /api/admin/home-media                       → lista archivos del disco
-//   - PUT  /api/admin/home-media/:archivo/activate     → marca uno como activo
-//                                                        (upsert: crea la fila si
-//                                                        no existe)
+//   - GET    /api/admin/home-media                       → lista archivos del disco
+//   - POST   /api/admin/home-media                       → upload (multipart 'file')
+//   - PUT    /api/admin/home-media/:archivo/activate     → marca uno como activo
+//                                                          (upsert: crea la fila si
+//                                                          no existe)
+//   - DELETE /api/admin/home-media/:archivo              → borra el archivo + la fila
+const homeMediaUpload = createUploader({
+  subdir: 'home-media-uploaded',
+  allowedTypes: /jpeg|jpg|png|webp|mp4|webm/,
+  maxSize: 20 * 1024 * 1024, // 20MB
+});
 router.get('/home-media', adminHomeMediaController.list);
+router.post('/home-media', homeMediaUpload.single('file'), adminHomeMediaController.upload);
 router.put('/home-media/:archivo/activate', adminHomeMediaController.setActivo);
+router.delete('/home-media/:archivo', adminHomeMediaController.deleteMedia);
 
 export default router;
