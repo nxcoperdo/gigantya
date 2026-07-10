@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, ShoppingBasket, Clock, Truck, Zap, UtensilsCrossed, ChevronUp, ArrowRight, Croissant } from 'lucide-react';
-import { restaurantService, preferenceService, categoryService, productService } from '../services/api';
+import { restaurantService, preferenceService, categoryService, productService, homeService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { getImageUrl, IMAGE_DEFAULT_ATTRS } from '../utils/imageHelper';
+import { getImageUrl, IMAGE_DEFAULT_ATTRS, IMAGE_EAGER_ATTRS } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { isRestaurantOpen } from '../utils/scheduleHelper';
 import { getCategoryIcon } from '../utils/categoryIcons';
@@ -11,12 +11,10 @@ import { canAccessPlan } from '../utils/planFeatures';
 import Loading from '../components/Loading';
 import RecentSearches from '../components/RecentSearches';
 
-// Rota el banner del hero día por medio: día par -> banner2.mp4, día impar -> banner.mp4.
-// Determinístico por día del mes; sin backend, sin Math.random.
-const pickDailyBanner = () => {
-  const day = new Date().getDate(); // 1..31
-  return day % 2 === 0 ? '/banner2.mp4' : '/banner.mp4';
-};
+// El banner del hero se consume del backend (`homeService.getActiveHomeMedia`).
+// Si no hay banner activo, se usa el fallback estático `/banner.mp4` (mismo
+// asset que se mostraba antes en días impares). Fase 12 reemplazó el
+// pickDailyBanner() que rot día por medio.
 
 // Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
 const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
@@ -285,6 +283,10 @@ export default function HomePage() {
   // populares + un "+X más" que expande in-line. En las otras vistas el
   // catálogo es chico y se muestra completo (sin botón de colapso).
   const [categoriasExpanded, setCategoriasExpanded] = useState(false);
+  // Banner del hero: viene de GET /api/home/media. Si es null, se
+  // muestra el fallback estático `/banner.mp4`. Ver admin en
+  // /admin/home-media para cambiarlo.
+  const [homeMedia, setHomeMedia] = useState(null);
   useEffect(() => {
     // Redirigir restaurantes al dashboard
     if (isAuthenticated && user?.tipo_usuario === 'restaurante') {
@@ -300,6 +302,12 @@ export default function HomePage() {
 
     loadCategories();
     loadSearchHistory();
+    // Cargar el banner activo del hero. Es público, no necesita token.
+    // Si falla, homeMedia queda en null y se muestra el fallback
+    // estático `/banner.mp4` (mismo asset que la home mostraba antes).
+    homeService.getActiveHomeMedia()
+      .then((r) => setHomeMedia(r?.media || null))
+      .catch(() => setHomeMedia(null));
   }, [isAuthenticated, user, navigate]);
 
   // Cuando cambia la categoría, el modo de vista, el filtro de modalidad
@@ -549,17 +557,44 @@ export default function HomePage() {
     <div className="bg-[color:var(--bg-base)]">
       {/* Hero Section */}
       <section className="text-white py-12 sm:py-16 md:py-28 px-4 sm:px-6 relative overflow-hidden">
-        {/* Video Background — rota entre banner.mp4 y banner2.mp4 según el día del mes */}
-        <video
-          key={new Date().toDateString()}
-          className="absolute inset-0 w-full h-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-        >
-          <source src={pickDailyBanner()} type="video/mp4" />
-        </video>
+        {/* Media Background: video o imagen, viene del CMS admin.
+            Si no hay banner activo, fallback a /banner.mp4 (mismo asset
+            que se mostraba antes de la Fase 12). El `key` fuerza re-mount
+            al cambiar de banner (importante para que el video reinicie
+            y la imagen no quede cacheada en memoria). */}
+        {homeMedia?.tipo === 'video' ? (
+          <video
+            key={`hero-video-${homeMedia.id}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
+            <source src={getImageUrl(homeMedia.archivo_path)} type={homeMedia.mime || 'video/mp4'} />
+          </video>
+        ) : homeMedia?.tipo === 'imagen' ? (
+          <img
+            key={`hero-img-${homeMedia.id}`}
+            src={getImageUrl(homeMedia.archivo_path)}
+            alt={homeMedia.nombre || 'Banner de GigantYA'}
+            className="absolute inset-0 w-full h-full object-cover"
+            {...IMAGE_EAGER_ATTRS}
+          />
+        ) : (
+          // Fallback: video hardcodeado en client/public/. Mismo
+          // comportamiento que la home tenía antes de la Fase 12.
+          <video
+            key="hero-fallback"
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
+            <source src="/banner.mp4" type="video/mp4" />
+          </video>
+        )}
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-extrabold mb-4 sm:mb-5 animate-fadeIn tracking-tight">
