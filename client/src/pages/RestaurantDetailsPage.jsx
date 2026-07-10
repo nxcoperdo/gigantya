@@ -8,6 +8,7 @@ import Loading from '../components/Loading';
 import AddToCartModal from '../components/AddToCartModal';
 import FavoriteButton from '../components/FavoriteButton';
 import ProductGalleryModal from '../components/ProductGalleryModal';
+import { canAccessPlan } from '../utils/planFeatures';
 import ProductCustomizationModal from '../components/ProductCustomizationModal';
 import api, { productService } from '../services/api';
 import { useCart } from '../context/CartContext';
@@ -371,8 +372,8 @@ export default function RestaurantDetailsPage() {
              )}
            </div>
 
-           {/* Redes Sociales (solo Premium, si tiene URLs configuradas) */}
-           {restaurante.plan === 'premium' && (restaurante.custom_config?.social?.facebook || restaurante.custom_config?.social?.instagram) && (
+           {/* Redes Sociales (planes con feature `redes_sociales`, si tienen URLs configuradas) */}
+           {canAccessPlan(restaurante.plan, 'redes_sociales') && (restaurante.custom_config?.social?.facebook || restaurante.custom_config?.social?.instagram) && (
              <div className="flex items-center gap-3 pt-4 mt-4 border-t border-[color:var(--border-subtle)] px-2">
                {restaurante.custom_config.social.facebook && (
                  <a

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, Image as ImageIcon, Trash2, Star } from 'lucide-react';
 import { restaurantService, productService } from '../services/api';
+import { canAccessPlan } from '../utils/planFeatures';
 
 export default function RestaurantModal({ isOpen, onClose, onSave, restaurant }) {
   const [formData, setFormData] = useState({
@@ -330,7 +331,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
               </label>
             </div>
 
-            {restaurant?.plan === 'premium' && (
+            {canAccessPlan(restaurant?.plan, 'banner_home') && (
               <div
               className="p-4 rounded-xl space-y-3"
               style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }}

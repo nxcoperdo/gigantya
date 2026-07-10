@@ -4,6 +4,7 @@ import { restaurantService, productService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { Star, MapPin, Clock, Phone } from 'lucide-react';
 import Loading from './Loading';
+import { canAccessPlan } from '../utils/planFeatures';
 
 const FONT_OPTIONS = [
   { id: 'Inter', label: 'Inter (Modern)', value: 'Inter' },
@@ -330,9 +331,9 @@ export default function PageBuilder({ restaurant, onSave, onUpdate }) {
               </div>
             </div>
 
-            {/* Redes Sociales — solo planes Premium */}
+            {/* Redes Sociales — planes con feature `redes_sociales` (Premium, Golden Plus) */}
             <div className="space-y-2 pt-4 border-t border-[color:var(--border-subtle)]">
-              {restaurant?.plan === 'premium' ? (
+              {canAccessPlan(restaurant?.plan, 'redes_sociales') ? (
                 <>
                   <label className="text-xs font-bold text-[color:var(--text-muted)] uppercase flex items-center gap-2">
                     <Facebook size={14} /> Redes Sociales

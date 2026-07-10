@@ -7,6 +7,7 @@ import { getImageUrl, IMAGE_DEFAULT_ATTRS } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
 import { isRestaurantOpen } from '../utils/scheduleHelper';
 import { getCategoryIcon } from '../utils/categoryIcons';
+import { canAccessPlan } from '../utils/planFeatures';
 import Loading from '../components/Loading';
 import RecentSearches from '../components/RecentSearches';
 
@@ -440,7 +441,7 @@ export default function HomePage() {
   }, [productos, searchTerm]);
 
   const featuredBanners = useMemo(
-    () => restaurants.filter(r => r.plan === 'premium' && r.banner_url),
+    () => restaurants.filter(r => canAccessPlan(r.plan, 'banner_home') && r.banner_url),
     [restaurants]
   );
 

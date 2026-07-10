@@ -2,13 +2,17 @@
  * Helpers para control de acceso a estadísticas según el plan del restaurante.
  *
  * Reglas:
- *  - plan = 'basico'             → 403 (no tiene acceso a stats)
- *  - plan = 'profesional'        → getBasicStats (11 métricas)
- *  - plan = 'premium'            → getPremiumStats (22 métricas)
- *  - plan = 'premium' VENCIDO    → getBasicStats (degrada automáticamente)
+ *  - plan = 'basico'                       → 403 (no tiene acceso a stats)
+ *  - plan = 'profesional'                  → getBasicStats (11 métricas)
+ *  - plan = 'premium'                      → getPremiumStats (22 métricas)
+ *  - plan = 'golden_plus'                  → getPremiumStats (22 métricas) — mismo nivel que Premium
+ *  - plan = 'premium' | 'golden_plus' VENCIDO → getBasicStats (degrada automáticamente)
  *
  * Single source of truth: cualquier endpoint que devuelva métricas
  * (REST, export PDF/Excel) DEBE usar `resolveStatsForRestaurant()`.
+ *
+ * NOTA: Golden Plus hereda todas las features de Premium y suma `pos: true`.
+ * Ver `canAccessPlan(plan, feature)` para chequeos de features individuales.
  */
 
 import * as StatsModel from '../models/Stats.js';
@@ -41,9 +45,12 @@ export async function resolveStatsForRestaurant(restaurante) {
     );
   }
 
-  // Premium vencido se degrada a Profesional (mientras el admin no lo baje manualmente).
+  // Premium/Golden Plus vencido se degrada a Profesional (mientras el admin no lo baje manualmente).
   const planVigente = isPlanExpired(restaurante) ? 'profesional' : restaurante.plan;
-  const esPremium = planVigente === 'premium';
+  // Golden Plus hereda las métricas de Premium (mismas 22 métricas). Usar
+  // `redes_sociales` como sentinela de "plan top" — si mañana aparece un plan
+  // 'diamond' con `redes_sociales: true`, este código ya lo cubre.
+  const esPremium = canAccessPlan(planVigente, 'redes_sociales');
 
   const estadisticas = esPremium
     ? await StatsModel.getPremiumStats(restaurante.id)

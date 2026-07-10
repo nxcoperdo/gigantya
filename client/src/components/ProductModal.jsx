@@ -19,8 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-const PLAN_LIMITS = { basico: 1, profesional: 5, premium: 5 };
+import { canAccessPlan } from '../utils/planFeatures';
 
 // ========== Fase 10: sub-componentes Sortable (dnd-kit) ==========
 // Definidos fuera de ProductModal para no remontarlos en cada render
@@ -647,9 +646,10 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
     );
   };
 
-  const galleryLimit = PLAN_LIMITS[plan] || 1;
+  // Plan con feature `multiples_fotos` habilitada (Profesional, Premium, Golden Plus).
+  const allowGallery = canAccessPlan(plan, 'multiples_fotos');
+  const galleryLimit = allowGallery ? 5 : 1;
   const gallerySlotsRemaining = Math.max(0, galleryLimit - gallery.length - galleryFiles.length);
-  const allowGallery = plan === 'profesional' || plan === 'premium';
 
   if (!isOpen) return null;
 
