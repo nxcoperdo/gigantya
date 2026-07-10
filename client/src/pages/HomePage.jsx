@@ -12,9 +12,10 @@ import Loading from '../components/Loading';
 import RecentSearches from '../components/RecentSearches';
 
 // El banner del hero se consume del backend (`homeService.getActiveHomeMedia`).
-// Si no hay banner activo, se usa el fallback estático `/banner.mp4` (mismo
-// asset que se mostraba antes en días impares). Fase 12 reemplazó el
-// pickDailyBanner() que rot día por medio.
+// Si no hay banner activo, se usa el fallback estático `/media/banner.mp4`
+// (mismo asset que se mostraba antes en días impares). Fase 12 reemplazó
+// el pickDailyBanner() que rot día por medio. Fase 12b movió el archivo
+// a client/public/media/ y se sirve vía /media/.
 
 // Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
 const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
@@ -284,7 +285,7 @@ export default function HomePage() {
   // catálogo es chico y se muestra completo (sin botón de colapso).
   const [categoriasExpanded, setCategoriasExpanded] = useState(false);
   // Banner del hero: viene de GET /api/home/media. Si es null, se
-  // muestra el fallback estático `/banner.mp4`. Ver admin en
+  // muestra el fallback estático `/media/banner.mp4`. Ver admin en
   // /admin/home-media para cambiarlo.
   const [homeMedia, setHomeMedia] = useState(null);
   useEffect(() => {
@@ -304,7 +305,7 @@ export default function HomePage() {
     loadSearchHistory();
     // Cargar el banner activo del hero. Es público, no necesita token.
     // Si falla, homeMedia queda en null y se muestra el fallback
-    // estático `/banner.mp4` (mismo asset que la home mostraba antes).
+    // estático `/media/banner.mp4` (mismo asset que la home mostraba antes).
     homeService.getActiveHomeMedia()
       .then((r) => setHomeMedia(r?.media || null))
       .catch(() => setHomeMedia(null));
@@ -558,7 +559,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="text-white py-12 sm:py-16 md:py-28 px-4 sm:px-6 relative overflow-hidden">
         {/* Media Background: video o imagen, viene del CMS admin.
-            Si no hay banner activo, fallback a /banner.mp4 (mismo asset
+            Si no hay banner activo, fallback a /media/banner.mp4 (mismo asset
             que se mostraba antes de la Fase 12). El `key` fuerza re-mount
             al cambiar de banner (importante para que el video reinicie
             y la imagen no quede cacheada en memoria). */}
@@ -592,7 +593,7 @@ export default function HomePage() {
             muted
             playsInline
           >
-            <source src="/banner.mp4" type="video/mp4" />
+            <source src="/media/banner.mp4" type="video/mp4" />
           </video>
         )}
 
