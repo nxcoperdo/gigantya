@@ -1,28 +1,32 @@
 /**
- * Modelo `HomeMedia` (Fase 12b).
+ * Modelo `HomeMedia` (Fase 12b → 12c).
  *
  * El super-admin de GigantYA (rol `usuarios.tipo_usuario='admin'`)
- * elige UNO de los archivos estáticos commiteados en
- * `client/public/media/` para que sea el banner activo de la home.
+ * elige UNO de los archivos subidos al server para que sea el banner
+ * activo de la home.
  *
  * Decisiones:
  *   - `setActivo` es transaccional: primero desactiva TODOS los que
  *     estén activos, después activa el elegido. Esto garantiza
  *     exactamente 1 activo a la vez sin necesidad de un UNIQUE
  *     constraint (MySQL no soporta `UNIQUE WHERE`).
- *   - `listAll` devuelve TODAS las filas de la DB (que referencian
- *     archivos en client/public/media/). El controller admin cruza
- *     esta lista con `fs.readdir(...)` del filesystem para mostrar
- *     solo los que existen.
+ *   - `listAll` devuelve TODAS las filas de la DB. El controller
+ *     admin cruza esta lista con `fs.readdir(...)` del filesystem
+ *     para mostrar solo los que existen en disco.
+ *   - `upsertAndActivate` (Fase 12c): crea la fila si el archivo
+ *     existe en el filesystem pero todavía no estaba en la DB,
+ *     y la activa. Usado por el endpoint PUT /home-media/:archivo/activate.
  *   - `count()` se mantiene por si más adelante queremos un soft cap
  *     desde la DB (no se usa en el flujo actual).
  *   - Sin timestamps "actualizado_en" porque la tabla no tiene
  *     edición, solo crear/activar.
  *
  * Fase 12b: la columna `archivo_path` se renombró a `archivo`
- * (solo el nombre del archivo, no el path completo). El path completo
- * es siempre `client/public/media/<archivo>` y la URL pública
- * es `/media/<archivo>` (servida por `app.use('/media', ...)` en app.js).
+ * (solo el nombre del archivo, no el path completo).
+ *
+ * Fase 12c: los archivos ya NO se commitean al repo. Viven en
+ * `server/uploads/home-media-uploaded/` y se suben desde el admin.
+ * Se sirven vía la URL `/media/<archivo>` (montada en app.js).
  */
 import { query, queryOne, getConnection } from '../config/database.js';
 

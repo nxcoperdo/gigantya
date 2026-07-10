@@ -14,8 +14,9 @@ import RecentSearches from '../components/RecentSearches';
 // El banner del hero se consume del backend (`homeService.getActiveHomeMedia`).
 // Si no hay banner activo, se usa el fallback estático `/media/banner.mp4`
 // (mismo asset que se mostraba antes en días impares). Fase 12 reemplazó
-// el pickDailyBanner() que rot día por medio. Fase 12b movió el archivo
-// a client/public/media/ y se sirve vía /media/.
+// el pickDailyBanner() que rot día por medio. Fase 12b sirvió los archivos
+// vía /media/ (commiteados al repo). Fase 12c los movió a uploads del
+// server (server/uploads/home-media-uploaded/) subidos desde el admin.
 
 // Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
 const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
