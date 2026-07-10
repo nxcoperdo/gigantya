@@ -31,6 +31,9 @@ pm2-*.log
 server/uploads/*
 !server/uploads/.gitkeep
 !server/uploads/README.md
+# Permitir .gitkeep en subcarpetas de uploads (ej: home-media-uploaded/.gitkeep)
+!server/uploads/**/.gitkeep
+!server/uploads/**/README.md
 
 # ============ CACHÉ Y TEMPORALES ============
 .tmp/
