@@ -353,6 +353,18 @@ export async function uploadProductImage(req, res) {
     res.json({ mensaje: 'Imagen subida exitosamente', url: relativeUrl });
   } catch (error) {
     console.error('Error subiendo imagen de producto:', error);
+    // Multer aborta con error.code = 'LIMIT_FILE_SIZE' cuando el
+    // archivo supera el límite configurado en el middleware (10MB).
+    // Devolvemos 400 con mensaje claro en vez de un 500 genérico
+    // para que el cliente pueda mostrar el error en la UI.
+    if (error?.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        error: 'La imagen es demasiado grande. El máximo permitido es 10 MB.',
+        code: 'FILE_TOO_LARGE',
+        maxSizeMB: 10,
+        detalles: error.message,
+      });
+    }
     res.status(500).json({
       error: 'Error al subir la imagen',
       detalles: error.message

@@ -96,9 +96,15 @@ const legacyStorage = multer.diskStorage({
 });
 
 /**
- * Multer legacy: misma configuración que antes (raíz de uploads/, 5MB,
+ * Multer legacy: misma configuración que antes (raíz de uploads/, 10MB,
  * whitelist de imágenes). Mantenido para no romper consumidores existentes
  * que importaban `upload` directamente.
+ *
+ * Decisión: el límite subió de 5MB → 10MB para productos (Fase 12d+)
+ * porque muchas fotos de catálogo (especialmente con fondo blanco y
+ * alta resolución) superan 5MB. El error `LIMIT_FILE_SIZE` se maneja
+ * explícitamente en el controller (`productController.uploadProductImage`)
+ * para devolver 400 con mensaje claro en español al cliente.
  */
 export const upload = multer({
   storage: legacyStorage,
@@ -113,7 +119,7 @@ export const upload = multer({
     cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp, svg)'));
   },
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: 10 * 1024 * 1024, // 10MB (subido desde 5MB en Fase 12d)
     fields: 20,
     fieldSize: 1024 * 1024, // 1MB por field
   }

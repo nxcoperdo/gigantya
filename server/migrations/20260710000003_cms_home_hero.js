@@ -67,7 +67,12 @@ export async function up(knex) {
       table.string('badge_locales_sufijo', 50).notNullable().defaultTo('locales disponibles');
       // Auditoría
       table.timestamp('actualizado_en').defaultTo(knex.fn.now());
-      table.integer('actualizado_por').unsigned().nullable();
+      // ⚠️ `usuarios.id` es INT SIGNED en este proyecto (no UNSIGNED).
+      // Por eso `actualizado_por` también es INT (sin .unsigned()) para
+      // que la FK matchee exactamente. Mismo gotcha que en `home_media`
+      // y el resto del schema — los comentarios al inicio de la
+      // migración `20260710000001_cms_home_media.js` lo aclaran.
+      table.integer('actualizado_por').nullable();
       // FK opcional. ON DELETE SET NULL: si se borra el admin, no se
       // pierde la config (la auditoría queda como "borrado").
       table.foreign('actualizado_por', 'fk_home_hero_settings_user')
