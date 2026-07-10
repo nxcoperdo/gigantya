@@ -571,12 +571,12 @@ export default function HomePage() {
             muted
             playsInline
           >
-            <source src={getImageUrl(homeMedia.archivo_path)} type={homeMedia.mime || 'video/mp4'} />
+            <source src={`/media/${homeMedia.archivo}`} type={homeMedia.mime || 'video/mp4'} />
           </video>
         ) : homeMedia?.tipo === 'imagen' ? (
           <img
             key={`hero-img-${homeMedia.id}`}
-            src={getImageUrl(homeMedia.archivo_path)}
+            src={`/media/${homeMedia.archivo}`}
             alt={homeMedia.nombre || 'Banner de GigantYA'}
             className="absolute inset-0 w-full h-full object-cover"
             {...IMAGE_EAGER_ATTRS}
