@@ -242,6 +242,6 @@ router.delete('/coupons/:id', couponController.adminDeleteCoupon);
 router.get('/home-media', adminHomeMediaController.list);
 router.post('/home-media', homeMediaUpload.single('file'), adminHomeMediaController.upload);
 router.put('/home-media/:id/activate', adminHomeMediaController.setActivo);
-router.delete('/home-media/:id', adminHomeMediaController.delete);
+router.delete('/home-media/:id', adminHomeMediaController.deleteMedia);
 
 export default router;

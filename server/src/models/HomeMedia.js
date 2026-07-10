@@ -17,7 +17,7 @@
  *   - Sin timestamps "actualizado_en" porque la tabla no tiene
  *     edición, solo crear/activar/borrar.
  */
-import { query, queryOne, getConnection } from '../../config/database.js';
+import { query, queryOne, getConnection } from '../config/database.js';
 
 /** Lista todos los archivos subidos (ordenados por más reciente). */
 export async function listAll() {
