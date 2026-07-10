@@ -186,6 +186,32 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
   }
 }));
 
+// ========== CMS Banner de Home (Fase 12b) ==========
+// Sirve los archivos estáticos commiteados en `client/public/media/`
+// bajo la URL `/media/<archivo>`. Es el reemplazo del flujo anterior
+// de uploads a `server/uploads/home-media/` — los banners ahora son
+// assets del front, commiteados al repo, y el server solo los sirve.
+//
+// La ruta del filesystem se calcula relativa a este archivo: app.js
+// vive en `server/src/`, así que subimos 2 niveles para llegar a la
+// raíz del proyecto y luego entramos a `client/public/media/`.
+const PUBLIC_MEDIA_DIR = path.resolve(__dirname, '../../client/public/media');
+app.use('/media', express.static(PUBLIC_MEDIA_DIR, {
+  maxAge: '7d',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    // Mismo cache-control que /uploads para imágenes (7d) y 1d para
+    // el resto. El `must-revalidate` evita que el browser sirva
+    // stale forever si cambia el archivo.
+    if (/\.(jpg|jpeg|png|webp|gif)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, must-revalidate');
+    } else if (/\.(mp4|webm)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  },
+}));
+
 // ========== RUTAS API v1 ==========
 
 app.use('/api/auth', authRoutes);
