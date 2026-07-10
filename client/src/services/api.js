@@ -200,14 +200,11 @@ export const adminService = {
   // Lista cada uso real de un cupón (cada pedido que aplicó un cupón).
   // Filtros: cupon_id, restaurante_id, es_global, fecha_desde, fecha_hasta, limit, offset.
   getCouponUsages: (params = {}) => api.get('/admin/coupons/usages', { params }),
-  // CMS Banner de Home (Fase 12). El super-admin sube varios archivos
-  // y elige UNO como activo. La home pública (`/`) consume el activo.
+  // CMS Banner de Home (Fase 12b). El super-admin VE la lista de
+  // archivos estáticos commiteados en client/public/media/ y marca
+  // UNO como activo. Sin uploads ni deletes.
   listHomeMedia: () => api.get('/admin/home-media'),
-  // `formData` debe ser un FormData con el field 'file' (multer.single)
-  // y opcionalmente un field 'nombre' con el nombre humano del banner.
-  uploadHomeMedia: (formData) => api.post('/admin/home-media', formData),
   activateHomeMedia: (id) => api.put(`/admin/home-media/${id}/activate`),
-  deleteHomeMedia: (id) => api.delete(`/admin/home-media/${id}`),
 };
 
 // ========== NOTIFICACIONES ==========
