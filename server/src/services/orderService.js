@@ -444,10 +444,49 @@ export async function notificarNuevoPedido(pedidoId) {
 async function validateAdicionesYRemovibles(connection, pricedItems) {
   return Promise.all(
     pricedItems.map(async (item) => {
-      if (!item.adiciones || item.adiciones.length === 0) {
+      // Si el item no tiene adiciones, aún así tenemos que validar
+      // obligatoriedad de Fase 10: un grupo obligatorio con count=0
+      // es justamente el error que queremos detectar. Por eso la query
+      // de grupos corre SIEMPRE (no solo cuando hay adiciones).
+      const adiciones = item.adiciones || [];
+
+      // 1) Traer los grupos del producto (config de obligatoriedad/min/max).
+      //    Es la misma query para todos los items del producto, pero como
+      //    pricedItems es chico (típico 1-5 items) no vale la pena cachear.
+      const [grupoRows] = await connection.query(
+        `SELECT id, nombre, obligatorio, min_selecciones, max_selecciones
+           FROM producto_grupos_adiciones
+          WHERE producto_id = ? AND activo = 1`,
+        [item.producto_id]
+      );
+      // Map<grupo_id, { count, cfg }> para acumular cuántas adiciones
+      // eligió el cliente por grupo. Solo los grupos que efectivamente
+      // aparecen en `adiciones` van al map; los demás se quedan con count=0
+      // y se validan abajo.
+      const gruposById = new Map(
+        grupoRows.map((g) => [Number(g.id), {
+          id: Number(g.id),
+          nombre: g.nombre,
+          obligatorio: !!g.obligatorio,
+          min: Number(g.min_selecciones) || 0,
+          max: Number(g.max_selecciones) || 99,
+          count: 0,
+        }])
+      );
+
+      if (adiciones.length === 0) {
+        // Sin adiciones: validamos obligatoriedad de los grupos del producto.
+        for (const g of gruposById.values()) {
+          if (g.obligatorio && g.count < g.min) {
+            throw createValidationError(
+              `Grupo "${g.nombre}": debe elegir al menos ${g.min} opción(es) (eligió 0)`
+            );
+          }
+        }
         return { ...item, adiciones_snapshot: [], removibles_snapshot: [], suma_adiciones: 0 };
       }
-      const adicionIds = item.adiciones.map((a) => a.adicion_id);
+
+      const adicionIds = adiciones.map((a) => a.adicion_id);
       const adPlaceholders = adicionIds.map(() => '?').join(',');
       const [rows] = await connection.query(
         `SELECT pa.id, pa.producto_id, pa.nombre, pa.precio_extra, pa.grupo_id,
@@ -459,7 +498,7 @@ async function validateAdicionesYRemovibles(connection, pricedItems) {
       );
       const adicionesById = new Map(rows.map((r) => [Number(r.id), r]));
       const snapshot = [];
-      for (const a of item.adiciones) {
+      for (const a of adiciones) {
         const row = adicionesById.get(a.adicion_id);
         if (!row) {
           throw createValidationError(`Adición ${a.adicion_id} no existe o no está activa`);
@@ -468,6 +507,12 @@ async function validateAdicionesYRemovibles(connection, pricedItems) {
           throw createValidationError(`La adición ${a.adicion_id} no pertenece al producto ${item.producto_id}`);
         }
         const precio = row.precio_extra == null ? 0 : Number(row.precio_extra);
+        // Acumular en el grupo correspondiente (si la adición está en un
+        // grupo). Adiciones sueltas (grupo_id null) no entran al map.
+        if (row.grupo_id != null) {
+          const g = gruposById.get(Number(row.grupo_id));
+          if (g) g.count += Number(a.cantidad) || 0;
+        }
         snapshot.push({
           adicion_id: a.adicion_id,
           cantidad: a.cantidad,
@@ -478,6 +523,22 @@ async function validateAdicionesYRemovibles(connection, pricedItems) {
         });
       }
       const sumaAdiciones = snapshot.reduce((s, a) => s + a.subtotal, 0);
+
+      // 2) Validar min/max por grupo (Fase 10). Recorremos los grupos del
+      //    producto, no solo los que el cliente eligió, así detectamos
+      //    obligatorios vacíos.
+      for (const g of gruposById.values()) {
+        if (g.obligatorio && g.count < g.min) {
+          throw createValidationError(
+            `Grupo "${g.nombre}": debe elegir al menos ${g.min} opción(es) (eligió ${g.count})`
+          );
+        }
+        if (g.count > g.max) {
+          throw createValidationError(
+            `Grupo "${g.nombre}": puede elegir como máximo ${g.max} opción(es) (eligió ${g.count})`
+          );
+        }
+      }
 
       let removibles_snapshot = [];
       if (item.removidos && item.removidos.length > 0) {

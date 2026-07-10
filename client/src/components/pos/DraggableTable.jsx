@@ -18,19 +18,40 @@
  * estado se mantiene acá para que sea fácil de tunear.
  */
 import { Rnd } from 'react-rnd';
-import { Armchair } from 'lucide-react';
+import { Armchair, Users } from 'lucide-react';
 
 // Paleta de colores por estado. Mantener sincronizado con la leyenda en
 // FloorPlanPage y con el backend (`mesas.estado`).
+// bg/border usan color-saturado pero con buen contraste WCAG AA.
 const ESTADO_COLORS = {
-  libre:         { bg: 'bg-emerald-500/15', border: 'border-emerald-500/60', text: 'text-emerald-300' },
-  ocupada:       { bg: 'bg-rose-500/15',    border: 'border-rose-500/60',    text: 'text-rose-300'    },
-  reservada:     { bg: 'bg-amber-500/15',   border: 'border-amber-500/60',   text: 'text-amber-300'   },
-  mantenimiento: { bg: 'bg-zinc-500/15',    border: 'border-zinc-500/60',    text: 'text-zinc-300'    },
+  libre: {
+    bg: 'bg-emerald-500/15 hover:bg-emerald-500/25',
+    border: 'border-emerald-500/50 hover:border-emerald-500/70',
+    text: 'text-emerald-200',
+    label: 'Libre',
+  },
+  ocupada: {
+    bg: 'bg-rose-500/15 hover:bg-rose-500/25',
+    border: 'border-rose-500/50 hover:border-rose-500/70',
+    text: 'text-rose-200',
+    label: 'Ocupada',
+  },
+  reservada: {
+    bg: 'bg-amber-500/15 hover:bg-amber-500/25',
+    border: 'border-amber-500/50 hover:border-amber-500/70',
+    text: 'text-amber-200',
+    label: 'Reservada',
+  },
+  mantenimiento: {
+    bg: 'bg-zinc-500/15 hover:bg-zinc-500/25',
+    border: 'border-zinc-500/50 hover:border-zinc-500/70',
+    text: 'text-zinc-300',
+    label: 'Mantenimiento',
+  },
 };
 
 const SHAPE_CLASS = {
-  rectangle: 'rounded-lg',
+  rectangle: 'rounded-xl',
   circle:    'rounded-full',
   round:     'rounded-full',
 };
@@ -44,7 +65,7 @@ export default function DraggableTable({
   onStatusChange,
 }) {
   const colors = ESTADO_COLORS[mesa.estado] ?? ESTADO_COLORS.libre;
-  const shape = SHAPE_CLASS[mesa.forma] ?? 'rounded-lg';
+  const shape = SHAPE_CLASS[mesa.forma] ?? 'rounded-xl';
 
   // Para círculos/redondos, forzamos ancho === alto al cambiar tamaño.
   const isCircular = mesa.forma === 'circle' || mesa.forma === 'round';
@@ -92,9 +113,12 @@ export default function DraggableTable({
         colors.bg,
         colors.border,
         shape,
-        'border-2 flex flex-col items-center justify-center select-none cursor-pointer transition-shadow',
-        selected ? 'ring-2 ring-offset-2 ring-offset-[color:var(--bg)] ring-[color:var(--primary,#3b82f6)] shadow-lg' : '',
-        editable ? 'hover:shadow-md' : '',
+        'border-2 flex flex-col items-center justify-center select-none',
+        'transition-all duration-150 ease-out',
+        editable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
+        selected
+          ? 'ring-2 ring-offset-2 ring-offset-[color:var(--bg)] ring-[color:var(--primary,#3b82f6)] shadow-lg scale-[1.02]'
+          : editable ? 'hover:shadow-md' : '',
       ].join(' ')}
       onClick={() => onClick?.(mesa)}
       // Doble click cicla el estado. Útil para dueños que están solos y no
@@ -103,11 +127,15 @@ export default function DraggableTable({
         const cycle = { libre: 'reservada', reservada: 'mantenimiento', mantenimiento: 'libre', ocupada: 'libre' };
         onStatusChange?.(mesa, cycle[mesa.estado] ?? 'libre');
       } : undefined}
+      role="button"
+      tabIndex={0}
+      aria-label={`Mesa ${mesa.nombre}, capacidad ${mesa.capacidad}, estado ${colors.label}`}
     >
-      <Armchair className={`w-5 h-5 ${colors.text}`} aria-hidden="true" />
-      <div className={`text-sm font-semibold ${colors.text}`}>{mesa.nombre}</div>
-      <div className="text-[10px] text-[color:var(--text-muted)] flex items-center gap-1">
-        <span>👤</span><span>{mesa.capacidad}</span>
+      <Armchair className={`w-5 h-5 ${colors.text} mb-0.5`} aria-hidden="true" />
+      <div className={`text-sm font-bold ${colors.text} leading-tight`}>{mesa.nombre}</div>
+      <div className={`text-[10px] ${colors.text} opacity-80 flex items-center gap-0.5 mt-0.5`}>
+        <Users className="w-2.5 h-2.5" aria-hidden="true" />
+        <span>{mesa.capacidad}</span>
       </div>
     </Rnd>
   );

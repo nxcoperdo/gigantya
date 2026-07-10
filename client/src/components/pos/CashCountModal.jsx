@@ -18,7 +18,7 @@
  *     (con `Idempotency-Key`).
  */
 import { useMemo, useState, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Loader2, Banknote, Calculator, Plus, Minus } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatHelper';
 
 // Billetes y monedas colombianas, ordenados de mayor a menor.
@@ -67,6 +67,10 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
     setConteos((prev) => ({ ...prev, [valor]: n }));
   };
 
+  const inc = (valor, delta) => {
+    setConteos((prev) => ({ ...prev, [valor]: Math.max(0, Number(prev[valor] || 0) + delta) }));
+  };
+
   const confirmar = async () => {
     if (enviando) return;
     setEnviando(true);
@@ -88,7 +92,7 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
     }
   };
 
-  // Atajo de teclado: ESC cierra, Enter confirma (sólo si diferencia = 0)
+  // Atajo de teclado: ESC cierra.
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose && onClose();
@@ -97,46 +101,84 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const cuadra = Math.abs(diferencia) < 0.01;
+  const falta = diferencia < 0;
+  const sobra = diferencia > 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-[color:var(--bg-elevated)] rounded-lg w-full max-w-3xl border border-[color:var(--border)] shadow-xl max-h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arqueo-title"
+    >
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-3xl border border-[color:var(--border)] shadow-2xl max-h-[90vh] flex flex-col">
         <header className="flex items-center justify-between p-4 border-b border-[color:var(--border)]">
-          <h2 className="text-lg font-semibold">Arqueo de caja</h2>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              aria-hidden="true"
+            >
+              <Calculator className="w-5 h-5 text-white" />
+            </div>
+            <h2 id="arqueo-title" className="text-lg font-bold">Arqueo de caja</h2>
+          </div>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-[color:var(--bg)]"
+            className="p-2 rounded-lg hover:bg-[color:var(--bg)] transition-colors"
             type="button"
             aria-label="Cerrar"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </header>
 
         <div className="p-4 overflow-y-auto">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
             {DENOMINACIONES.map((d) => {
               const cant = Number(conteos[d.valor] || 0);
               const subtotal = cant * d.valor;
               return (
                 <div
                   key={d.valor}
-                  className="rounded-md border border-[color:var(--border)] p-3 bg-[color:var(--bg)]"
+                  className="rounded-lg border border-[color:var(--border)] p-2.5 bg-[color:var(--bg)] transition-colors hover:border-[color:var(--primary,#3b82f6)]/40"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold">${formatDenom(d.valor)}</span>
-                    <span className="text-[10px] uppercase tracking-wide text-[color:var(--text-muted)]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-extrabold font-mono">${formatDenom(d.valor)}</span>
+                    <span className="text-[9px] uppercase tracking-wider text-[color:var(--text-muted)] font-semibold">
                       {d.tipo}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    min="0"
-                    value={cant || ''}
-                    onChange={(e) => setCantidad(d.valor, e.target.value)}
-                    placeholder="0"
-                    className="w-full px-2 py-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm text-center"
-                  />
-                  <div className="text-xs text-[color:var(--text-muted)] mt-1 text-right font-mono">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => inc(d.valor, -1)}
+                      disabled={cant === 0}
+                      className="w-7 h-7 rounded-md bg-[color:var(--bg-elevated)] hover:bg-[color:var(--primary,#3b82f6)]/15 border border-[color:var(--border)] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      type="button"
+                      aria-label={`Restar ${d.valor}`}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      value={cant || ''}
+                      onChange={(e) => setCantidad(d.valor, e.target.value)}
+                      placeholder="0"
+                      className="flex-1 min-w-0 px-1.5 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40"
+                      aria-label={`Cantidad de ${d.valor}`}
+                    />
+                    <button
+                      onClick={() => inc(d.valor, +1)}
+                      className="w-7 h-7 rounded-md bg-[color:var(--bg-elevated)] hover:bg-[color:var(--primary,#3b82f6)]/15 border border-[color:var(--border)] flex items-center justify-center transition-colors"
+                      type="button"
+                      aria-label={`Sumar ${d.valor}`}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className={`text-xs mt-1.5 text-right font-mono font-semibold ${subtotal > 0 ? 'text-[color:var(--text)]' : 'text-[color:var(--text-muted)]'}`}>
                     = {formatCurrency(subtotal)}
                   </div>
                 </div>
@@ -145,54 +187,60 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
           </div>
 
           <div className="mt-4">
-            <label className="block text-xs text-[color:var(--text-muted)] mb-1">
-              Notas del cierre (opcional)
+            <label className="block">
+              <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1">
+                Notas del cierre <span className="opacity-60 font-normal">(opcional)</span>
+              </span>
+              <textarea
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                rows={2}
+                placeholder="Observaciones, faltantes reportados, etc."
+                className="w-full px-3 py-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition resize-none"
+              />
             </label>
-            <textarea
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              rows={2}
-              placeholder="Observaciones, faltantes reportados, etc."
-              className="w-full px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] text-sm"
-            />
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-            <div className="rounded border border-[color:var(--border)] p-3">
-              <div className="text-[color:var(--text-muted)] text-xs">Esperado</div>
-              <div className="font-mono text-base">{formatCurrency(esperado)}</div>
+          {/* Summary cards */}
+          <div className="mt-4 grid grid-cols-3 gap-2.5 text-sm">
+            <div className="rounded-lg border border-[color:var(--border)] p-3 bg-[color:var(--bg)]">
+              <div className="text-[color:var(--text-muted)] text-[10px] uppercase tracking-wider font-semibold">Esperado</div>
+              <div className="font-mono text-base font-bold mt-0.5">{formatCurrency(esperado)}</div>
             </div>
-            <div className="rounded border border-[color:var(--border)] p-3">
-              <div className="text-[color:var(--text-muted)] text-xs">Contado</div>
-              <div className="font-mono text-base">{formatCurrency(totalReal)}</div>
+            <div className="rounded-lg border border-[color:var(--border)] p-3 bg-[color:var(--bg)]">
+              <div className="text-[color:var(--text-muted)] text-[10px] uppercase tracking-wider font-semibold">Contado</div>
+              <div className="font-mono text-base font-bold mt-0.5">{formatCurrency(totalReal)}</div>
             </div>
             <div
-              className={`rounded border p-3 ${
-                Math.abs(diferencia) < 0.01
+              className={[
+                'rounded-lg border p-3',
+                cuadra
                   ? 'border-emerald-500/40 bg-emerald-500/10'
-                  : diferencia > 0
-                    ? 'border-amber-500/40 bg-amber-500/10'
-                    : 'border-rose-500/40 bg-rose-500/10'
-              }`}
+                  : falta
+                    ? 'border-rose-500/40 bg-rose-500/10'
+                    : 'border-amber-500/40 bg-amber-500/10',
+              ].join(' ')}
             >
-              <div className="text-[color:var(--text-muted)] text-xs">Diferencia</div>
+              <div className="text-[color:var(--text-muted)] text-[10px] uppercase tracking-wider font-semibold">
+                {cuadra ? 'Cuadra' : falta ? 'Faltante' : 'Sobrante'}
+              </div>
               <div
-                className={`font-mono text-base font-semibold ${
-                  Math.abs(diferencia) < 0.01
-                    ? 'text-emerald-400'
-                    : diferencia > 0
-                      ? 'text-amber-400'
-                      : 'text-rose-400'
-                }`}
+                className={[
+                  'font-mono text-base font-bold mt-0.5',
+                  cuadra ? 'text-emerald-400' : falta ? 'text-rose-400' : 'text-amber-400',
+                ].join(' ')}
               >
-                {diferencia > 0 ? '+' : ''}
-                {formatCurrency(diferencia)}
+                {diferencia > 0 ? '+' : diferencia < 0 ? '−' : ''}
+                {formatCurrency(Math.abs(diferencia))}
               </div>
             </div>
           </div>
 
           {error && (
-            <div className="mt-3 px-3 py-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
+            <div
+              role="alert"
+              className="mt-3 px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm"
+            >
               {error}
             </div>
           )}
@@ -201,7 +249,7 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
         <footer className="p-4 border-t border-[color:var(--border)] flex items-center gap-2">
           <button
             onClick={onClose}
-            className="px-3 py-2 rounded-md border border-[color:var(--border)] text-sm"
+            className="px-4 py-2.5 rounded-lg border border-[color:var(--border)] hover:bg-[color:var(--bg)] text-sm font-medium transition-colors"
             type="button"
             disabled={enviando}
           >
@@ -210,11 +258,14 @@ export default function CashCountModal({ esperado = 0, onClose, onConfirm }) {
           <button
             onClick={confirmar}
             disabled={enviando}
-            className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-white text-sm font-medium disabled:opacity-50"
+            className="ml-auto inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-sm"
             type="button"
           >
-            <Check className="w-4 h-4" />
-            {enviando ? 'Cerrando…' : 'Cerrar caja'}
+            {enviando ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Cerrando…</>
+            ) : (
+              <><Check className="w-4 h-4" /> Cerrar caja</>
+            )}
           </button>
         </footer>
       </div>

@@ -1,7 +1,3 @@
-import { useEffect, useState } from 'react';
-import { Plus, Power, Users as UsersIcon, X, Copy, Check } from 'lucide-react';
-import { posStaffService } from '../../services/api';
-
 /**
  * Página de gestión de personal del POS (Fase 1).
  *
@@ -12,6 +8,21 @@ import { posStaffService } from '../../services/api';
  *     el staff por un canal seguro).
  *   - Activar / desactivar (no eliminar — preserva historial de pedidos).
  */
+import { useEffect, useState } from 'react';
+import {
+  Plus, Power, Users as UsersIcon, X, Copy, Check,
+  Mail, Phone, CreditCard, UserCog, Loader2, ShieldCheck,
+} from 'lucide-react';
+import { posStaffService } from '../../services/api';
+
+const ROL_PILL = {
+  cajero: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
+  mesero: 'bg-sky-500/15 text-sky-300 border border-sky-500/30',
+  cocina: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+};
+
+const inputCls = 'w-full px-3 py-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition';
+
 export default function StaffPage() {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +51,7 @@ export default function StaffPage() {
 
   async function toggleEstado(member) {
     const nuevoEstado = member.estado === 'activo' ? 'inactivo' : 'activo';
-    if (!confirm(`¿Cambiar el estado de ${member.nombre} a ${nuevoEstado}?`)) return;
+    if (!window.confirm(`¿Cambiar el estado de ${member.nombre} a ${nuevoEstado}?`)) return;
     try {
       await posStaffService.setStatus(member.id, nuevoEstado);
       setStaff((prev) => prev.map((m) => m.id === member.id ? { ...m, estado: nuevoEstado } : m));
@@ -59,77 +70,126 @@ export default function StaffPage() {
     }
   };
 
+  const counts = {
+    activos: staff.filter((s) => s.estado === 'activo').length,
+    inactivos: staff.filter((s) => s.estado !== 'activo').length,
+  };
+
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <UsersIcon className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Personal del POS</h1>
+    <div className="max-w-5xl mx-auto space-y-4">
+      <header className="flex items-center gap-3 flex-wrap">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}
+          aria-hidden="true"
+        >
+          <UserCog className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold leading-tight">Personal del POS</h1>
+          <p className="text-xs text-[color:var(--text-muted)]">
+            {counts.activos} activos · {counts.inactivos} inactivos
+          </p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="btn btn-primary"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all shadow-sm"
+          type="button"
           disabled={loading}
         >
-          <Plus className="w-4 h-4 mr-2 inline" /> Nuevo personal
+          <Plus className="w-4 h-4" /> Nuevo personal
         </button>
-      </div>
+      </header>
 
       {error && (
-        <div className="alert alert-error mb-4">{error}</div>
+        <div
+          role="alert"
+          className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center justify-between gap-2"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-xs underline font-medium hover:no-underline"
+          >
+            Cerrar
+          </button>
+        </div>
       )}
 
       {loading ? (
-        <p className="text-center py-12 text-[color:var(--text-muted)]">Cargando…</p>
+        <div className="p-10 text-center text-[color:var(--text-muted)] flex flex-col items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-sm">Cargando personal…</span>
+        </div>
       ) : staff.length === 0 ? (
-        <div className="card-lg p-8 text-center">
-          <p className="text-[color:var(--text-muted)] mb-4">
-            Aún no has creado personal del POS.
+        <div className="rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-10 text-center">
+          <UsersIcon className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
+          <p className="text-base font-semibold text-[color:var(--text)]">No tenés personal del POS todavía</p>
+          <p className="text-sm text-[color:var(--text-muted)] mt-1 mb-4">
+            Crea el primer miembro (cajero, mesero o cocina) para empezar.
           </p>
-          <button onClick={() => setShowCreate(true)} className="btn btn-primary">
-            Crear el primero
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold active:scale-95 transition-all shadow-sm"
+            type="button"
+          >
+            <Plus className="w-4 h-4" /> Crear el primero
           </button>
         </div>
       ) : (
-        <div className="card-lg overflow-hidden">
+        <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-[color:var(--bg-hover)]">
+            <thead className="bg-[color:var(--bg-elevated)] text-[color:var(--text-muted)] text-xs uppercase tracking-wider">
               <tr>
-                <th className="text-left p-3">Nombre</th>
-                <th className="text-left p-3">Email</th>
-                <th className="text-left p-3">Rol</th>
-                <th className="text-left p-3">Estado</th>
-                <th className="text-right p-3">Acciones</th>
+                <th scope="col" className="text-left px-3 py-2.5 font-semibold">Nombre</th>
+                <th scope="col" className="text-left px-3 py-2.5 font-semibold">Email</th>
+                <th scope="col" className="text-left px-3 py-2.5 font-semibold">Rol</th>
+                <th scope="col" className="text-left px-3 py-2.5 font-semibold">Estado</th>
+                <th scope="col" className="text-right px-3 py-2.5 font-semibold">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {staff.map((m) => (
-                <tr key={m.id} className="border-t border-[color:var(--border)]">
-                  <td className="p-3">{m.nombre}</td>
-                  <td className="p-3 text-[color:var(--text-muted)]">{m.email}</td>
-                  <td className="p-3 capitalize">{m.tipo_usuario}</td>
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs ${
-                        m.estado === 'activo'
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {m.estado}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => toggleEstado(m)}
-                      className="btn btn-outline btn-small"
-                      title={m.estado === 'activo' ? 'Desactivar' : 'Activar'}
-                    >
-                      <Power className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {staff.map((m) => {
+                const pill = ROL_PILL[m.tipo_usuario] || 'bg-zinc-500/15 text-zinc-300 border border-zinc-500/30';
+                return (
+                  <tr
+                    key={m.id}
+                    className="border-t border-[color:var(--border)] hover:bg-[color:var(--bg-elevated)]/40 transition-colors"
+                  >
+                    <td className="px-3 py-2.5 font-semibold">{m.nombre}</td>
+                    <td className="px-3 py-2.5 text-[color:var(--text-muted)]">{m.email}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={`inline-block text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${pill}`}>
+                        {m.tipo_usuario}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {m.estado === 'activo' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
+                          Activo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-zinc-500/15 text-zinc-300 border border-zinc-500/30">
+                          Inactivo
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <button
+                        onClick={() => toggleEstado(m)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[color:var(--border)] hover:bg-[color:var(--bg-elevated)] text-sm font-medium transition-colors active:scale-95"
+                        title={m.estado === 'activo' ? 'Desactivar' : 'Activar'}
+                        type="button"
+                      >
+                        <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                        {m.estado === 'activo' ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -196,50 +256,112 @@ function CreateStaffModal({ onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="card-lg w-full max-w-md p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Nuevo personal</h2>
-          <button onClick={onClose} className="text-[color:var(--text-muted)]">
-            <X className="w-5 h-5" />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-staff-title"
+    >
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-md border border-[color:var(--border)] shadow-2xl max-h-[90vh] flex flex-col">
+        <header className="flex items-center justify-between p-4 border-b border-[color:var(--border)]">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}
+              aria-hidden="true"
+            >
+              <UsersIcon className="w-5 h-5 text-white" />
+            </div>
+            <h2 id="new-staff-title" className="text-lg font-bold">Nuevo personal</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-[color:var(--bg)] transition-colors"
+            type="button"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
           </button>
-        </div>
+        </header>
 
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nombre</label>
-            <input className="input w-full" value={form.nombre} onChange={set('nombre')} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input type="email" className="input w-full" value={form.email} onChange={set('email')} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Teléfono</label>
-            <input className="input w-full" value={form.telefono} onChange={set('telefono')} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Rol</label>
-            <select className="select w-full" value={form.tipo_usuario} onChange={set('tipo_usuario')} required>
+        <form onSubmit={submit} className="p-4 space-y-3 overflow-y-auto flex-1">
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <UserCog className="w-3 h-3" aria-hidden="true" />
+              Nombre <span className="text-rose-400">*</span>
+            </span>
+            <input className={inputCls} value={form.nombre} onChange={set('nombre')} required autoFocus />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <Mail className="w-3 h-3" aria-hidden="true" />
+              Email <span className="text-rose-400">*</span>
+            </span>
+            <input type="email" className={inputCls} value={form.email} onChange={set('email')} required />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <Phone className="w-3 h-3" aria-hidden="true" />
+              Teléfono
+            </span>
+            <input className={inputCls} value={form.telefono} onChange={set('telefono')} />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <UserCog className="w-3 h-3" aria-hidden="true" />
+              Rol <span className="text-rose-400">*</span>
+            </span>
+            <select
+              className={inputCls}
+              value={form.tipo_usuario}
+              onChange={set('tipo_usuario')}
+              required
+            >
               <option value="cajero">Cajero</option>
               <option value="mesero">Mesero</option>
               <option value="cocina">Cocina</option>
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Documento de identidad (opcional)</label>
-            <input className="input w-full" value={form.documento_identidad} onChange={set('documento_identidad')} />
-          </div>
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <CreditCard className="w-3 h-3" aria-hidden="true" />
+              Documento de identidad <span className="opacity-60 font-normal">(opcional)</span>
+            </span>
+            <input className={inputCls} value={form.documento_identidad} onChange={set('documento_identidad')} />
+          </label>
 
-          {error && <div className="alert alert-error">{error}</div>}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn btn-outline">Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Creando…' : 'Crear'}
-            </button>
-          </div>
+          {error && (
+            <div
+              role="alert"
+              className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm"
+            >
+              {error}
+            </div>
+          )}
         </form>
+
+        <footer className="p-4 border-t border-[color:var(--border)] flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-lg border border-[color:var(--border)] hover:bg-[color:var(--bg)] text-sm font-medium transition-colors"
+            disabled={submitting}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-sm"
+          >
+            {submitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
+            ) : (
+              <><Plus className="w-4 h-4" /> Crear personal</>
+            )}
+          </button>
+        </footer>
       </div>
     </div>
   );
@@ -247,33 +369,73 @@ function CreateStaffModal({ onClose, onCreated }) {
 
 function TempPasswordModal({ staff, onClose, onCopy, copiado }) {
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="card-lg w-full max-w-md p-6">
-        <h2 className="text-xl font-bold mb-2">Personal creado</h2>
-        <p className="text-sm text-[color:var(--text-muted)] mb-4">
-          Comparte esta contraseña temporal con <strong>{staff.nombre}</strong>.
-          No se mostrará de nuevo.
-        </p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="temp-pass-title"
+    >
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-md border border-[color:var(--border)] shadow-2xl">
+        <header className="flex items-center gap-3 p-4 border-b border-[color:var(--border)]">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+            aria-hidden="true"
+          >
+            <ShieldCheck className="w-5 h-5 text-white" />
+          </div>
+          <h2 id="temp-pass-title" className="text-lg font-bold">Personal creado</h2>
+        </header>
+        <div className="p-4 space-y-3">
+          <p className="text-sm text-[color:var(--text-muted)]">
+            Compartí esta contraseña temporal con <strong className="text-[color:var(--text)]">{staff.nombre}</strong>.
+            <br />
+            <span className="text-rose-300 font-semibold">No se mostrará de nuevo.</span>
+          </p>
 
-        <div className="bg-[color:var(--bg-hover)] p-3 rounded-lg mb-4">
-          <p className="text-xs text-[color:var(--text-muted)]">Email</p>
-          <p className="font-mono">{staff.email}</p>
-          <p className="text-xs text-[color:var(--text-muted)] mt-2">Contraseña temporal</p>
-          <div className="flex items-center gap-2">
-            <p className="font-mono text-lg">{staff.contrasena_temporal}</p>
-            <button
-              onClick={() => onCopy(staff.contrasena_temporal)}
-              className="btn btn-outline btn-small"
-              title="Copiar"
-            >
-              {copiado ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-            </button>
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg)] p-3.5 space-y-3">
+            <div>
+              <p className="text-[10px] text-[color:var(--text-muted)] uppercase tracking-wider font-semibold">
+                Email
+              </p>
+              <p className="font-mono text-sm mt-0.5 break-all">{staff.email}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[color:var(--text-muted)] uppercase tracking-wider font-semibold">
+                Contraseña temporal
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 px-3 py-2 rounded-md bg-[color:var(--bg-elevated)] border border-[color:var(--border)] font-mono text-sm font-bold break-all">
+                  {staff.contrasena_temporal}
+                </code>
+                <button
+                  onClick={() => onCopy(staff.contrasena_temporal)}
+                  className={[
+                    'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors active:scale-95',
+                    copiado
+                      ? 'bg-emerald-500 text-white'
+                      : 'border border-[color:var(--border)] hover:bg-[color:var(--bg-elevated)]',
+                  ].join(' ')}
+                  type="button"
+                  title="Copiar contraseña"
+                  aria-label="Copiar contraseña"
+                >
+                  {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiado ? 'Copiado' : 'Copiar'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="flex justify-end">
-          <button onClick={onClose} className="btn btn-primary">Listo</button>
-        </div>
+        <footer className="p-4 border-t border-[color:var(--border)] flex justify-end">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold active:scale-[0.98] transition-all shadow-sm"
+            type="button"
+          >
+            <Check className="w-4 h-4" /> Listo
+          </button>
+        </footer>
       </div>
     </div>
   );

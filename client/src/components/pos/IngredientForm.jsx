@@ -11,16 +11,18 @@
  * movimientos en el kardex). El backend ignora stock_actual en PUT.
  */
 import { useEffect, useState } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Package, Loader2, AlertTriangle, Ruler, Hash, TrendingDown } from 'lucide-react';
 import { posInventoryService } from '../../services/api';
 
 const UNIDADES = [
-  { value: 'kg', label: 'Kilogramo (kg)' },
-  { value: 'g',  label: 'Gramo (g)' },
-  { value: 'lt', label: 'Litro (lt)' },
-  { value: 'ml', label: 'Mililitro (ml)' },
+  { value: 'kg',     label: 'Kilogramo (kg)' },
+  { value: 'g',      label: 'Gramo (g)' },
+  { value: 'lt',     label: 'Litro (lt)' },
+  { value: 'ml',     label: 'Mililitro (ml)' },
   { value: 'unidad', label: 'Unidad' },
 ];
+
+const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition';
 
 export default function IngredientForm({ ingrediente = null, onClose, onSaved }) {
   const isEdit = Boolean(ingrediente?.id);
@@ -66,31 +68,52 @@ export default function IngredientForm({ ingrediente = null, onClose, onSaved })
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-[color:var(--bg-elevated)] rounded-lg shadow-xl w-full max-w-md p-6">
-        <header className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">
-            {isEdit ? 'Editar ingrediente' : 'Nuevo ingrediente'}
-          </h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ing-form-title"
+    >
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-md border border-[color:var(--border)] shadow-2xl max-h-[90vh] flex flex-col">
+        <header className="flex items-center justify-between p-4 border-b border-[color:var(--border)]">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+              aria-hidden="true"
+            >
+              <Package className="w-5 h-5 text-white" />
+            </div>
+            <h2 id="ing-form-title" className="text-lg font-bold">
+              {isEdit ? 'Editar ingrediente' : 'Nuevo ingrediente'}
+            </h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded hover:bg-[color:var(--bg)]"
+            className="p-2 rounded-lg hover:bg-[color:var(--bg)] transition-colors"
             aria-label="Cerrar"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </header>
 
-        {error && (
-          <div className="mb-3 px-3 py-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
-            {error}
-          </div>
-        )}
+        <form onSubmit={handleSubmit} className="p-4 space-y-3 overflow-y-auto flex-1">
+          {error && (
+            <div
+              role="alert"
+              className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start gap-2"
+            >
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nombre</label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <Package className="w-3 h-3" aria-hidden="true" />
+              Nombre <span className="text-rose-400">*</span>
+            </span>
             <input
               type="text"
               value={nombre}
@@ -98,27 +121,33 @@ export default function IngredientForm({ ingrediente = null, onClose, onSaved })
               required
               maxLength={100}
               autoFocus
-              className="w-full px-3 py-2 rounded border border-[color:var(--border)] bg-[color:var(--bg)] text-sm"
+              className={inputCls}
               placeholder="Carne, Pan, Queso…"
             />
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Unidad</label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <Ruler className="w-3 h-3" aria-hidden="true" />
+              Unidad
+            </span>
             <select
               value={unidad}
               onChange={(e) => setUnidad(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-[color:var(--border)] bg-[color:var(--bg)] text-sm"
+              className={inputCls}
             >
               {UNIDADES.map((u) => (
                 <option key={u.value} value={u.value}>{u.label}</option>
               ))}
             </select>
-          </div>
+          </label>
 
           {!isEdit && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Stock actual</label>
+            <label className="block">
+              <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+                <Hash className="w-3 h-3" aria-hidden="true" />
+                Stock actual <span className="text-rose-400">*</span>
+              </span>
               <input
                 type="number"
                 step="0.001"
@@ -126,16 +155,19 @@ export default function IngredientForm({ ingrediente = null, onClose, onSaved })
                 value={stockActual}
                 onChange={(e) => setStockActual(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded border border-[color:var(--border)] bg-[color:var(--bg)] text-sm font-mono"
+                className={`${inputCls} font-mono`}
               />
-              <p className="text-xs text-[color:var(--text-muted)] mt-1">
+              <p className="text-[10px] text-[color:var(--text-muted)] mt-1 leading-relaxed">
                 Stock inicial: al guardar se registra como un movimiento de "compra" en el kardex.
               </p>
-            </div>
+            </label>
           )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Stock mínimo (alerta)</label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <TrendingDown className="w-3 h-3" aria-hidden="true" />
+              Stock mínimo (alerta) <span className="text-rose-400">*</span>
+            </span>
             <input
               type="number"
               step="0.001"
@@ -143,32 +175,36 @@ export default function IngredientForm({ ingrediente = null, onClose, onSaved })
               value={stockMinimo}
               onChange={(e) => setStockMinimo(e.target.value)}
               required
-              className="w-full px-3 py-2 rounded border border-[color:var(--border)] bg-[color:var(--bg)] text-sm font-mono"
+              className={`${inputCls} font-mono`}
             />
-            <p className="text-xs text-[color:var(--text-muted)] mt-1">
+            <p className="text-[10px] text-[color:var(--text-muted)] mt-1 leading-relaxed">
               Cuando el stock baje de este valor, se emite una alerta en vivo.
             </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-md border border-[color:var(--border)] text-sm"
-              disabled={saving}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !nombre}
-              className="inline-flex items-center gap-1 px-4 py-2 rounded-md bg-primary text-white text-sm disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear ingrediente'}
-            </button>
-          </div>
+          </label>
         </form>
+
+        <footer className="p-4 border-t border-[color:var(--border)] flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-lg border border-[color:var(--border)] hover:bg-[color:var(--bg)] text-sm font-medium transition-colors"
+            disabled={saving}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving || !nombre}
+            className="ml-auto inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-sm"
+          >
+            {saving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Guardando…</>
+            ) : (
+              <><Save className="w-4 h-4" /> {isEdit ? 'Guardar cambios' : 'Crear ingrediente'}</>
+            )}
+          </button>
+        </footer>
       </div>
     </div>
   );

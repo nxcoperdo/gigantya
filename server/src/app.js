@@ -141,10 +141,14 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 
-// Rate limit general para API
+// Rate limit general para API.
+// Por IP por ventana de 15 min. 1000 aguanta un dashboard de dueño con
+// polling (notifications cada 15s, /auth/me al montar, comprobantes
+// pendientes, métricas) + tabs de admin abiertas. El authLimiter más
+// estricto (20/15min) sigue protegiendo los endpoints sensibles.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 500,
+  max: 1000,
   message: { error: 'Demasiadas solicitudes, intenta más tarde' },
   standardHeaders: true,
   legacyHeaders: false,

@@ -9,8 +9,14 @@
  * completa (el backend hace DELETE + INSERT atómico).
  */
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Save, X } from 'lucide-react';
+import {
+  Plus, Trash2, Save, X, ChefHat, Loader2, FileText,
+  AlertTriangle, ExternalLink,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { posInventoryService } from '../../services/api';
+
+const inputCls = 'px-2.5 py-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition';
 
 export default function BOMEditor({ productoId, onClose, onSaved }) {
   const [ingredientes, setIngredientes] = useState([]);   // todos los del restaurante
@@ -103,107 +109,153 @@ export default function BOMEditor({ productoId, onClose, onSaved }) {
   const ingById = new Map(ingredientes.map((i) => [Number(i.id), i]));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-[color:var(--bg-elevated)] rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <header className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Receta del producto #{productoId}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bom-title"
+    >
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl w-full max-w-2xl border border-[color:var(--border)] max-h-[90vh] flex flex-col">
+        <header className="flex items-center justify-between p-4 border-b border-[color:var(--border)]">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+              aria-hidden="true"
+            >
+              <ChefHat className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 id="bom-title" className="text-lg font-bold">Receta del producto</h2>
+              <p className="text-xs text-[color:var(--text-muted)]">Producto #{productoId}</p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded hover:bg-[color:var(--bg)]"
+            className="p-2 rounded-lg hover:bg-[color:var(--bg)] transition-colors"
             aria-label="Cerrar"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </header>
 
-        {error && (
-          <div className="mb-3 px-3 py-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <p className="text-sm text-[color:var(--text-muted)]">Cargando…</p>
-        ) : ingredientes.length === 0 ? (
-          <p className="text-sm text-[color:var(--text-muted)]">
-            No tenés ingredientes cargados. Creá primero los ingredientes en{' '}
-            <a href="/pos/inventario" className="text-primary underline">Inventario</a>.
-          </p>
-        ) : (
-          <>
-            <div className="space-y-2 mb-4">
-              {items.length === 0 && (
-                <p className="text-sm text-[color:var(--text-muted)] italic">
-                  La receta está vacía. Este producto no descontará stock al venderse.
-                </p>
-              )}
-              {items.map((it, idx) => {
-                const ing = ingById.get(Number(it.ingrediente_id));
-                return (
-                  <div
-                    key={`${it.ingrediente_id}-${idx}`}
-                    className="flex items-center gap-2 p-2 rounded border border-[color:var(--border)] bg-[color:var(--bg)]"
-                  >
-                    <select
-                      value={it.ingrediente_id}
-                      onChange={(e) => updateLinea(idx, 'ingrediente_id', Number(e.target.value))}
-                      className="flex-1 px-2 py-1 rounded border border-[color:var(--border)] text-sm bg-[color:var(--bg-elevated)]"
-                    >
-                      {ingredientes.map((ingOpt) => (
-                        <option key={ingOpt.id} value={ingOpt.id}>
-                          {ingOpt.nombre} ({ingOpt.unidad})
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      step="0.001"
-                      min="0"
-                      value={it.cantidad}
-                      onChange={(e) => updateLinea(idx, 'cantidad', e.target.value)}
-                      placeholder="Cantidad"
-                      className="w-24 px-2 py-1 rounded border border-[color:var(--border)] text-sm font-mono bg-[color:var(--bg-elevated)]"
-                    />
-                    <span className="text-xs text-[color:var(--text-muted)] w-12">
-                      {ing?.unidad || ''}
-                    </span>
-                    <input
-                      type="text"
-                      value={it.notas || ''}
-                      onChange={(e) => updateLinea(idx, 'notas', e.target.value)}
-                      placeholder="Notas"
-                      maxLength={255}
-                      className="flex-1 px-2 py-1 rounded border border-[color:var(--border)] text-sm bg-[color:var(--bg-elevated)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeLinea(idx)}
-                      className="p-1 rounded text-rose-400 hover:bg-rose-500/10"
-                      aria-label="Quitar"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={addLinea}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-dashed border-[color:var(--border)] text-sm hover:bg-[color:var(--bg)]"
+        <div className="p-4 overflow-y-auto flex-1">
+          {error && (
+            <div
+              role="alert"
+              className="mb-3 px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start gap-2"
             >
-              <Plus className="w-4 h-4" /> Agregar ingrediente
-            </button>
-          </>
-        )}
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-[color:var(--border)]">
+          {loading ? (
+            <div className="p-8 text-center text-[color:var(--text-muted)] flex flex-col items-center gap-2">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span className="text-sm">Cargando receta…</span>
+            </div>
+          ) : ingredientes.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--bg)] p-8 text-center">
+              <ChefHat className="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true" />
+              <p className="text-sm text-[color:var(--text)] font-medium">
+                No tenés ingredientes cargados
+              </p>
+              <p className="text-xs text-[color:var(--text-muted)] mt-1 mb-3">
+                Primero creá los ingredientes en Inventario.
+              </p>
+              <Link
+                to="/pos/inventario"
+                onClick={onClose}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[color:var(--primary,#3b82f6)] hover:underline"
+              >
+                Ir a Inventario <ExternalLink className="w-3 h-3" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2 mb-3">
+                {items.length === 0 && (
+                  <div className="rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--bg)] p-6 text-center">
+                    <FileText className="w-7 h-7 mx-auto mb-2 opacity-30" aria-hidden="true" />
+                    <p className="text-sm text-[color:var(--text-muted)] italic">
+                      La receta está vacía. Este producto no descontará stock al venderse.
+                    </p>
+                  </div>
+                )}
+                {items.map((it, idx) => {
+                  const ing = ingById.get(Number(it.ingrediente_id));
+                  return (
+                    <div
+                      key={`${it.ingrediente_id}-${idx}`}
+                      className="flex flex-wrap md:flex-nowrap items-center gap-2 p-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)]"
+                    >
+                      <select
+                        value={it.ingrediente_id}
+                        onChange={(e) => updateLinea(idx, 'ingrediente_id', Number(e.target.value))}
+                        aria-label="Ingrediente"
+                        className={`${inputCls} flex-1 min-w-0`}
+                      >
+                        {ingredientes.map((ingOpt) => (
+                          <option key={ingOpt.id} value={ingOpt.id}>
+                            {ingOpt.nombre} ({ingOpt.unidad})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={it.cantidad}
+                          onChange={(e) => updateLinea(idx, 'cantidad', e.target.value)}
+                          placeholder="0.000"
+                          aria-label="Cantidad"
+                          className={`${inputCls} w-24 font-mono`}
+                        />
+                        <span className="text-xs text-[color:var(--text-muted)] w-10 truncate">
+                          {ing?.unidad || ''}
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={it.notas || ''}
+                        onChange={(e) => updateLinea(idx, 'notas', e.target.value)}
+                        placeholder="Notas"
+                        maxLength={255}
+                        aria-label="Notas"
+                        className={`${inputCls} flex-1 min-w-0`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLinea(idx)}
+                        className="p-1.5 rounded-md text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        aria-label="Quitar ingrediente"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={addLinea}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-[color:var(--border)] text-sm font-medium hover:bg-[color:var(--bg)] hover:border-[color:var(--primary,#3b82f6)]/40 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Agregar ingrediente
+              </button>
+            </>
+          )}
+        </div>
+
+        <footer className="p-4 border-t border-[color:var(--border)] flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-md border border-[color:var(--border)] text-sm"
+            className="px-4 py-2.5 rounded-lg border border-[color:var(--border)] hover:bg-[color:var(--bg)] text-sm font-medium transition-colors"
             disabled={saving}
           >
             Cancelar
@@ -212,12 +264,15 @@ export default function BOMEditor({ productoId, onClose, onSaved }) {
             type="button"
             onClick={handleSave}
             disabled={saving || loading}
-            className="inline-flex items-center gap-1 px-4 py-2 rounded-md bg-primary text-white text-sm disabled:opacity-50"
+            className="ml-auto inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-sm"
           >
-            <Save className="w-4 h-4" />
-            {saving ? 'Guardando…' : 'Guardar receta'}
+            {saving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Guardando…</>
+            ) : (
+              <><Save className="w-4 h-4" /> Guardar receta</>
+            )}
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );

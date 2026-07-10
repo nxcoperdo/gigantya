@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Banknote, RefreshCw, Receipt, Check, X, Plus, Printer,
+  MapPin, ShoppingBasket, Bike, Clock, Loader2,
 } from 'lucide-react';
 import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import socketService from '../../services/socket';
@@ -32,6 +33,18 @@ import CashCountModal from '../../components/pos/CashCountModal';
 import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
 
 const POLL_MS = 15_000;
+
+function TipoIcon({ pedido }) {
+  if (pedido.mesa_id) return { Icon: MapPin, label: `Mesa ${pedido.mesa_id}` };
+  if (pedido.es_retiro_local) return { Icon: ShoppingBasket, label: 'Recoger' };
+  return { Icon: Bike, label: 'Domicilio' };
+}
+
+const ESTADO_PILL = {
+  Pendiente:  'bg-amber-500/15 text-amber-200 border border-amber-500/30',
+  Listo:      'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30',
+  Entregado:  'bg-zinc-500/15 text-zinc-200 border border-zinc-500/30',
+};
 
 export default function CashierPage() {
   // Mismo hook que KDS/OrdersList: para dueños `user.restaurante_id` es
@@ -54,6 +67,7 @@ export default function CashierPage() {
   const [pendientes, setPendientes] = useState([]);
   const [cobradosHoy, setCobradosHoy] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   // Cobre
@@ -97,13 +111,16 @@ export default function CashierPage() {
   useEffect(() => { loadSesion(); }, [loadSesion]);
 
   // ===== Pedidos =====
-  const loadPendientes = useCallback(async () => {
+  const loadPendientes = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true);
     try {
       // Pendiente y Listo son los estados cobrables (no Cancelado, no Entregado).
       const r = await posOrdersService.list({ estado: 'Pendiente,Listo' });
       setPendientes(r.data.pedidos || []);
     } catch (e) {
       setError(e.response?.data?.error || e.message);
+    } finally {
+      if (!silent) setRefreshing(false);
     }
   }, []);
 
@@ -134,7 +151,7 @@ export default function CashierPage() {
   // Polling suave para mantener frescos los pendientes (10s del KDS es
   // demasiado rápido; caja puede refrescarse cada 15s).
   useEffect(() => {
-    const t = setInterval(() => { loadPendientes(); loadCobradosHoy(); }, POLL_MS);
+    const t = setInterval(() => { loadPendientes(true); loadCobradosHoy(); }, POLL_MS);
     return () => clearInterval(t);
   }, [loadPendientes, loadCobradosHoy]);
 
@@ -143,8 +160,8 @@ export default function CashierPage() {
     if (!restauranteId) return undefined;
     socketService.connectOrders();
     socketService.joinRestaurant(restauranteId, user.id);
-    const onStatus = () => { loadPendientes(); loadCobradosHoy(); };
-    const onCharged = () => { loadPendientes(); loadCobradosHoy(); };
+    const onStatus = () => { loadPendientes(true); loadCobradosHoy(); };
+    const onCharged = () => { loadPendientes(true); loadCobradosHoy(); };
     socketService.onStatusUpdate(onStatus);
     // El evento "pos:order_charged" se emite en el backend; usamos el
     // mismo handler (si no existe el método onOrderCharged, lo creamos).
@@ -214,53 +231,74 @@ export default function CashierPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header: estado de caja */}
-      <header className="flex items-center gap-2 flex-wrap">
-        <Banknote className="w-6 h-6" />
-        <h1 className="text-2xl font-bold">Caja</h1>
+      {/* Header */}
+      <header className="flex items-center gap-3 flex-wrap">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+          aria-hidden="true"
+        >
+          <Banknote className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold leading-tight">Caja</h1>
+          <p className="text-xs text-[color:var(--text-muted)]">
+            {pendientes.length} pendientes · {cobradosHoy.length} cobrados hoy
+          </p>
+        </div>
         <button
           onClick={() => { loadSesion(); loadPendientes(); loadCobradosHoy(); }}
-          className="ml-auto p-2 rounded hover:bg-[color:var(--bg-elevated)]"
+          disabled={refreshing}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm font-medium hover:bg-[color:var(--bg)] transition-colors disabled:opacity-50"
           type="button"
-          aria-label="Refrescar"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          Refrescar
         </button>
       </header>
 
       {error && (
-        <div className="px-3 py-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">Cerrar</button>
+        <div
+          role="alert"
+          className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center justify-between gap-2"
+        >
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-xs underline font-medium hover:no-underline">Cerrar</button>
         </div>
       )}
 
+      {/* Estado de caja */}
       <section
-        className={`rounded-lg border p-4 ${
+        className={[
+          'rounded-xl border-2 p-4 transition-colors',
           cajaAbierta
             ? 'border-emerald-500/40 bg-emerald-500/5'
-            : 'border-amber-500/40 bg-amber-500/5'
-        }`}
+            : 'border-amber-500/40 bg-amber-500/5',
+        ].join(' ')}
+        aria-label="Estado de la caja"
       >
         {loadingSesion ? (
-          <p className="text-sm text-[color:var(--text-muted)]">Cargando estado de caja…</p>
+          <p className="text-sm text-[color:var(--text-muted)] flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Cargando estado de caja…
+          </p>
         ) : cajaAbierta ? (
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold">Caja abierta</span>
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
+              <span className="font-bold text-emerald-300">Caja abierta</span>
             </div>
             <div className="text-sm">
               <span className="text-[color:var(--text-muted)]">Fondo:</span>{' '}
-              <span className="font-mono">{formatCurrency(sesion.monto_apertura)}</span>
+              <span className="font-mono font-semibold">{formatCurrency(sesion.monto_apertura)}</span>
             </div>
-            <div className="text-sm">
+            <div className="text-sm flex items-center gap-1">
+              <Clock className="w-3 h-3 text-[color:var(--text-muted)]" aria-hidden="true" />
               <span className="text-[color:var(--text-muted)]">Abierta:</span>{' '}
-              {formatDateTime(sesion.abierta_en)}
+              <span>{formatDateTime(sesion.abierta_en)}</span>
             </div>
             <button
               onClick={abrirCerrarCaja}
-              className="ml-auto inline-flex items-center gap-1 px-3 py-2 rounded-md bg-rose-500 text-white text-sm"
+              className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold active:scale-95 transition-all shadow-sm"
               type="button"
             >
               <X className="w-4 h-4" /> Cerrar caja
@@ -269,15 +307,15 @@ export default function CashierPage() {
         ) : (
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
-              <span className="font-semibold">Caja cerrada</span>
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" aria-hidden="true" />
+              <span className="font-bold text-amber-300">Caja cerrada</span>
             </div>
-            <p className="text-sm text-[color:var(--text-muted)]">
+            <p className="text-sm text-[color:var(--text-muted)] flex-1 min-w-0">
               Abrí la caja con un fondo inicial para empezar a cobrar.
             </p>
             <button
               onClick={() => setShowOpenModal(true)}
-              className="ml-auto inline-flex items-center gap-1 px-3 py-2 rounded-md bg-emerald-500 text-white text-sm"
+              className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold active:scale-95 transition-all shadow-sm"
               type="button"
             >
               <Plus className="w-4 h-4" /> Abrir caja
@@ -287,44 +325,50 @@ export default function CashierPage() {
       </section>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-[color:var(--border)]">
-        <button
-          onClick={() => setTab('pendientes')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 ${
-            tab === 'pendientes'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[color:var(--text-muted)]'
-          }`}
-          type="button"
-        >
-          Pendientes de pago
-          <span className="ml-2 text-xs">({pendientes.length})</span>
-        </button>
-        <button
-          onClick={() => setTab('cobrados')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 ${
-            tab === 'cobrados'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[color:var(--text-muted)]'
-          }`}
-          type="button"
-        >
-          Cobrados hoy
-          <span className="ml-2 text-xs">({cobradosHoy.length})</span>
-        </button>
+      <div className="flex items-center gap-1 border-b border-[color:var(--border)]" role="tablist">
+        {[
+          { key: 'pendientes', label: 'Pendientes de pago', count: pendientes.length },
+          { key: 'cobrados',   label: 'Cobrados hoy',       count: cobradosHoy.length },
+        ].map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={[
+              'px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors inline-flex items-center gap-2',
+              tab === t.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text)]',
+            ].join(' ')}
+            type="button"
+          >
+            {t.label}
+            <span className={[
+              'text-[10px] font-bold rounded-full px-1.5 py-0.5',
+              tab === t.key ? 'bg-primary/15' : 'bg-[color:var(--bg-elevated)]',
+            ].join(' ')}>
+              {t.count}
+            </span>
+          </button>
+        ))}
         {tab === 'cobrados' && (
-          <span className="ml-auto text-sm text-[color:var(--text-muted)]">
-            Total: <span className="font-mono font-semibold">{formatCurrency(totalCobrado)}</span>
+          <span className="ml-auto text-sm text-[color:var(--text-muted)] inline-flex items-center gap-2">
+            Total del día:
+            <span className="font-mono font-bold text-base text-[color:var(--text)]">{formatCurrency(totalCobrado)}</span>
           </span>
         )}
       </div>
 
       {loadingPedidos ? (
-        <p className="text-sm text-[color:var(--text-muted)] p-4">Cargando pedidos…</p>
+        <div className="p-8 text-center text-[color:var(--text-muted)] flex flex-col items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-sm">Cargando pedidos…</span>
+        </div>
       ) : tab === 'pendientes' ? (
-        <PedidosTable pedidos={pendientes} onCharge={(p) => setPedidoACobrar(p)} />
+        <PedidosPendientes pedidos={pendientes} onCharge={(p) => setPedidoACobrar(p)} />
       ) : (
-        <PedidosTableCobrados pedidos={cobradosHoy} onReprint={reimprimirRecibo} />
+        <PedidosCobrados pedidos={cobradosHoy} onReprint={reimprimirRecibo} />
       )}
 
       {/* Modales */}
@@ -356,92 +400,106 @@ export default function CashierPage() {
 // Sub-componentes (archivo chico, sin necesidad de archivo aparte)
 // =====================================================================
 
-function PedidosTable({ pedidos, onCharge }) {
+function PedidosPendientes({ pedidos, onCharge }) {
   if (pedidos.length === 0) {
     return (
-      <div className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-lg p-8 text-center text-sm text-[color:var(--text-muted)]">
-        No hay pedidos pendientes de pago.
+      <div className="bg-[color:var(--bg-elevated)] border-2 border-dashed border-[color:var(--border)] rounded-xl p-10 text-center">
+        <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
+        <p className="text-base font-semibold text-[color:var(--text)]">No hay pedidos pendientes</p>
+        <p className="text-sm text-[color:var(--text-muted)] mt-1">
+          Los pedidos que estén en estado "Listo" aparecerán acá para cobrar.
+        </p>
       </div>
     );
   }
   return (
     <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {pedidos.map((p) => (
-        <li
-          key={p.id}
-          className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-lg p-3"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-bold">#{p.id}</span>
-            <span className="text-xs text-[color:var(--text-muted)]">
-              {p.mesa_id
-                ? `Mesa ${p.mesa_id}`
-                : p.es_retiro_local ? 'Recoger' : 'Domicilio'}
-            </span>
-          </div>
-          <div className="text-xs text-[color:var(--text-muted)] mb-1">
-            {new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-            {' · '}
-            <span className={
-              p.estado === 'Listo' ? 'text-emerald-400' : 'text-amber-400'
-            }>
-              {p.estado}
-            </span>
-          </div>
-          {p.cliente_nombre && (
-            <div className="text-xs mb-2">{p.cliente_nombre}</div>
-          )}
-          <div className="flex items-center justify-between mt-2">
-            <span className="font-mono font-semibold text-lg">
-              {formatCurrency(p.total)}
-            </span>
-            <button
-              onClick={() => onCharge(p)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-emerald-500 text-white text-sm"
-              type="button"
-            >
-              <Check className="w-3 h-3" /> Cobrar
-            </button>
-          </div>
-        </li>
-      ))}
+      {pedidos.map((p) => {
+        const { Icon, label: tipoLabel } = TipoIcon({ pedido: p });
+        const pill = ESTADO_PILL[p.estado] || 'bg-zinc-500/15 text-zinc-200';
+        return (
+          <li
+            key={p.id}
+            className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-xl p-3.5 shadow-sm hover:shadow-md hover:border-[color:var(--primary,#3b82f6)]/40 transition-all"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-bold text-base">#{p.id}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${pill}`}>
+                {p.estado}
+              </span>
+            </div>
+            <div className="text-xs text-[color:var(--text-muted)] flex items-center gap-1 mb-1">
+              <Icon className="w-3 h-3" aria-hidden="true" />
+              {tipoLabel}
+              <span aria-hidden="true">·</span>
+              <span>{new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            {p.cliente_nombre && (
+              <div className="text-xs text-[color:var(--text)] mb-2 truncate font-medium">{p.cliente_nombre}</div>
+            )}
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-[color:var(--border)]">
+              <span className="font-mono font-extrabold text-lg">
+                {formatCurrency(p.total)}
+              </span>
+              <button
+                onClick={() => onCharge(p)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold active:scale-95 transition-all shadow-sm"
+                type="button"
+              >
+                <Check className="w-3.5 h-3.5" /> Cobrar
+              </button>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function PedidosTableCobrados({ pedidos, onReprint }) {
+function PedidosCobrados({ pedidos, onReprint }) {
   if (pedidos.length === 0) {
     return (
-      <div className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-lg p-8 text-center text-sm text-[color:var(--text-muted)]">
-        Aún no se cobraron pedidos hoy.
+      <div className="bg-[color:var(--bg-elevated)] border-2 border-dashed border-[color:var(--border)] rounded-xl p-10 text-center">
+        <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
+        <p className="text-base font-semibold text-[color:var(--text)]">Aún no se cobraron pedidos hoy</p>
+        <p className="text-sm text-[color:var(--text-muted)] mt-1">
+          Cuando cobres tu primer pedido, aparecerá acá.
+        </p>
       </div>
     );
   }
   return (
     <ul className="space-y-2">
-      {pedidos.map((p) => (
-        <li
-          key={p.id}
-          className="flex items-center justify-between bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-md p-3"
-        >
-          <div>
-            <div className="font-semibold text-sm">
-              #{p.id} · <span className="font-mono">{formatCurrency(p.total)}</span>
-            </div>
-            <div className="text-xs text-[color:var(--text-muted)]">
-              {new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-              {p.cliente_nombre ? ` · ${p.cliente_nombre}` : ''}
-            </div>
-          </div>
-          <button
-            onClick={() => onReprint(p.id)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-[color:var(--border)] text-sm hover:bg-[color:var(--bg)]"
-            type="button"
+      {pedidos.map((p) => {
+        const { Icon, label: tipoLabel } = TipoIcon({ pedido: p });
+        return (
+          <li
+            key={p.id}
+            className="flex items-center justify-between gap-3 bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-xl p-3 hover:border-[color:var(--primary,#3b82f6)]/40 transition-colors"
           >
-            <Printer className="w-3 h-3" /> Recibo
-          </button>
-        </li>
-      ))}
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
+                <span>#{p.id}</span>
+                <span className="font-mono font-extrabold text-emerald-300">{formatCurrency(p.total)}</span>
+              </div>
+              <div className="text-xs text-[color:var(--text-muted)] flex items-center gap-1 mt-0.5">
+                <Icon className="w-3 h-3" aria-hidden="true" />
+                {tipoLabel}
+                <span aria-hidden="true">·</span>
+                <span>{new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                {p.cliente_nombre && <><span aria-hidden="true">·</span><span>{p.cliente_nombre}</span></>}
+              </div>
+            </div>
+            <button
+              onClick={() => onReprint(p.id)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[color:var(--border)] hover:bg-[color:var(--bg)] text-sm font-medium transition-colors active:scale-95"
+              type="button"
+            >
+              <Printer className="w-3.5 h-3.5" /> Recibo
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -467,33 +525,56 @@ function OpenCajaModal({ onClose, onConfirm }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-[color:var(--bg-elevated)] rounded-lg w-full max-w-md border border-[color:var(--border)] shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-[color:var(--bg-elevated)] rounded-2xl w-full max-w-md border border-[color:var(--border)] shadow-2xl">
         <header className="flex items-center justify-between p-4 border-b border-[color:var(--border)]">
-          <h2 className="text-lg font-semibold">Abrir caja</h2>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[color:var(--bg)]" type="button">
-            <X className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              aria-hidden="true"
+            >
+              <Banknote className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-lg font-bold">Abrir caja</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-[color:var(--bg)] transition-colors"
+            type="button"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
           </button>
         </header>
         <div className="p-4 space-y-3">
           <p className="text-sm text-[color:var(--text-muted)]">
             Indicá el fondo inicial de la caja registradora (efectivo disponible al abrir).
           </p>
-          <label className="block text-xs text-[color:var(--text-muted)] mb-1">
-            Fondo de apertura
+          <label className="block">
+            <span className="block text-xs font-semibold text-[color:var(--text-muted)] mb-1">
+              Fondo de apertura
+            </span>
+            <input
+              type="number"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              min="0"
+              step="0.01"
+              placeholder="0"
+              className="w-full px-3 py-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition"
+              autoFocus
+            />
           </label>
-          <input
-            type="number"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            min="0"
-            step="0.01"
-            placeholder="0"
-            className="w-full px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] text-sm"
-            autoFocus
-          />
           {error && (
-            <div className="px-3 py-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
+            <div
+              role="alert"
+              className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm"
+            >
               {error}
             </div>
           )}
@@ -501,7 +582,7 @@ function OpenCajaModal({ onClose, onConfirm }) {
         <footer className="p-4 border-t border-[color:var(--border)] flex items-center gap-2">
           <button
             onClick={onClose}
-            className="px-3 py-2 rounded-md border border-[color:var(--border)] text-sm"
+            className="px-4 py-2.5 rounded-lg border border-[color:var(--border)] hover:bg-[color:var(--bg)] text-sm font-medium transition-colors"
             type="button"
             disabled={enviando}
           >
@@ -510,10 +591,14 @@ function OpenCajaModal({ onClose, onConfirm }) {
           <button
             onClick={confirmar}
             disabled={enviando}
-            className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-white text-sm font-medium disabled:opacity-50"
+            className="ml-auto inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-sm"
             type="button"
           >
-            <Banknote className="w-4 h-4" /> {enviando ? 'Abriendo…' : 'Abrir caja'}
+            {enviando ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Abriendo…</>
+            ) : (
+              <><Banknote className="w-4 h-4" /> Abrir caja</>
+            )}
           </button>
         </footer>
       </div>

@@ -204,17 +204,54 @@ export async function listPosOrders(req, res) {
     if (canal)   { filters.push('p.canal = ?');   params.push(canal); }
     const where = filters.length > 0 ? `AND ${filters.join(' AND ')}` : '';
     const { query } = await import('../config/database.js');
+    // JOIN a items_pedido + productos para que el KDS pueda mostrar QUÉ
+    // cocinar (y qué ingredientes fueron quitados) sin hacer una segunda
+    // request por pedido. Usamos JSON_ARRAYAGG (MySQL 8) para agrupar los
+    // items por pedido en una sola query (evita N+1).
+    //
+    // Notas de esquema:
+    //   - items_pedido.especificaciones: texto libre por item (ej "sin picante")
+    //   - items_pedido.removidos_json: JSON con la lista de ingredientes quitados
+    const itemsSubquery = `(
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', ip.id,
+          'producto_id', ip.producto_id,
+          'producto_nombre', pr.nombre,
+          'cantidad', ip.cantidad,
+          'precio_unitario', ip.precio_unitario,
+          'especificaciones', ip.especificaciones,
+          'removidos_json', ip.removidos_json
+        )
+      )
+      FROM items_pedido ip
+      LEFT JOIN productos pr ON ip.producto_id = pr.id
+      WHERE ip.pedido_id = p.id
+    )`;
     const rows = await query(
-      `SELECT p.*, m.nombre AS mesa_nombre
+      `SELECT p.*, m.nombre AS mesa_nombre, u.nombre AS cliente_nombre,
+              ${itemsSubquery} AS items
          FROM pedidos p
          LEFT JOIN mesas m ON p.mesa_id = m.id
+         LEFT JOIN usuarios u ON p.usuario_id = u.id
         WHERE p.restaurante_id = ?
         ${where}
         ORDER BY p.creado_en DESC
         LIMIT 200`,
       params
     );
-    res.json({ total: rows.length, pedidos: rows });
+    // items viene como string JSON (mysql2 devuelve JSON_ARRAYAGG como
+    // string por seguridad) o ya parseado según el driver; lo
+    // normalizamos a array de objetos.
+    const pedidos = rows.map((r) => {
+      let items = r.items;
+      if (typeof items === 'string') {
+        try { items = JSON.parse(items); } catch { items = []; }
+      }
+      if (!Array.isArray(items)) items = [];
+      return { ...r, items };
+    });
+    res.json({ total: pedidos.length, pedidos });
   } catch (err) {
     console.error('[posOrder] list error:', err);
     res.status(500).json({ error: err.message || 'Error listando pedidos' });

@@ -26,6 +26,9 @@ import {
   Users,
   PieChart as PieIcon,
   Activity,
+  RefreshCw,
+  Loader2,
+  Receipt,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -34,6 +37,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import { posReportsService } from '../../services/api';
+import { formatCurrency } from '../../utils/formatHelper';
 
 // Paleta de colores estable (no se randomiza entre renders para
 // evitar "parpadeo" cuando se re-renderiza el donut).
@@ -41,8 +45,7 @@ const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b
 
 /** Formatea número como COP (sin símbolo, con separador de miles). */
 function fmtCOP(n) {
-  const v = Number(n || 0);
-  return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(v);
+  return formatCurrency(n);
 }
 
 /** Formatea fecha corta. Acepta 'YYYY-MM-DD', 'YYYY-MM' o 'YYYYWww' (semana). */
@@ -72,6 +75,8 @@ function defaultRange() {
     hasta: hasta.toISOString().slice(0, 10),
   };
 }
+
+const inputCls = 'px-2.5 py-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition';
 
 export default function ReportsPage() {
   const [rango, setRango] = useState(defaultRange);
@@ -110,68 +115,79 @@ export default function ReportsPage() {
   }, [load]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="w-6 h-6" />
-            Reportes
-          </h1>
-          <p className="text-sm text-[color:var(--text-muted)]">
-            Ventas, productos más vendidos y métodos de pago del restaurante.
-          </p>
+    <div className="space-y-5">
+      {/* Header con filtros */}
+      <header className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)' }}
+            aria-hidden="true"
+          >
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold leading-tight">Reportes</h1>
+            <p className="text-xs text-[color:var(--text-muted)]">
+              Ventas, productos más vendidos y métodos de pago del restaurante.
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[color:var(--primary,#3b82f6)] hover:opacity-90 text-white text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all shadow-sm"
+            type="button"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Cargando…' : 'Refrescar'}
+          </button>
         </div>
-        <div className="flex items-end gap-2">
-          <div>
-            <label className="block text-xs text-[color:var(--text-muted)] mb-1">
-              <Calendar className="w-3 h-3 inline mr-1" />
-              Desde
-            </label>
+
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="block">
+            <span className="block text-[10px] uppercase tracking-wider font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> Desde
+            </span>
             <input
               type="date"
               value={rango.desde}
               onChange={(e) => setRango((r) => ({ ...r, desde: e.target.value }))}
-              className="input input-small"
+              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="block text-xs text-[color:var(--text-muted)] mb-1">
-              <Calendar className="w-3 h-3 inline mr-1" />
-              Hasta
-            </label>
+          </label>
+          <label className="block">
+            <span className="block text-[10px] uppercase tracking-wider font-semibold text-[color:var(--text-muted)] mb-1 inline-flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> Hasta
+            </span>
             <input
               type="date"
               value={rango.hasta}
               onChange={(e) => setRango((r) => ({ ...r, hasta: e.target.value }))}
-              className="input input-small"
+              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="block text-xs text-[color:var(--text-muted)] mb-1">
+          </label>
+          <label className="block">
+            <span className="block text-[10px] uppercase tracking-wider font-semibold text-[color:var(--text-muted)] mb-1">
               Agrupar por
-            </label>
+            </span>
             <select
               value={agrupadoPor}
               onChange={(e) => setAgrupadoPor(e.target.value)}
-              className="input input-small"
+              className={inputCls}
             >
               <option value="dia">Día</option>
               <option value="semana">Semana</option>
               <option value="mes">Mes</option>
             </select>
-          </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="btn btn-primary btn-small"
-          >
-            {loading ? 'Cargando…' : 'Refrescar'}
-          </button>
+          </label>
         </div>
-      </div>
+      </header>
 
       {error && (
-        <div className="card border border-red-300 bg-red-50 text-red-700 text-sm">
+        <div
+          role="alert"
+          className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm"
+        >
           {error}
         </div>
       )}
@@ -179,38 +195,46 @@ export default function ReportsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard
-          icon={ShoppingBag} label="Pedidos" value={kpis?.total_pedidos ?? '—'}
-          loading={loading}
+          Icon={ShoppingBag} label="Pedidos" value={kpis?.total_pedidos ?? '—'}
+          loading={loading} tone="blue"
         />
         <KpiCard
-          icon={DollarSign} label="Revenue" value={kpis ? `$${fmtCOP(kpis.revenue_total)}` : '—'}
-          loading={loading}
+          Icon={DollarSign} label="Revenue" value={kpis ? `$${fmtCOP(kpis.revenue_total)}` : '—'}
+          loading={loading} tone="emerald"
         />
         <KpiCard
-          icon={TrendingUp} label="Ticket prom."
+          Icon={TrendingUp} label="Ticket prom."
           value={kpis ? `$${fmtCOP(kpis.ticket_promedio)}` : '—'}
-          loading={loading}
+          loading={loading} tone="violet"
         />
         <KpiCard
-          icon={Users} label="Staff activos" value={kpis?.total_staff_activos ?? '—'}
-          loading={loading}
+          Icon={Users} label="Staff activos" value={kpis?.total_staff_activos ?? '—'}
+          loading={loading} tone="amber"
         />
         <KpiCard
-          icon={Hash} label="Items vendidos" value={kpis?.total_items_vendidos ?? '—'}
-          loading={loading}
+          Icon={Hash} label="Items vendidos" value={kpis?.total_items_vendidos ?? '—'}
+          loading={loading} tone="rose"
         />
       </div>
 
       {/* Revenue por período */}
-      <div className="card">
+      <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Activity className="w-5 h-5" />
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
+            aria-hidden="true"
+          >
+            <Activity className="w-4 h-4 text-white" />
+          </div>
           Revenue por {agrupadoPor}
         </h2>
         {revenue.length === 0 ? (
-          <p className="text-sm text-[color:var(--text-muted)] py-8 text-center">
-            {loading ? 'Cargando…' : 'Sin datos en el rango seleccionado.'}
-          </p>
+          <EmptyChart
+            Icon={Activity}
+            title="Sin datos en el rango seleccionado"
+            loading={loading}
+          />
         ) : (
           <div style={{ width: '100%', height: 280 }}>
             <ResponsiveContainer>
@@ -238,19 +262,27 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Top productos */}
-        <div className="card">
+        <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
           <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              aria-hidden="true"
+            >
+              <BarChart3 className="w-4 h-4 text-white" />
+            </div>
             Top 10 productos
           </h2>
           {top.length === 0 ? (
-            <p className="text-sm text-[color:var(--text-muted)] py-8 text-center">
-              {loading ? 'Cargando…' : 'Sin datos en el rango seleccionado.'}
-            </p>
+            <EmptyChart
+              Icon={Receipt}
+              title="Sin ventas en el rango"
+              loading={loading}
+            />
           ) : (
             <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer>
@@ -268,23 +300,31 @@ export default function ReportsPage() {
                       name === 'revenue' ? 'Revenue' : 'Unidades',
                     ]}
                   />
-                  <Bar dataKey="unidades_vendidas" name="Unidades" fill="#3b82f6" />
+                  <Bar dataKey="unidades_vendidas" name="Unidades" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Métodos de pago */}
-        <div className="card">
+        <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
           <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <PieIcon className="w-5 h-5" />
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}
+              aria-hidden="true"
+            >
+              <PieIcon className="w-4 h-4 text-white" />
+            </div>
             Métodos de pago
           </h2>
           {metodos.length === 0 ? (
-            <p className="text-sm text-[color:var(--text-muted)] py-8 text-center">
-              {loading ? 'Cargando…' : 'Sin pagos en el rango seleccionado.'}
-            </p>
+            <EmptyChart
+              Icon={PieIcon}
+              title="Sin pagos en el rango"
+              loading={loading}
+            />
           ) : (
             <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer>
@@ -311,24 +351,51 @@ export default function ReportsPage() {
               </ResponsiveContainer>
             </div>
           )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+const TONE_GRAD = {
+  blue:   { bg: 'rgba(59,130,246,0.12)',  fg: '#60a5fa' },
+  emerald:{ bg: 'rgba(16,185,129,0.12)',  fg: '#34d399' },
+  violet: { bg: 'rgba(139,92,246,0.12)',  fg: '#a78bfa' },
+  amber:  { bg: 'rgba(245,158,11,0.12)',  fg: '#fbbf24' },
+  rose:   { bg: 'rgba(244,63,94,0.12)',   fg: '#fb7185' },
+};
+
+function KpiCard({ Icon, label, value, loading: isLoading, tone = 'blue' }) {
+  const c = TONE_GRAD[tone] || TONE_GRAD.blue;
+  return (
+    <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-3.5 hover:border-[color:var(--primary,#3b82f6)]/40 transition-colors">
+      <div className="flex items-center gap-3">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: c.bg }}
+        >
+          <Icon className="w-5 h-5" style={{ color: c.fg }} aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] text-[color:var(--text-muted)] uppercase tracking-wider font-semibold">
+            {label}
+          </p>
+          <p className="text-lg font-bold truncate font-mono">
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : value}
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function KpiCard({ icon: Icon, label, value, loading: isLoading }) {
+function EmptyChart({ Icon, title, loading: isLoading }) {
   return (
-    <div className="card flex items-center gap-3">
-      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-[color:var(--text-muted)] truncate">{label}</p>
-        <p className="text-lg font-semibold truncate">
-          {isLoading ? '…' : value}
-        </p>
-      </div>
+    <div className="py-10 text-center text-[color:var(--text-muted)] flex flex-col items-center gap-2">
+      <Icon className="w-7 h-7 opacity-30" aria-hidden="true" />
+      <p className="text-sm font-medium">
+        {isLoading ? 'Cargando…' : title}
+      </p>
     </div>
   );
 }

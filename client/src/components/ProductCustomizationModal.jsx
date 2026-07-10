@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Minus, X, ListPlus, ShoppingCart, AlertCircle, ListChecks } from 'lucide-react';
+import { Plus, Minus, X, ListPlus, ShoppingCart, AlertCircle, ListChecks, Check } from 'lucide-react';
 import { formatCurrency } from '../utils/formatHelper';
 
 /**
@@ -9,13 +9,78 @@ import { formatCurrency } from '../utils/formatHelper';
  * - isOpen:   bool
  * - onClose:  () => void
  * - producto: { id, nombre, descripcion, precio, imagen_url, restaurante_id }
- * - paquete:  { grupos, adiciones, removibles } desde el backend
+ * - paquete:  { grupos, adiciones, removibles } desde el backend.
+ *             Cada grupo puede traer (Fase 10): obligatorio, min_selecciones,
+ *             max_selecciones. Si no los trae, se asume opcional libre.
  * - onAdd:    ({ cantidad, adiciones, removidos, nota,
  *                precioUnitarioFinal, subtotalItem }) => void
  *
  * La forma del payload que entrega onAdd está alineada con la shape
  * que consume CartContext.addToCart.
+ *
+ * Comportamiento por grupo (matriz de Fase 10):
+ *   - obligatorio=0, min=0, max=1   → radio chips, opción "Sin [grupo]"
+ *   - obligatorio=0, min=0, max>=2  → +/- por adición
+ *   - obligatorio=1, min=1, max=1   → radio chips (no se deselecciona)
+ *   - obligatorio=1, min=1, max>=2  → +/- por adición
+ *
+ * El botón "Agregar" queda disabled si algún grupo obligatorio está
+ * incompleto (count < min_selecciones). El backend re-valida como
+ * defensa de profundidad (ver orderService.js:validateAdicionesYRemovibles).
  */
+
+// ========== Helpers puros (Fase 10) ==========
+
+/**
+ * Normaliza la config de un grupo y devuelve los campos que el render
+ * necesita. Maneja grupos sin las 3 columnas nuevas (shape viejo):
+ * en ese caso devuelve defaults `false / 0 / 99` (comportamiento
+ * idéntico al pre-existente).
+ */
+function getGrupoConfig(grupo) {
+  const obligatorio = !!grupo.obligatorio;
+  const min = Math.max(0, Math.floor(Number(grupo.min_selecciones) || 0));
+  const maxRaw = Math.floor(Number(grupo.max_selecciones) || 99);
+  // Defensa: si max < min (config inválida del admin), ajustar a min.
+  const max = Math.max(maxRaw, min);
+  const isSingle = max === 1;
+
+  let messageLabel = '';
+  if (obligatorio) {
+    if (min === 1 && max === 1) messageLabel = 'Obligatorio · elige 1 opción';
+    else if (min === max) messageLabel = `Obligatorio · elige ${max} opciones`;
+    else messageLabel = `Obligatorio · elige ${min}-${max} opciones`;
+  } else {
+    if (min === 0 && max === 1) messageLabel = 'Opcional';
+    else if (min === 0 && max >= 2) messageLabel = `Opcional · puedes elegir hasta ${max}`;
+    else messageLabel = `Opcional · elige ${min}-${max} opciones`;
+  }
+
+  return { id: grupo.id, nombre: grupo.nombre, obligatorio, min, max, isSingle, messageLabel };
+}
+
+/**
+ * Suma las cantidades de adiciones que pertenecen a `grupoId` en el
+ * state de UI. Devuelve 0 si el grupo no tiene adiciones elegidas.
+ */
+function getGrupoCount(grupoId, adicionesQty, todasAdiciones) {
+  let count = 0;
+  for (const a of todasAdiciones) {
+    if (Number(a.grupo_id) === Number(grupoId)) {
+      count += Number(adicionesQty[a.id] || 0);
+    }
+  }
+  return count;
+}
+
+/**
+ * ¿El grupo está completo según las reglas del local?
+ * - Si no es obligatorio, siempre está completo (puede elegir 0).
+ * - Si es obligatorio, count >= min_selecciones.
+ */
+function isGrupoCompleto(grupoCfg, count) {
+  return grupoCfg.obligatorio ? count >= grupoCfg.min : true;
+}
 export default function ProductCustomizationModal({
   isOpen,
   onClose,
@@ -79,6 +144,55 @@ export default function ProductCustomizationModal({
   );
   const hayRemovidos = removidos.size > 0;
   const hayNota = nota.trim().length > 0;
+
+  // ===== Fase 10: estado por grupo + puedeAgregar =====
+  // gruposConEstado = cada grupo con su config normalizada, las
+  // adiciones que le pertenecen, count y completado. puedeAgregar =
+  // todos los grupos están completos. El backend re-valida.
+  const gruposConEstado = useMemo(() => {
+    return grupos.map((g) => {
+      const cfg = getGrupoConfig(g);
+      const adicionesDelGrupo = todasAdiciones.filter(
+        (a) => Number(a.grupo_id) === Number(g.id)
+      );
+      const count = getGrupoCount(g.id, adicionesQty, todasAdiciones);
+      const completado = isGrupoCompleto(cfg, count);
+      return { ...cfg, adicionesDelGrupo, count, completado };
+    });
+  }, [grupos, todasAdiciones, adicionesQty]);
+
+  const puedeAgregar = useMemo(
+    () => gruposConEstado.every((g) => g.completado),
+    [gruposConEstado]
+  );
+
+  // Limpia todas las adiciones de un grupo específico. Usado por el
+  // chip "Sin [grupo]" cuando se deselecciona la única opción elegida.
+  const clearGrupo = (grupoId) => {
+    setAdicionesQty((prev) => {
+      const next = { ...prev };
+      for (const a of todasAdiciones) {
+        if (Number(a.grupo_id) === Number(grupoId)) delete next[a.id];
+      }
+      return next;
+    });
+  };
+
+  // Para radio (max=1): selecciona UNA opción del grupo. Si es la
+  // misma que ya estaba elegida, no hace nada (los obligatorios no se
+  // pueden deseleccionar; los opcionales tampoco, porque max=1 y borrar
+  // no tiene sentido — está el chip "Sin [grupo]").
+  const selectSingleEnGrupo = (grupoId, adicionId) => {
+    setAdicionesQty((prev) => {
+      const next = { ...prev };
+      // Limpiar todas las adiciones del grupo, después setear la nueva
+      for (const a of todasAdiciones) {
+        if (Number(a.grupo_id) === Number(grupoId)) delete next[a.id];
+      }
+      next[adicionId] = 1;
+      return next;
+    });
+  };
 
   function incAdicion(id) {
     setAdicionesQty((prev) => ({ ...prev, [id]: (Number(prev[id]) || 0) + 1 }));
@@ -195,28 +309,88 @@ export default function ProductCustomizationModal({
 
           {/* Body scrollable */}
           <div className="flex-1 overflow-y-auto p-5 space-y-6">
-            {/* Grupos de adiciones */}
-            {grupos.length > 0 &&
-              grupos.map((grupo) => {
-                const adicionesDelGrupo = todasAdiciones.filter(
-                  (a) => a.grupo_id === grupo.id
-                );
-                if (adicionesDelGrupo.length === 0) return null;
+            {/* Grupos de adiciones — Fase 10: render adaptativo por min/max */}
+            {gruposConEstado.length > 0 &&
+              gruposConEstado.map((g) => {
+                if (g.adicionesDelGrupo.length === 0) return null;
+                const mensajeColor = g.obligatorio
+                  ? (g.completado ? 'text-emerald-600' : 'text-rose-500')
+                  : 'text-[color:var(--text-muted)]';
                 return (
-                  <section key={grupo.id}>
-                    <h3 className="text-sm font-bold text-[color:var(--text-primary)] mb-2">
-                      {grupo.nombre}
-                    </h3>
+                  <section key={g.id}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-[color:var(--text-primary)]">
+                        {g.nombre}
+                      </h3>
+                      {g.obligatorio && !g.completado && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-300">
+                          Falta elegir
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      aria-live="polite"
+                      className={`text-xs font-medium mb-2 ${mensajeColor}`}
+                    >
+                      {g.messageLabel}
+                    </p>
                     <div className="space-y-2">
-                      {adicionesDelGrupo.map((a) => (
-                        <AdicionRow
-                          key={a.id}
-                          adicion={a}
-                          qty={adicionesQty[a.id] || 0}
-                          onInc={() => incAdicion(a.id)}
-                          onDec={() => decAdicion(a.id)}
-                        />
-                      ))}
+                      {g.isSingle ? (
+                        // ===== Radio chips (max=1) =====
+                        <div className="flex flex-wrap gap-2">
+                          {/* Chip "Sin [grupo]" solo para grupos opcionales */}
+                          {!g.obligatorio && (
+                            <button
+                              type="button"
+                              onClick={() => clearGrupo(g.id)}
+                              aria-pressed={g.count === 0}
+                              className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                                g.count === 0
+                                  ? 'bg-[color:var(--primary,#3b82f6)]/15 border-[color:var(--primary,#3b82f6)] text-[color:var(--primary,#3b82f6)]'
+                                  : 'border-[color:var(--border-default)] text-[color:var(--text-primary)] hover:border-[color:var(--primary,#3b82f6)]/60'
+                              }`}
+                            >
+                              Sin {g.nombre}
+                            </button>
+                          )}
+                          {g.adicionesDelGrupo.map((a) => {
+                            const seleccionado = Number(adicionesQty[a.id] || 0) > 0;
+                            const precio = a.precio_extra == null ? null : Number(a.precio_extra);
+                            return (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => selectSingleEnGrupo(g.id, a.id)}
+                                aria-pressed={seleccionado}
+                                className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors inline-flex items-center gap-1 ${
+                                  seleccionado
+                                    ? 'bg-[color:var(--primary,#3b82f6)]/15 border-[color:var(--primary,#3b82f6)] text-[color:var(--primary,#3b82f6)]'
+                                    : 'border-[color:var(--border-default)] text-[color:var(--text-primary)] hover:border-[color:var(--primary,#3b82f6)]/60'
+                                }`}
+                              >
+                                {seleccionado && <Check size={14} aria-hidden="true" />}
+                                {a.nombre}
+                                {precio != null && precio > 0 && (
+                                  <span className="text-[10px] font-mono opacity-75">
+                                    + {formatCurrency(precio)}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        // ===== +/- por adición (max >= 2) =====
+                        g.adicionesDelGrupo.map((a) => (
+                          <AdicionRow
+                            key={a.id}
+                            adicion={a}
+                            qty={adicionesQty[a.id] || 0}
+                            onInc={() => incAdicion(a.id)}
+                            onDec={() => decAdicion(a.id)}
+                          />
+                        ))
+                      )}
                     </div>
                   </section>
                 );
@@ -376,7 +550,9 @@ export default function ProductCustomizationModal({
 
             <button
               onClick={handleAdd}
-              className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+              disabled={!puedeAgregar}
+              title={!puedeAgregar ? 'Completá los grupos obligatorios' : undefined}
+              className="btn btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingCart size={18} />
               <span className="text-sm">Agregar · {formatCurrency(subtotalItem)}</span>

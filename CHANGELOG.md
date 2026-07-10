@@ -1,5 +1,51 @@
 # Changelog
 
+## [Fase 10] — Modificadores configurables (2026-07-09)
+
+Sistema de modificadores estilo Rappi/PedidosYa ahora con obligatoriedad y
+límites de selección (min/max) por grupo de adiciones. Habilita que locales
+vendan productos configurables (desayunos, hamburguesas, pizzas, corrientazos,
+etc.) con reglas de selección que el cliente debe respetar.
+
+- **Backend**:
+  - Migración Knex `20260709000001_modificadores_obligatoriedad.js` +
+    SQL manual VPS `database/migrations_manuales/pos_fase10_modificadores_obligatorios.sql`.
+    3 columnas nuevas en `producto_grupos_adiciones`: `obligatorio TINYINT(1)`,
+    `min_selecciones INT`, `max_selecciones INT`. Defaults 0/0/99 = backward
+    compatible total.
+  - `ProductModifier.js` extendido: queries, INSERTs y validación en PUT
+    (obligatorio+min≥1, max≥min). GET propaga los 3 campos.
+  - `orderService.js:validateAdicionesYRemovibles` ahora consulta la config
+    de cada grupo del producto y rechaza con 400 si el cliente no respeta
+    min/max. Defensa de profundidad: aplica a web Y POS automáticamente.
+- **Admin** (`ProductModal.jsx`):
+  - Toggle "Obligatorio" + inputs numéricos Mín/Máx en cada card de grupo.
+  - Auto-corrección: si tildan Obligatorio y min es 0, se fuerza a 1.
+  - Validación visual: borde rojo en Máx si es menor que Mín.
+  - Drag & drop con `@dnd-kit/sortable` para reordenar grupos y adiciones
+    (handle GripVertical aislado, no rompe clicks en inputs).
+- **Cliente** (`ProductCustomizationModal.jsx`):
+  - Render adaptativo: radio chips para grupos max=1 (con "Sin [grupo]"
+    para opcionales), +/- para grupos max≥2.
+  - Mensaje contextual arriba de cada grupo: "Obligatorio · elige 1 opción",
+    "Opcional · puedes elegir hasta N", etc. Color dinámico (rojo si
+    incompleto, verde si completo).
+  - Botón "Agregar" disabled si algún grupo obligatorio está incompleto.
+  - Backward compat: si el backend devuelve un grupo sin las 3 columnas,
+    el modal renderiza con el comportamiento anterior (sin mensajes, +/-).
+- **POS**: `TakeOrderPage.jsx` reusa el mismo modal. Cero código POS-específico.
+- **Tests**: `test-pos-fase10-modificadores.mjs` con 11 asserts (persistencia,
+  lectura, validación admin en 2 casos, backward compat, regresión de
+  producto simple y de pedido sin adiciones).
+- **Deps**: `@dnd-kit/core@6.3.1`, `@dnd-kit/sortable@10.0.0`. Bundle del
+  admin +48 KB (16 KB gzip) — bajo el umbral de 50 KB, no requiere lazy
+  import.
+
+Ver [[gigantya-pos-mvp]] para detalle de implementación, gotchas y matriz
+de comportamiento (5 categorías según min/max/obligatorio).
+
+---
+
 ## 9.0.1 (April 11, 2023)
 - Fixed tests on Windows, adds Windows Testing Action [#3110](https://github.com/h5bp/html5-boilerplate/pull/3110)
 - Add og:image:alt for accessibility [#3066](https://github.com/h5bp/html5-boilerplate/pull/3066)

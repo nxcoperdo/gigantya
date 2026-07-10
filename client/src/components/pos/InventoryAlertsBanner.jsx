@@ -10,9 +10,12 @@
  * ver este banner, pero el `InventoryAlertsBanner` filtra por rol).
  */
 import { useEffect, useState, useCallback } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, Package } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeToEvent, unsubscribeFromEvent } from '../../services/socket';
+
+const MAX_ALERTAS = 5;
+const DUPLICATE_WINDOW_MS = 5000;
 
 export default function InventoryAlertsBanner() {
   const { user } = useAuth();
@@ -21,15 +24,13 @@ export default function InventoryAlertsBanner() {
   // Solo dueño y admin ven este banner. El return temprano evita
   // suscribirse al socket innecesariamente.
   const isVisible = user && ['restaurante', 'admin'].includes(user.tipo_usuario);
-  // Como el listener solo se monta si isVisible, declaramos el handler
-  // antes del return temprano para que React no se queje del orden de
-  // hooks.
+
   const handleLow = useCallback((payload) => {
     setAlertas((prev) => {
       // Evitar duplicados del mismo ingrediente en los últimos 5s.
       const reciente = prev.find(
         (a) => a.ingrediente_id === payload.ingrediente_id
-          && (Date.now() - a.ts) < 5000
+          && (Date.now() - a.ts) < DUPLICATE_WINDOW_MS
       );
       if (reciente) return prev;
       const nuevo = {
@@ -40,7 +41,7 @@ export default function InventoryAlertsBanner() {
         stock_minimo: payload.stock_minimo,
         ts: Date.now(),
       };
-      return [nuevo, ...prev].slice(0, 5);
+      return [nuevo, ...prev].slice(0, MAX_ALERTAS);
     });
   }, []);
 
@@ -57,27 +58,36 @@ export default function InventoryAlertsBanner() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 max-w-sm">
+    <div
+      className="fixed top-4 right-4 z-40 flex flex-col gap-2 max-w-sm w-[calc(100%-2rem)] sm:w-96 pointer-events-none"
+      role="region"
+      aria-label="Alertas de inventario"
+    >
       {alertas.map((a) => (
         <div
           key={a.id}
-          className="flex items-start gap-2 px-3 py-2 rounded-lg shadow-lg border border-amber-500/40 bg-amber-500/10 text-amber-100"
+          className="pointer-events-auto flex items-start gap-3 px-3.5 py-3 rounded-xl shadow-2xl shadow-amber-500/20 border-2 border-amber-500/40 bg-amber-500/15 text-amber-100 animate-slideLeft"
           role="alert"
         >
-          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <div className="flex-1 text-sm">
-            <div className="font-semibold">Stock bajo: {a.nombre}</div>
-            <div className="text-xs text-amber-200/80">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/30 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4.5 h-4.5" aria-hidden="true" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm flex items-center gap-1">
+              <Package className="w-3 h-3" aria-hidden="true" />
+              Stock bajo: <span className="truncate">{a.nombre}</span>
+            </div>
+            <div className="text-xs text-amber-200/80 mt-0.5 font-mono">
               {Number(a.stock_actual).toFixed(2)} / mínimo {Number(a.stock_minimo).toFixed(2)}
             </div>
           </div>
           <button
             type="button"
             onClick={() => dismiss(a.id)}
-            className="p-1 rounded hover:bg-amber-500/20 flex-shrink-0"
+            className="p-1.5 rounded-md hover:bg-amber-500/30 transition-colors shrink-0"
             aria-label="Cerrar alerta"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ))}

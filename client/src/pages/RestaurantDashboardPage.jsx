@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService } from '../services/api';
 import Loading from '../components/Loading';
 import ProductModal from '../components/ProductModal';
@@ -254,8 +255,13 @@ export default function RestaurantDashboardPage() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [togglingProductId, setTogglingProductId] = useState(null);
   const [error, setError] = useState('');
+  // `authUser` es el usuario cacheado en AuthContext (cargado al login,
+  // refrescado en cada navegación). Lo usamos como fallback inmediato
+  // para `restaurant.plan` mientras `loadProfile` corre, evitando que se
+  // muestren bloqueos de "Premium requerido" durante el primer render.
+  const { user: authUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [restaurant, setRestaurant] = useState(null);
+  const [restaurant, setRestaurant] = useState(authUser?.restaurante || null);
   const [statsData, setStatsData] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -1196,9 +1202,15 @@ function InfoRow({ label, value }) {
 }
 
 function StatsView({ statsData, restaurant, handleExport, exporting, exportError }) {
-  const isGoldenPlus = restaurant?.plan === 'golden_plus';
-  const isPremium = restaurant?.plan === 'premium' || isGoldenPlus; // Golden Plus hereda todo Premium
-  const isProfessional = restaurant?.plan === 'profesional';
+  // `restaurant` puede llegar null mientras `loadProfile` está en curso.
+  // Para no mostrar bloqueos falsos durante esa ventana, hacemos fallback
+  // al usuario del AuthContext (sincronizado al login y persistido en localStorage).
+  // Golden Plus hereda TODO Premium (incluye POS).
+  const { user: authUser } = useAuth();
+  const plan = restaurant?.plan || authUser?.restaurante?.plan || null;
+  const isGoldenPlus = plan === 'golden_plus';
+  const isPremium = plan === 'premium' || isGoldenPlus;
+  const isProfessional = plan === 'profesional';
 
   if (!statsData) {
     return (
@@ -2208,8 +2220,21 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                 </thead>
                 <tbody className="divide-y divide-[color:var(--border-subtle)]">
                   {(() => {
-                    const totalDist = statsData.distribucion_ticket.reduce((s, d) => s + Number(d.cantidad_pedidos || 0), 0);
-                    return statsData.distribucion_ticket.map((d, idx) => {
+                    // Fallback defensivo: el backend puede no devolver este
+                    // campo en planes nuevos. Mostramos tabla vacía en vez
+                    // de romper la página entera.
+                    const dist = Array.isArray(statsData.distribucion_ticket) ? statsData.distribucion_ticket : [];
+                    if (dist.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8 text-center text-sm text-[color:var(--text-muted)] italic">
+                            Sin datos de distribución de tickets en el período seleccionado.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    const totalDist = dist.reduce((s, d) => s + Number(d.cantidad_pedidos || 0), 0);
+                    return dist.map((d, idx) => {
                       const cant = Number(d.cantidad_pedidos || 0);
                       const pct = totalDist > 0 ? ((cant / totalDist) * 100).toFixed(1) : '0.0';
                       return (
@@ -2251,7 +2276,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
               </span>
             )}
           </div>
-          {statsData.productos_sin_ventas?.length === 0 ? (
+          {(statsData.productos_sin_ventas?.length || 0) === 0 ? (
             <p className="text-[color:var(--text-muted)] text-center py-8">Todos tus productos activos han vendido en los últimos 30 días. 🎉</p>
           ) : (
             <div className="overflow-x-auto">
@@ -2265,7 +2290,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[color:var(--border-subtle)]">
-                  {statsData.productos_sin_ventas.map((p, idx) => {
+                  {(statsData.productos_sin_ventas || []).map((p, idx) => {
                     const dias = Number(p.dias_sin_venta || 0);
                     const bgColor = dias > 90 ? 'var(--danger-bg)' : dias > 60 ? 'var(--warning-bg)' : 'var(--info-bg)';
                     const textColor = dias > 90 ? 'var(--danger-text)' : dias > 60 ? 'var(--warning-text)' : 'var(--info-text)';
@@ -2324,7 +2349,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[color:var(--border-subtle)]">
-                    {statsData.combinaciones_frecuentes.map((c, idx) => (
+                    {(statsData.combinaciones_frecuentes || []).map((c, idx) => (
                       <tr key={`comb-${c.producto_a_id}-${c.producto_b_id}-${idx}`} className="hover:bg-[color:var(--bg-subtle)]">
                         <td className="px-4 py-3 text-sm font-bold text-[color:var(--text-subtle)]">#{idx + 1}</td>
                         <td className="px-4 py-3 text-sm font-medium text-[color:var(--text-primary)]">{c.producto_a}</td>

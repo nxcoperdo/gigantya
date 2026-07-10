@@ -19,8 +19,13 @@ import { query, getConnection } from '../config/database.js';
 // =============================================================================
 
 export async function getGruposAdicionesByProducto(productoId) {
+  // Traemos también las 3 columnas de Fase 10 (obligatorio / min / max)
+  // para que `getPaqueteModificadores` las propague al cliente y al admin.
+  // Los defaults (0/0/99) están en la migración, así que en filas viejas
+  // ya vienen populados.
   const sql = `
-    SELECT id, producto_id, nombre, orden, activo, creado_en
+    SELECT id, producto_id, nombre, orden, activo,
+           obligatorio, min_selecciones, max_selecciones, creado_en
     FROM producto_grupos_adiciones
     WHERE producto_id = ? AND activo = 1
     ORDER BY orden ASC, id ASC
@@ -28,24 +33,55 @@ export async function getGruposAdicionesByProducto(productoId) {
   return await query(sql, [productoId]);
 }
 
-export async function createGrupoAdicion(productoId, { nombre, orden = 0, activo = true }) {
+export async function createGrupoAdicion(productoId, { nombre, orden = 0, activo = true, obligatorio = false, min_selecciones = 0, max_selecciones = 99 }) {
+  // Defaults Fase 10 reproducen el comportamiento pre-existente.
   const sql = `
-    INSERT INTO producto_grupos_adiciones (producto_id, nombre, orden, activo, creado_en)
-    VALUES (?, ?, ?, ?, NOW())
+    INSERT INTO producto_grupos_adiciones
+      (producto_id, nombre, orden, activo, obligatorio, min_selecciones, max_selecciones, creado_en)
+    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
   `;
-  const res = await query(sql, [productoId, nombre, orden, activo]);
+  const res = await query(sql, [
+    productoId,
+    nombre,
+    orden,
+    activo,
+    obligatorio ? 1 : 0,
+    Number(min_selecciones) || 0,
+    Number(max_selecciones) || 99,
+  ]);
   return res.insertId;
 }
 
-export async function updateGrupoAdicion(id, { nombre, orden, activo }) {
+export async function updateGrupoAdicion(id, { nombre, orden, activo, obligatorio, min_selecciones, max_selecciones }) {
+  // CUIDADO: COALESCE(0, max_selecciones) siempre gana 0 porque 0 es
+  // no-NULL. Usamos sentinela -1 para distinguir "no mandado" de
+  // "mandado como 0". Si llega -1, NO actualizamos el campo. Esta
+  // función no se usa en flujo normal (el PUT llama a
+  // `replacePaqueteModificadores`, que reemplaza el paquete entero) pero
+  // la dejamos coherente con el patrón.
+  const noNum = (v) => (v === -1 || v == null);
   const sql = `
     UPDATE producto_grupos_adiciones
-    SET nombre = COALESCE(?, nombre),
-        orden = COALESCE(?, orden),
-        activo = COALESCE(?, activo)
+    SET nombre          = COALESCE(?, nombre),
+        orden           = COALESCE(?, orden),
+        activo          = COALESCE(?, activo),
+        obligatorio     = COALESCE(?, obligatorio),
+        min_selecciones = CASE WHEN ? THEN min_selecciones ELSE ? END,
+        max_selecciones = CASE WHEN ? THEN max_selecciones ELSE ? END
     WHERE id = ?
   `;
-  await query(sql, [nombre, orden, activo, id]);
+  await query(sql, [
+    nombre,
+    orden,
+    activo,
+    // obligatorio: NULL si no se mandó, sino 0/1
+    (obligatorio == null) ? null : (obligatorio ? 1 : 0),
+    noNum(min_selecciones) ? 1 : 0,                  // 1 = "no tocar" para min
+    noNum(min_selecciones) ? 0 : Number(min_selecciones),
+    noNum(max_selecciones) ? 1 : 0,                  // 1 = "no tocar" para max
+    noNum(max_selecciones) ? 0 : Number(max_selecciones),
+    id,
+  ]);
 }
 
 export async function deleteGrupoAdicion(id) {
@@ -151,10 +187,15 @@ export async function deleteRemovible(id) {
  * Tres lecturas independientes (no necesitan transacción).
  * Estructura que consume el cliente:
  * {
- *   grupos: [{ id, nombre, orden }],
+ *   grupos: [{ id, nombre, orden, obligatorio, min_selecciones, max_selecciones }],
  *   adiciones: [{ id, grupo_id, nombre, precio_extra, orden }],
  *   removibles: [{ id, nombre, orden }],
  * }
+ *
+ * Las 3 columnas nuevas de Fase 10 (obligatorio / min / max) vienen en
+ * cada grupo. Si el backend o el admin no las configuraron, los
+ * defaults de la migración (false / 0 / 99) las hacen compatibles con
+ * el shape viejo.
  */
 export async function getPaqueteModificadores(productoId) {
   const [grupos, adiciones, removibles] = await Promise.all([
@@ -230,10 +271,32 @@ export async function replacePaqueteModificadores(productoId, payload) {
     for (let i = 0; i < grupos.length; i++) {
       const g = grupos[i];
       if (!g.nombre || !g.nombre.trim()) continue;
+      // Normalizar y validar Fase 10.
+      // Defaults: opcional, min=0, max=99. Coinciden con la migración.
+      const obligatorio = g.obligatorio === true;
+      const minSel = Math.max(0, Math.floor(Number(g.min_selecciones ?? 0)));
+      const maxSelRaw = Math.floor(Number(g.max_selecciones ?? 99));
+      const maxSel = Math.max(maxSelRaw, minSel); // defensa: max < min → ajustamos a min
+
+      // Validación de Fase 10. Si el admin manda config inválida, el PUT
+      // falla con 400. El controller de productos lo mapea a 400 (el
+      // error ya viene con statusCode).
+      if (obligatorio && minSel < 1) {
+        const err = new Error(`Grupo "${g.nombre}": si es obligatorio, min_selecciones debe ser >= 1`);
+        err.statusCode = 400;
+        throw err;
+      }
+      if (maxSelRaw < minSel) {
+        const err = new Error(`Grupo "${g.nombre}": max_selecciones (${maxSelRaw}) no puede ser menor que min_selecciones (${minSel})`);
+        err.statusCode = 400;
+        throw err;
+      }
+
       const [res] = await connection.query(
-        `INSERT INTO producto_grupos_adiciones (producto_id, nombre, orden, activo, creado_en)
-         VALUES (?, ?, ?, 1, NOW())`,
-        [productoId, g.nombre.trim(), i]
+        `INSERT INTO producto_grupos_adiciones
+          (producto_id, nombre, orden, activo, obligatorio, min_selecciones, max_selecciones, creado_en)
+         VALUES (?, ?, ?, 1, ?, ?, ?, NOW())`,
+        [productoId, g.nombre.trim(), i, obligatorio ? 1 : 0, minSel, maxSel]
       );
       const grupoId = res.insertId;
       // Adiciones de este grupo

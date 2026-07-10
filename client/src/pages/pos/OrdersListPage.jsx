@@ -15,11 +15,11 @@
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Plus, RefreshCw, Receipt, Printer, X, Check } from 'lucide-react';
+import { ClipboardList, Plus, RefreshCw, Receipt, Printer, X, Check, MapPin, ShoppingBasket, Bike } from 'lucide-react';
 import { usePosRestaurante } from '../../hooks/usePosRestaurante';
 import socketService from '../../services/socket';
 import { posOrdersService, printService } from '../../services/api';
-import { ORDER_STATES, labelFor } from '../../utils/orderStates';
+import { labelFor } from '../../utils/orderStates';
 import { formatCurrency } from '../../utils/formatHelper';
 import { formatDateTime } from '../../utils/dateHelper';
 import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
@@ -27,6 +27,20 @@ import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
 const POLL_MS = 15_000;
 const TAB_ACTIVOS = ['Pendiente', 'Preparando', 'Listo'];
 const TAB_CERRADOS = ['Entregado', 'Cancelado'];
+
+const ESTADO_PILL = {
+  Pendiente:  'bg-amber-500/15 text-amber-200 border border-amber-500/30',
+  Preparando: 'bg-blue-500/15 text-blue-200 border border-blue-500/30',
+  Listo:      'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30',
+  Entregado:  'bg-zinc-500/15 text-zinc-200 border border-zinc-500/30',
+  Cancelado:  'bg-rose-500/15 text-rose-200 border border-rose-500/30',
+};
+
+function TipoIcon({ pedido }) {
+  if (pedido.mesa_id) return { Icon: MapPin, label: `Mesa ${pedido.mesa_id}` };
+  if (pedido.es_retiro_local) return { Icon: ShoppingBasket, label: 'Recoger' };
+  return { Icon: Bike, label: 'Domicilio' };
+}
 
 export default function OrdersListPage() {
   // Mismo hook que KDSPage: combina user.restaurante_id (staff) con el
@@ -37,16 +51,18 @@ export default function OrdersListPage() {
   const [tab, setTab] = useState('activos');
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [detalle, setDetalle] = useState(null); // pedido expandido
   const [printUrl, setPrintUrl] = useState(null);
 
-  const fetchPedidos = useCallback(async () => {
+  const fetchPedidos = useCallback(async (silent = false) => {
     if (!restauranteId) {
       setError('Tu cuenta no está asociada a un restaurante. Pídele al dueño que te invite desde Personal.');
       setLoading(false);
       return;
     }
+    if (!silent) setRefreshing(true);
     try {
       const r = await posOrdersService.list({});
       setPedidos(r.data.pedidos || []);
@@ -55,6 +71,7 @@ export default function OrdersListPage() {
       setError(e.response?.data?.error || e.message || 'Error cargando pedidos');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [restauranteId]);
 
@@ -69,7 +86,7 @@ export default function OrdersListPage() {
     if (!restauranteId) return;
     socketService.connectOrders();
     socketService.joinRestaurant(restauranteId, user.id);
-    const handler = () => fetchPedidos();
+    const handler = () => fetchPedidos(true);
     socketService.onPosOrderCreated(handler);
     socketService.onStatusUpdate(handler);
   }, [restauranteId, user?.id, fetchPedidos]);
@@ -87,7 +104,7 @@ export default function OrdersListPage() {
   }, []);
 
   const cancelar = useCallback(async (pedido) => {
-    if (!confirm(`¿Cancelar el pedido #${pedido.id}?`)) return;
+    if (!window.confirm(`¿Cancelar el pedido #${pedido.id}?`)) return;
     try {
       await posOrdersService.updateStatus(pedido.id, 'Cancelado');
       fetchPedidos();
@@ -114,59 +131,87 @@ export default function OrdersListPage() {
       .sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
   }, [pedidos, tab]);
 
+  const countActivos = useMemo(() => pedidos.filter((p) => TAB_ACTIVOS.includes(p.estado)).length, [pedidos]);
+  const countCerrados = useMemo(() => pedidos.filter((p) => TAB_CERRADOS.includes(p.estado)).length, [pedidos]);
+
   if (loading) {
-    return <div className="p-8 text-center text-[color:var(--text-muted)]">Cargando pedidos…</div>;
+    return (
+      <div className="p-8 text-center text-[color:var(--text-muted)] flex flex-col items-center gap-2">
+        <div className="w-8 h-8 border-2 border-[color:var(--primary)]/30 border-t-[color:var(--primary)] rounded-full animate-spin" />
+        <span>Cargando pedidos…</span>
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 space-y-3">
-      <header className="flex items-center gap-2 flex-wrap">
-        <ClipboardList className="w-6 h-6" />
-        <h1 className="text-2xl font-bold">Pedidos</h1>
+    <div className="p-4 space-y-4">
+      <header className="flex items-center gap-3 flex-wrap">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #B34B00 100%)' }}
+          aria-hidden="true"
+        >
+          <ClipboardList className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold leading-tight">Pedidos</h1>
+          <p className="text-xs text-[color:var(--text-muted)]">
+            {countActivos} activos · {countCerrados} cerrados
+          </p>
+        </div>
         <button
           onClick={() => navigate('/pos/pedidos/nuevo')}
-          className="ml-auto inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-white text-sm font-semibold"
+          className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 active:scale-95 transition-all shadow-sm"
         >
           <Plus className="w-4 h-4" /> Tomar pedido
         </button>
         <button
-          onClick={fetchPedidos}
-          className="p-2 rounded hover:bg-[color:var(--bg-elevated)]"
+          onClick={() => fetchPedidos()}
+          disabled={refreshing}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm font-medium hover:bg-[color:var(--bg)] transition-colors disabled:opacity-50"
           type="button"
-          aria-label="Refrescar"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          Refrescar
         </button>
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[color:var(--border)]">
-        <button
-          onClick={() => setTab('activos')}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 ${
-            tab === 'activos'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[color:var(--text-muted)]'
-          }`}
-        >
-          Activos ({pedidos.filter((p) => TAB_ACTIVOS.includes(p.estado)).length})
-        </button>
-        <button
-          onClick={() => setTab('cerrados')}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 ${
-            tab === 'cerrados'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[color:var(--text-muted)]'
-          }`}
-        >
-          Cerrados ({pedidos.filter((p) => TAB_CERRADOS.includes(p.estado)).length})
-        </button>
+      <div className="flex gap-1 border-b border-[color:var(--border)]" role="tablist">
+        {[
+          { key: 'activos',  label: 'Activos',  count: countActivos },
+          { key: 'cerrados', label: 'Cerrados', count: countCerrados },
+        ].map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={[
+              'px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors inline-flex items-center gap-2',
+              tab === t.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text)]',
+            ].join(' ')}
+          >
+            {t.label}
+            <span className={[
+              'text-[10px] font-bold rounded-full px-1.5 py-0.5',
+              tab === t.key ? 'bg-primary/15' : 'bg-[color:var(--bg-elevated)]',
+            ].join(' ')}>
+              {t.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {error && (
-        <div className="px-3 py-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">Cerrar</button>
+        <div
+          role="alert"
+          className="px-3 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center justify-between gap-2"
+        >
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-xs underline font-medium hover:no-underline">Cerrar</button>
         </div>
       )}
 
@@ -174,88 +219,120 @@ export default function OrdersListPage() {
         {/* Lista */}
         <ul className={`space-y-2 ${detalle ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
           {pedidosFiltrados.length === 0 && (
-            <li className="text-center py-8 text-[color:var(--text-muted)] text-sm">
-              No hay pedidos en esta vista.
+            <li className="flex flex-col items-center justify-center text-center py-12 text-[color:var(--text-muted)] border-2 border-dashed border-[color:var(--border)] rounded-xl">
+              <ClipboardList className="w-8 h-8 mb-2 opacity-40" aria-hidden="true" />
+              <p className="text-sm font-medium">No hay pedidos en esta vista</p>
+              <p className="text-xs mt-1">
+                {tab === 'activos' ? 'Tocá "Tomar pedido" para crear uno.' : 'Los pedidos cerrados aparecerán acá.'}
+              </p>
             </li>
           )}
-          {pedidosFiltrados.map((p) => (
-            <li
-              key={p.id}
-              className={`bg-[color:var(--bg-elevated)] border rounded-lg p-3 cursor-pointer transition-colors ${
-                detalle?.id === p.id
-                  ? 'border-primary'
-                  : 'border-[color:var(--border)] hover:border-primary/50'
-              }`}
-              onClick={() => setDetalle(p)}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold">#{p.id}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  p.estado === 'Cancelado' ? 'bg-rose-500/20 text-rose-300' :
-                  p.estado === 'Entregado' ? 'bg-emerald-500/20 text-emerald-300' :
-                  'bg-blue-500/20 text-blue-300'
-                }`}>
-                  {labelFor(p.estado)}
-                </span>
-              </div>
-              <div className="text-xs text-[color:var(--text-muted)] flex items-center justify-between">
-                <span>
-                  {p.mesa_id ? `Mesa ${p.mesa_id}` : p.es_retiro_local ? 'Recoger' : 'Domicilio'}
-                  {p.cliente_nombre ? ` · ${p.cliente_nombre}` : ''}
-                </span>
-                <span>{formatCurrency(p.total)}</span>
-              </div>
-              <div className="text-xs text-[color:var(--text-muted)] mt-1">
-                {formatDateTime(p.creado_en)}
-              </div>
-            </li>
-          ))}
+          {pedidosFiltrados.map((p) => {
+            const { Icon, label: tipoLabel } = TipoIcon({ pedido: p });
+            const pill = ESTADO_PILL[p.estado] || 'bg-zinc-500/15 text-zinc-200';
+            const isSelected = detalle?.id === p.id;
+            return (
+              <li
+                key={p.id}
+                className={[
+                  'bg-[color:var(--bg-elevated)] border rounded-xl p-3 cursor-pointer transition-all',
+                  isSelected
+                    ? 'border-primary shadow-md ring-1 ring-primary/30'
+                    : 'border-[color:var(--border)] hover:border-primary/50 hover:shadow-sm',
+                ].join(' ')}
+                onClick={() => setDetalle(p)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(p); } }}
+                aria-label={`Pedido #${p.id} ${labelFor(p.estado)}`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-base">#{p.id}</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${pill}`}>
+                    {labelFor(p.estado)}
+                  </span>
+                </div>
+                <div className="text-xs text-[color:var(--text-muted)] flex items-center justify-between gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1">
+                    <Icon className="w-3 h-3" aria-hidden="true" />
+                    {tipoLabel}
+                    {p.cliente_nombre && <span className="opacity-70">· {p.cliente_nombre}</span>}
+                  </span>
+                  <span className="font-mono font-semibold text-[color:var(--text)]">{formatCurrency(p.total)}</span>
+                </div>
+                <div className="text-[10px] text-[color:var(--text-muted)] mt-1">
+                  {formatDateTime(p.creado_en)}
+                </div>
+              </li>
+            );
+          })}
         </ul>
 
         {/* Detalle */}
         {detalle && (
-          <aside className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-lg p-3 space-y-2 lg:sticky lg:top-4 h-fit">
-            <header className="flex items-center justify-between">
-              <h2 className="font-bold">Pedido #{detalle.id}</h2>
-              <button onClick={() => setDetalle(null)} className="p-1 rounded hover:bg-[color:var(--bg)]">
+          <aside className="bg-[color:var(--bg-elevated)] border border-[color:var(--border)] rounded-xl p-4 space-y-3 lg:sticky lg:top-4 h-fit shadow-sm animate-fadeIn">
+            <header className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="font-bold text-lg">Pedido #{detalle.id}</h2>
+                <p className="text-xs text-[color:var(--text-muted)]">
+                  {formatDateTime(detalle.creado_en)} · {labelFor(detalle.estado)}
+                </p>
+              </div>
+              <button
+                onClick={() => setDetalle(null)}
+                className="p-1.5 rounded-md hover:bg-[color:var(--bg)] transition-colors"
+                type="button"
+                aria-label="Cerrar detalle"
+              >
                 <X className="w-4 h-4" />
               </button>
             </header>
-            <div className="text-xs text-[color:var(--text-muted)]">
-              {formatDateTime(detalle.creado_en)} · {labelFor(detalle.estado)}
-            </div>
-            <ul className="text-sm space-y-1 border-y border-[color:var(--border)] py-2">
+            <ul className="text-sm space-y-1.5 border-y border-[color:var(--border)] py-3">
               {(detalle.items || []).map((it) => (
-                <li key={it.id} className="flex justify-between">
-                  <span>{it.cantidad}× {it.nombre || it.producto_nombre}</span>
-                  <span className="text-[color:var(--text-muted)]">{formatCurrency(it.subtotal || it.precio_total)}</span>
+                <li key={it.id} className="flex justify-between gap-2">
+                  <span className="text-[color:var(--text)]">
+                    <span className="font-semibold">{it.cantidad}×</span> {it.nombre || it.producto_nombre}
+                  </span>
+                  <span className="text-[color:var(--text-muted)] font-mono shrink-0">
+                    {formatCurrency(it.subtotal || it.precio_total)}
+                  </span>
                 </li>
               ))}
+              {(detalle.items || []).length === 0 && (
+                <li className="text-xs text-[color:var(--text-muted)] italic text-center py-2">
+                  Sin items registrados
+                </li>
+              )}
             </ul>
-            <div className="flex justify-between font-bold">
+            <div className="flex justify-between font-bold text-base">
               <span>Total</span>
-              <span>{formatCurrency(detalle.total)}</span>
+              <span className="font-mono">{formatCurrency(detalle.total)}</span>
             </div>
             {detalle.notas && (
-              <div className="text-xs italic text-amber-600">Nota: {detalle.notas}</div>
+              <div className="text-xs italic text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1.5 leading-snug">
+                Nota: {detalle.notas}
+              </div>
             )}
-            <div className="flex flex-wrap gap-1 pt-2">
+            <div className="flex flex-wrap gap-1.5 pt-1">
               <button
                 onClick={() => reimprimir(detalle.id, 'kitchen')}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[color:var(--bg)] border border-[color:var(--border)] text-xs"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[color:var(--bg)] hover:bg-[color:var(--bg-hover)] border border-[color:var(--border)] text-xs font-medium transition-colors"
+                type="button"
               >
                 <Printer className="w-3 h-3" /> Comanda
               </button>
               <button
                 onClick={() => reimprimir(detalle.id, 'receipt')}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[color:var(--bg)] border border-[color:var(--border)] text-xs"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[color:var(--bg)] hover:bg-[color:var(--bg-hover)] border border-[color:var(--border)] text-xs font-medium transition-colors"
+                type="button"
               >
                 <Receipt className="w-3 h-3" /> Recibo
               </button>
               {detalle.estado === 'Listo' && (
                 <button
                   onClick={() => marcarEntregado(detalle)}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-500 text-white text-xs ml-auto"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold ml-auto transition-colors active:scale-95"
+                  type="button"
                 >
                   <Check className="w-3 h-3" /> Entregado
                 </button>
@@ -263,7 +340,8 @@ export default function OrdersListPage() {
               {['Pendiente', 'Preparando'].includes(detalle.estado) && (
                 <button
                   onClick={() => cancelar(detalle)}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-rose-500/20 text-rose-300 text-xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold transition-colors"
+                  type="button"
                 >
                   <X className="w-3 h-3" /> Cancelar
                 </button>

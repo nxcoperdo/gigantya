@@ -1,10 +1,147 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Trash2, Sparkles, ListPlus, Plus, ChefHat } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Sparkles, ListPlus, Plus, ChefHat, GripVertical } from 'lucide-react';
 import { productService, categoryService, authService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { getCategoryIcon } from '../utils/categoryIcons';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const PLAN_LIMITS = { basico: 1, profesional: 5, premium: 5 };
+
+// ========== Fase 10: sub-componentes Sortable (dnd-kit) ==========
+// Definidos fuera de ProductModal para no remontarlos en cada render
+// (causa flickering en el drag). Cada uno llama useSortable y aplica
+// transform/transition al wrapper; el handle se aísla con listeners
+// para que los inputs del card sigan siendo clickeables.
+
+/**
+ * SortableGrupoCard: renderiza el card completo del grupo (incluye
+ * input de nombre, fila de Obligatorio/Mín/Máx, lista de adiciones,
+ * botón de borrar) con un handle GripVertical a la izquierda.
+ *
+ * Props:
+ *   - grupo: el grupo de UI ({_uiId, nombre, obligatorio, min_selecciones, max_selecciones, adiciones})
+ *   - children: el contenido del card (sin el wrapper)
+ *   - onRemove: () => void
+ */
+function SortableGrupoCard({ grupo, children, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grupo._uiId });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : 'auto',
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)] p-3"
+    >
+      <div className="flex items-start gap-2">
+        {/* Handle aislado: solo el botón recibe los listeners.
+            Los inputs del card siguen siendo clickeables. */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="p-1.5 mt-0.5 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] cursor-grab active:cursor-grabbing touch-none"
+          aria-label={`Reordenar grupo ${grupo.nombre || 'sin nombre'}`}
+          title="Arrastrar para reordenar"
+        >
+          <GripVertical size={14} />
+        </button>
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={grupo.nombre}
+              onChange={(e) => grupo._onChangeNombre(e.target.value)}
+              placeholder='Nombre del grupo (ej. "Salsas")'
+              className="flex-1 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-sm text-[color:var(--text-primary)]"
+            />
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+              aria-label="Eliminar grupo"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SortableAdicionRow: input + precio_extra + handle + botón borrar.
+ * Mismo principio que SortableGrupoCard.
+ */
+function SortableAdicionRow({ adicion, onChangeNombre, onChangePrecio, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: adicion._uiId });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] cursor-grab active:cursor-grabbing touch-none"
+        aria-label={`Reordenar adición ${adicion.nombre || 'sin nombre'}`}
+        title="Arrastrar para reordenar"
+      >
+        <GripVertical size={12} />
+      </button>
+      <input
+        type="text"
+        value={adicion.nombre}
+        onChange={(e) => onChangeNombre(e.target.value)}
+        placeholder='Nombre (ej. "Mayo")'
+        className="flex-1 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
+      />
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        inputMode="decimal"
+        value={adicion.precio_extra}
+        onChange={(e) => onChangePrecio(e.target.value)}
+        placeholder="Gratis"
+        aria-label={`Precio extra de ${adicion.nombre || 'esta adición'}`}
+        className="w-24 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+        aria-label="Eliminar adición"
+      >
+        <Trash2 size={12} />
+      </button>
+    </div>
+  );
+}
 
 export default function ProductModal({ isOpen, onClose, onSave, product = null, restaurantId, restaurante }) {
   const [formData, setFormData] = useState({
@@ -161,10 +298,16 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       // El backend devuelve todas las adiciones juntas (con y sin grupo).
       // Acá las partimos: las de grupo_id NULL van a adicionesSueltas, el
       // resto a su grupo correspondiente.
+      //
+      // Fase 10: leer las 3 columnas nuevas con fallback a defaults
+      // (compatibilidad con backend aún sin migración aplicada).
       const gruposAdaptados = (config.grupos || []).map((g) => ({
         _uiId: `g-${g.id}`,
         _serverId: g.id,
         nombre: g.nombre,
+        obligatorio: !!g.obligatorio,
+        min_selecciones: Number(g.min_selecciones) || 0,
+        max_selecciones: Number(g.max_selecciones) || 99,
         adiciones: (config.adiciones || [])
           .filter((a) => a.grupo_id === g.id)
           .map((a) => ({
@@ -318,14 +461,36 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
   // Construye el payload del paquete y lo manda al backend.
   // No falla el guardado del producto si esta parte falla: se loguea
   // y se sigue. (La sección de modificadores es un extra.)
+  //
+  // Fase 10: incluye obligatorio/min/max y valida client-side antes
+  // de mandar. Si el admin configura algo inválido, el PUT tira 400
+  // (el backend valida de nuevo como defensa de profundidad).
   const saveModificadores = async (productoId) => {
     setSavingModificadores(true);
     try {
+      // Validar antes de armar el payload. Si hay un error, el PUT ni
+      // se intenta. El producto ya quedó guardado (el catch de más
+      // abajo no aplica).
+      for (const g of grupos) {
+        if (!g.nombre || !g.nombre.trim()) continue;
+        const obligatorio = g.obligatorio === true;
+        const minSel = Math.max(0, Math.floor(Number(g.min_selecciones) || 0));
+        const maxSelRaw = Math.floor(Number(g.max_selecciones) || 99);
+        if (obligatorio && minSel < 1) {
+          throw new Error(`Grupo "${g.nombre}": si es obligatorio, el mínimo debe ser 1 o más`);
+        }
+        if (maxSelRaw < minSel) {
+          throw new Error(`Grupo "${g.nombre}": el máximo (${maxSelRaw}) no puede ser menor que el mínimo (${minSel})`);
+        }
+      }
       const payload = {
         grupos: grupos
           .filter((g) => g.nombre && g.nombre.trim())
           .map((g) => ({
             nombre: g.nombre.trim(),
+            obligatorio: g.obligatorio === true,
+            min_selecciones: Math.max(0, Math.floor(Number(g.min_selecciones) || 0)),
+            max_selecciones: Math.max(1, Math.floor(Number(g.max_selecciones) || 99)),
             adiciones: (g.adiciones || [])
               .filter((a) => a.nombre && a.nombre.trim())
               .map((a) => ({
@@ -365,9 +530,19 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
 
   // Helpers para manipular los arrays de modificadores
   const addGrupo = () => {
+    // Fase 10: defaults coinciden con la migración (false / 0 / 99),
+    // así un grupo nuevo arranca como "opcional libre" (comportamiento
+    // pre-existente) y el admin decide si lo quiere obligatorio.
     setGrupos((prev) => [
       ...prev,
-      { _uiId: `g-new-${Date.now()}`, nombre: '', adiciones: [] },
+      {
+        _uiId: `g-new-${Date.now()}`,
+        nombre: '',
+        obligatorio: false,
+        min_selecciones: 0,
+        max_selecciones: 99,
+        adiciones: [],
+      },
     ]);
   };
   const updateGrupo = (uiId, patch) => {
@@ -431,6 +606,45 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
   };
   const removeRemovible = (uiId) => {
     setRemovibles((prev) => prev.filter((r) => r._uiId !== uiId));
+  };
+
+  // ===== Fase 10: drag & drop con @dnd-kit/sortable =====
+  // Reordena grupos y adiciones dentro de cada grupo. Persistencia
+  // automática: el backend usa el índice del for como `orden`, así que
+  // alcanza con reordenar el array de UI antes del PUT.
+  //
+  // Sensor config: PointerSensor (mouse/touch) + KeyboardSensor (a11y:
+  // Space/Enter para agarrar, flechas para mover, Space/Enter para
+  // soltar, Esc para cancelar). Restricción: 8px de movimiento antes
+  // de iniciar el drag, para no romper clicks en los inputs del card.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEndGrupos = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setGrupos((prev) => {
+      const oldIdx = prev.findIndex((g) => g._uiId === active.id);
+      const newIdx = prev.findIndex((g) => g._uiId === over.id);
+      if (oldIdx === -1 || newIdx === -1) return prev;
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
+
+  const handleDragEndAdicionesGrupo = (grupoUiId) => (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setGrupos((prev) =>
+      prev.map((g) => {
+        if (g._uiId !== grupoUiId) return g;
+        const oldIdx = g.adiciones.findIndex((a) => a._uiId === active.id);
+        const newIdx = g.adiciones.findIndex((a) => a._uiId === over.id);
+        if (oldIdx === -1 || newIdx === -1) return g;
+        return { ...g, adiciones: arrayMove(g.adiciones, oldIdx, newIdx) };
+      })
+    );
   };
 
   const galleryLimit = PLAN_LIMITS[plan] || 1;
@@ -669,74 +883,127 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                   Configura qué puede añadir o quitar el cliente al pedir este producto. Si no agregas nada, el producto se sigue pidiendo como siempre.
                 </p>
 
-                {/* Grupos de adiciones */}
+                {/* Grupos de adiciones — Fase 10: drag & drop con dnd-kit */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">
                     Grupos de adiciones (opcional)
                   </p>
-                  {grupos.map((g) => (
-                    <div
-                      key={g._uiId}
-                      className="rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)] p-3 space-y-2"
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEndGrupos}
+                  >
+                    <SortableContext
+                      items={grupos.map((g) => g._uiId)}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={g.nombre}
-                          onChange={(e) => updateGrupo(g._uiId, { nombre: e.target.value })}
-                          placeholder='Nombre del grupo (ej. "Salsas")'
-                          className="flex-1 px-3 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-sm text-[color:var(--text-primary)]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeGrupo(g._uiId)}
-                          className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
-                          aria-label="Eliminar grupo"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <div className="space-y-1.5 pl-2">
-                        {g.adiciones.map((a) => (
-                          <div key={a._uiId} className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={a.nombre}
-                              onChange={(e) => updateAdicionInGrupo(g._uiId, a._uiId, { nombre: e.target.value })}
-                              placeholder='Nombre (ej. "Mayo")'
-                              className="flex-1 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
-                            />
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              inputMode="decimal"
-                              value={a.precio_extra}
-                              onChange={(e) => updateAdicionInGrupo(g._uiId, a._uiId, { precio_extra: e.target.value })}
-                              placeholder="Gratis"
-                              aria-label={`Precio extra de ${a.nombre || 'esta adición'}`}
-                              className="w-24 px-2 py-1.5 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)]"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeAdicionFromGrupo(g._uiId, a._uiId)}
-                              className="p-1.5 text-[color:var(--danger-text)] hover:bg-[color:var(--bg-muted)] rounded-lg"
-                              aria-label="Eliminar adición"
+                      <div className="space-y-2">
+                        {grupos.map((g) => {
+                          // Fase 10: derivar maxSel para validación visual.
+                          const minSel = Math.max(0, Math.floor(Number(g.min_selecciones) || 0));
+                          const maxSel = Math.floor(Number(g.max_selecciones) || 99);
+                          const maxInvalido = maxSel < minSel;
+                          return (
+                            <SortableGrupoCard
+                              key={g._uiId}
+                              grupo={{
+                                ...g,
+                                _onChangeNombre: (nombre) => updateGrupo(g._uiId, { nombre }),
+                              }}
+                              onRemove={() => removeGrupo(g._uiId)}
                             >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => addAdicionToGrupo(g._uiId)}
-                          className="flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          <Plus size={12} /> Adición
-                        </button>
+                              {/* Fila de Obligatorio + Mín/Máx */}
+                              <div className="flex flex-wrap items-center gap-3 pl-1 text-xs">
+                                <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!g.obligatorio}
+                                    onChange={(e) => {
+                                      const marcado = e.target.checked;
+                                      updateGrupo(g._uiId, {
+                                        obligatorio: marcado,
+                                        // Si lo activan y min es 0, auto-corrigir a 1
+                                        min_selecciones: marcado ? Math.max(1, minSel) : minSel,
+                                      });
+                                    }}
+                                    className="w-3.5 h-3.5 accent-[color:var(--primary,#3b82f6)]"
+                                    aria-label={`Grupo ${g.nombre || 'sin nombre'} obligatorio`}
+                                  />
+                                  <span className="font-semibold text-[color:var(--text-primary)]">Obligatorio</span>
+                                </label>
+                                <div className="inline-flex items-center gap-1.5">
+                                  <label className="text-[color:var(--text-muted)]" htmlFor={`min-${g._uiId}`}>Mín</label>
+                                  <input
+                                    id={`min-${g._uiId}`}
+                                    type="number"
+                                    min="0"
+                                    max="99"
+                                    step="1"
+                                    value={g.min_selecciones ?? 0}
+                                    onChange={(e) => updateGrupo(g._uiId, { min_selecciones: e.target.value })}
+                                    disabled={!!g.obligatorio}
+                                    className="w-14 px-2 py-1 rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    aria-label={`Mínimo de selecciones de ${g.nombre || 'este grupo'}`}
+                                  />
+                                </div>
+                                <div className="inline-flex items-center gap-1.5">
+                                  <label className="text-[color:var(--text-muted)]" htmlFor={`max-${g._uiId}`}>Máx</label>
+                                  <input
+                                    id={`max-${g._uiId}`}
+                                    type="number"
+                                    min="1"
+                                    max="99"
+                                    step="1"
+                                    value={g.max_selecciones ?? 99}
+                                    onChange={(e) => updateGrupo(g._uiId, { max_selecciones: e.target.value })}
+                                    className={`w-14 px-2 py-1 rounded-lg border bg-[color:var(--bg-elevated)] text-xs text-[color:var(--text-primary)] ${
+                                      maxInvalido ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-[color:var(--border-default)]'
+                                    }`}
+                                    aria-label={`Máximo de selecciones de ${g.nombre || 'este grupo'}`}
+                                  />
+                                </div>
+                                {maxInvalido && (
+                                  <span className="text-[10px] text-rose-500 font-medium">
+                                    Máx &lt; Mín
+                                  </span>
+                                )}
+                              </div>
+                              {/* Adiciones del grupo con su propio DnD */}
+                              <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEndAdicionesGrupo(g._uiId)}
+                              >
+                                <SortableContext
+                                  items={g.adiciones.map((a) => a._uiId)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  <div className="space-y-1.5 pl-2">
+                                    {g.adiciones.map((a) => (
+                                      <SortableAdicionRow
+                                        key={a._uiId}
+                                        adicion={a}
+                                        onChangeNombre={(nombre) => updateAdicionInGrupo(g._uiId, a._uiId, { nombre })}
+                                        onChangePrecio={(precio_extra) => updateAdicionInGrupo(g._uiId, a._uiId, { precio_extra })}
+                                        onRemove={() => removeAdicionFromGrupo(g._uiId, a._uiId)}
+                                      />
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => addAdicionToGrupo(g._uiId)}
+                                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                                    >
+                                      <Plus size={12} /> Adición
+                                    </button>
+                                  </div>
+                                </SortableContext>
+                              </DndContext>
+                            </SortableGrupoCard>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
+                    </SortableContext>
+                  </DndContext>
                   <button
                     type="button"
                     onClick={addGrupo}
