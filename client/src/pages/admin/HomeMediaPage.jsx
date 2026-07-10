@@ -1,43 +1,38 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/api';
-import { getImageUrl } from '../../utils/imageHelper';
 import {
-  Upload, Trash2, Check, Image as ImageIcon, Video as VideoIcon,
-  AlertCircle, ArrowLeft, Loader2, X, Eye
+  Check, Image as ImageIcon, Video as VideoIcon,
+  AlertCircle, ArrowLeft, Loader2, X, Eye, Info
 } from 'lucide-react';
 import Loading from '../../components/Loading';
 import { formatDate } from '../../utils/dateHelper';
 
 /**
- * CMS de banner de Home (Fase 12).
+ * CMS de banner de Home (Fase 12b).
  *
- * Página de administración para que el super-admin de GigantYA gestione
- * los archivos de media que se muestran en el hero de la home pública.
+ * Página de administración para que el super-admin de GigantYA elija
+ * cuál de los archivos estáticos commiteados en
+ * `client/public/media/` se muestra en el hero de la home pública.
  *
  * Comportamiento:
- *  - Lista todos los archivos subidos (más recientes primero).
+ *  - Lista los archivos de client/public/media/ (leídos del servidor).
  *  - El activo tiene badge verde "ACTIVO" y los demás tienen un botón
  *    "Activar" para marcarlo como nuevo activo (desactiva el anterior).
- *  - El botón "Eliminar" funciona solo para archivos NO activos
- *    (el backend rechaza con 400 si se intenta borrar el activo).
- *  - El botón "Subir nuevo" abre un file picker. Acepta imagen o video.
- *    Al elegir un archivo, se sube directo. Opcionalmente se le puede
- *    poner un nombre humano después.
+ *  - NO hay upload: para agregar un banner nuevo, hay que commitear
+ *    el archivo al repo, hacer `git pull` + `npm run build` +
+ *    `pm2 restart gigantya-api` en el VPS. El banner informativo
+ *    arriba lo explica.
+ *  - NO hay delete: los archivos viven en el repo, se borran con git.
  */
 export default function HomeMediaPage() {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [actionId, setActionId] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [renameTarget, setRenameTarget] = useState(null);
-  const [renameValue, setRenameValue] = useState('');
 
   const fetchList = useCallback(async () => {
     try {
@@ -64,32 +59,6 @@ export default function HomeMediaPage() {
   const showError = (msg) => { setError(msg); setSuccess(''); };
   const showSuccess = (msg) => { setSuccess(msg); setError(''); };
 
-  /** Maneja el file picker. Sube directo. */
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    // Reset para que se pueda subir el mismo archivo dos veces seguidas.
-    e.target.value = '';
-    if (!file) return;
-    await handleUpload(file, file.name.replace(/\.[^.]+$/, ''));
-  };
-
-  const handleUpload = async (file, nombre) => {
-    try {
-      setUploading(true);
-      setError('');
-      const fd = new FormData();
-      fd.append('file', file);
-      if (nombre) fd.append('nombre', nombre);
-      await adminService.uploadHomeMedia(fd);
-      showSuccess(`Banner "${nombre || file.name}" subido correctamente`);
-      await fetchList();
-    } catch (e) {
-      showError(e.response?.data?.error || 'Error subiendo banner');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleActivate = async (id, nombre) => {
     try {
       setActionId(id);
@@ -104,27 +73,6 @@ export default function HomeMediaPage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    try {
-      setActionId(id);
-      setError('');
-      await adminService.deleteHomeMedia(id);
-      showSuccess('Banner borrado');
-      setConfirmDelete(null);
-      await fetchList();
-    } catch (e) {
-      showError(e.response?.data?.error || 'Error borrando banner');
-    } finally {
-      setActionId(null);
-    }
-  };
-
-  const handleRename = async () => {
-    // Por ahora el rename se hace vía re-upload. Esto es placeholder para
-    // una futura feature de rename in-place (no está en el MVP).
-    setRenameTarget(null);
-  };
-
   if (loading && items.length === 0) return <Loading />;
 
   const activo = items.find((i) => Number(i.activo) === 1);
@@ -133,40 +81,32 @@ export default function HomeMediaPage() {
     <div className="min-h-screen bg-[color:var(--bg-base)] text-[color:var(--text-primary)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/admin')}
-              className="p-2 rounded-lg hover:bg-[color:var(--bg-muted)] transition-colors"
-              aria-label="Volver al dashboard"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Banner de la Home</h1>
-              <p className="text-sm text-[color:var(--text-muted)] mt-1">
-                Subí varios archivos y elegí cuál se muestra en la página principal.
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 mb-6">
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => navigate('/admin')}
+            className="p-2 rounded-lg hover:bg-[color:var(--bg-muted)] transition-colors"
+            aria-label="Volver al dashboard"
           >
-            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {uploading ? 'Subiendo…' : 'Subir nuevo'}
+            <ArrowLeft size={20} />
           </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/mp4,video/webm"
-            onChange={handleFileChange}
-            className="hidden"
-            aria-label="Subir archivo de banner"
-          />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Banner de la Home</h1>
+            <p className="text-sm text-[color:var(--text-muted)] mt-1">
+              Elegí cuál de los archivos en <code>client/public/media/</code> se muestra en la página principal.
+            </p>
+          </div>
+        </div>
+
+        {/* Banner informativo: cómo agregar un archivo nuevo */}
+        <div className="mb-4 p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 flex items-start gap-2 text-sm">
+          <Info size={16} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <strong>Para agregar un banner nuevo:</strong> commiteá el archivo en{' '}
+            <code>client/public/media/</code> y hacé deploy (
+            <code>git pull</code> + <code>npm run build</code> + <code>pm2 restart gigantya-api</code>).
+            Después refrescá esta página y va a aparecer en la lista.
+          </div>
         </div>
 
         {/* Banner activo actualmente */}
@@ -179,7 +119,7 @@ export default function HomeMediaPage() {
             <p className="text-sm">
               <strong>Banner activo actualmente:</strong> {activo.nombre}{' '}
               <span className="text-[color:var(--text-muted)]">
-                ({activo.tipo === 'imagen' ? 'imagen' : 'video'}, subido {formatDate(activo.creado_en)})
+                ({activo.tipo === 'imagen' ? 'imagen' : 'video'}, {formatDate(activo.creado_en || new Date())})
               </span>
             </p>
           ) : (
@@ -209,74 +149,34 @@ export default function HomeMediaPage() {
         {/* Lista de banners */}
         {items.length === 0 ? (
           <div className="p-12 text-center rounded-2xl border-2 border-dashed border-[color:var(--border-default)] bg-[color:var(--bg-elevated)]">
-            <Upload size={48} className="mx-auto text-[color:var(--text-muted)] mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No hay banners subidos</h3>
-            <p className="text-sm text-[color:var(--text-muted)] mb-4">
-              Subí tu primera imagen o video para empezar.
+            <ImageIcon size={48} className="mx-auto text-[color:var(--text-muted)] mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No hay archivos en client/public/media/</h3>
+            <p className="text-sm text-[color:var(--text-muted)]">
+              Commiteá un .jpg, .png, .webp, .mp4 o .webm en esa carpeta y vas a verlo acá.
             </p>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
-            >
-              <Upload size={16} />
-              Subir banner
-            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((item) => (
               <BannerCard
-                key={item.id}
+                key={item.archivo}
                 item={item}
                 isActive={Number(item.activo) === 1}
                 isLoading={actionId === item.id}
                 onActivate={() => handleActivate(item.id, item.nombre)}
-                onDelete={() => setConfirmDelete(item)}
               />
             ))}
           </div>
         )}
       </div>
-
-      {/* Modal de confirmación de borrado */}
-      {confirmDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
-        >
-          <div className="bg-[color:var(--bg-elevated)] rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold mb-2">¿Borrar "{confirmDelete.nombre}"?</h3>
-            <p className="text-sm text-[color:var(--text-muted)] mb-4">
-              Esta acción no se puede deshacer. El archivo también se borra del disco.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(null)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border-default)] hover:bg-[color:var(--bg-muted)] transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(confirmDelete.id)}
-                className="px-3 py-1.5 text-sm rounded-lg bg-rose-600 text-white font-semibold hover:bg-rose-700 active:scale-[0.98] transition-all"
-              >
-                Borrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 /** Card de un banner individual. */
-function BannerCard({ item, isActive, isLoading, onActivate, onDelete }) {
+function BannerCard({ item, isActive, isLoading, onActivate }) {
   const isVideo = item.tipo === 'video';
-  const previewUrl = getImageUrl(item.archivo_path);
+  const previewUrl = `/media/${item.archivo}`;
   const sizeMB = (item.size_bytes / 1024 / 1024).toFixed(2);
 
   return (
@@ -331,14 +231,17 @@ function BannerCard({ item, isActive, isLoading, onActivate, onDelete }) {
         <h3 className="font-semibold text-sm truncate" title={item.nombre}>
           {item.nombre}
         </h3>
+        <p className="text-xs text-[color:var(--text-muted)] mt-1 font-mono">
+          {item.archivo}
+        </p>
         <p className="text-xs text-[color:var(--text-muted)] mt-1">
-          {sizeMB} MB · {formatDate(item.creado_en)}
+          {sizeMB} MB
         </p>
 
         {/* Acciones */}
-        <div className="flex gap-2 mt-3">
+        <div className="mt-3">
           {isActive ? (
-            <div className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-100 text-emerald-700 font-semibold text-center">
+            <div className="w-full px-3 py-1.5 text-xs rounded-lg bg-emerald-100 text-emerald-700 font-semibold text-center">
               Visible en la home
             </div>
           ) : (
@@ -346,21 +249,12 @@ function BannerCard({ item, isActive, isLoading, onActivate, onDelete }) {
               type="button"
               onClick={onActivate}
               disabled={isLoading}
-              className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+              className="w-full px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1"
             >
               {isLoading ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
               Activar
             </button>
           )}
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={isLoading || isActive}
-            title={isActive ? 'No se puede borrar el banner activo' : 'Borrar'}
-            className="px-2.5 py-1.5 text-xs rounded-lg border border-[color:var(--border-default)] text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Trash2 size={12} />
-          </button>
         </div>
       </div>
     </div>
