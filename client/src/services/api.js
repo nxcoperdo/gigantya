@@ -200,6 +200,14 @@ export const adminService = {
   // Lista cada uso real de un cupón (cada pedido que aplicó un cupón).
   // Filtros: cupon_id, restaurante_id, es_global, fecha_desde, fecha_hasta, limit, offset.
   getCouponUsages: (params = {}) => api.get('/admin/coupons/usages', { params }),
+  // CMS Banner de Home (Fase 12). El super-admin sube varios archivos
+  // y elige UNO como activo. La home pública (`/`) consume el activo.
+  listHomeMedia: () => api.get('/admin/home-media'),
+  // `formData` debe ser un FormData con el field 'file' (multer.single)
+  // y opcionalmente un field 'nombre' con el nombre humano del banner.
+  uploadHomeMedia: (formData) => api.post('/admin/home-media', formData),
+  activateHomeMedia: (id) => api.put(`/admin/home-media/${id}/activate`),
+  deleteHomeMedia: (id) => api.delete(`/admin/home-media/${id}`),
 };
 
 // ========== NOTIFICACIONES ==========
@@ -453,6 +461,16 @@ export const posSplitTransferService = {
 export const posConfigService = {
   get:    ()        => api.get('/pos/config').then((r) => r.data),
   update: (patch)   => api.put('/pos/config', patch).then((r) => r.data),
+};
+
+// ========== HOME (Fase 12) ==========
+// Servicio público (sin auth) para la home del sitio. La HomePage
+// consume el banner activo desde acá. El admin del sistema lo
+// gestiona con `adminService.uploadHomeMedia` / `activateHomeMedia`.
+export const homeService = {
+  // Devuelve { media: null } si no hay banner activo, o
+  // { media: { id, nombre, archivo_path, tipo, mime } } si hay.
+  getActiveHomeMedia: () => api.get('/home/media').then((r) => r.data),
 };
 
 export default api;

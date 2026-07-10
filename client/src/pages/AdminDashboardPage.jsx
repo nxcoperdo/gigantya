@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity, FileText, History, Eye, Edit2 } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity, FileText, History, Eye, Edit2, ImageIcon } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import UserDetailModal from '../components/UserDetailModal';
@@ -13,6 +14,7 @@ import CouponsView from '../components/CouponsView';
 import { formatDate } from '../utils/dateHelper';
 
 export default function AdminDashboardPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -418,6 +420,15 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/home-media')}
+                className="btn btn-outline inline-flex items-center gap-2 text-primary border-primary/30"
+                title="Gestionar el banner que se muestra en la home pública"
+              >
+                <ImageIcon size={16} />
+                Banner de Home
+              </button>
               <button
                 type="button"
                 onClick={() => setIsUserModalOpen(true)}
