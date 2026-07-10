@@ -186,16 +186,16 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
   }
 }));
 
-// ========== CMS Banner de Home (Fase 12b) ==========
-// Sirve los archivos estáticos commiteados en `client/public/media/`
-// bajo la URL `/media/<archivo>`. Es el reemplazo del flujo anterior
-// de uploads a `server/uploads/home-media/` — los banners ahora son
-// assets del front, commiteados al repo, y el server solo los sirve.
+// ========== CMS Banner de Home (Fase 12c) ==========
+// Sirve los banners subidos desde la UI admin bajo la URL
+// `/media/<archivo>`. Los archivos viven en
+// `server/uploads/home-media-uploaded/` (mismo patrón que el resto
+// de uploads del proyecto: products, comprobantes, etc.).
 //
-// La ruta del filesystem se calcula relativa a este archivo: app.js
-// vive en `server/src/`, así que subimos 2 niveles para llegar a la
-// raíz del proyecto y luego entramos a `client/public/media/`.
-const PUBLIC_MEDIA_DIR = path.resolve(__dirname, '../../client/public/media');
+// La carpeta se crea automáticamente al inicializar el uploader
+// (ver `createUploader` en uploadMiddleware.js:46-50), así que no
+// hace falta crearla a mano acá. `UPLOADS_DIR` ya se importa arriba.
+const PUBLIC_MEDIA_DIR = path.join(UPLOADS_DIR, 'home-media-uploaded');
 app.use('/media', express.static(PUBLIC_MEDIA_DIR, {
   maxAge: '7d',
   etag: true,
