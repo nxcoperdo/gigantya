@@ -48,6 +48,7 @@ import preferenceRoutes from './routes/preferenceRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
@@ -203,6 +204,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/zonas', zonaRoutes);
+app.use('/api/home', publicRoutes);
 
 // POS (Fase 1-8): todas las rutas bajo /api/pos/* requieren plan 'pos' en
 // su restaurante (o ser admin global). Usamos un sub-router con:
