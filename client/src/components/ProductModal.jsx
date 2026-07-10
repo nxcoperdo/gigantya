@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Trash2, Sparkles, ListPlus, Plus, ChefHat, GripVertical } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Sparkles, ListPlus, Plus, ChefHat, GripVertical, Scale } from 'lucide-react';
 import { productService, categoryService, authService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { getCategoryIcon } from '../utils/categoryIcons';
@@ -20,6 +20,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { canAccessPlan } from '../utils/planFeatures';
+import UnidadesVentaPreset from './UnidadesVentaPreset';
+import { GRUPO_PRESENTACION_NOMBRE } from '../constants/unidadesVenta';
 
 // ========== Fase 10: sub-componentes Sortable (dnd-kit) ==========
 // Definidos fuera de ProductModal para no remontarlos en cada render
@@ -168,6 +170,8 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
   const [loadingModificadores, setLoadingModificadores] = useState(false);
   const [savingModificadores, setSavingModificadores] = useState(false);
   const [plan, setPlan] = useState('basico');
+  // Fase 11: preset de unidades de venta para fruver/mercado
+  const [showUnidadesPreset, setShowUnidadesPreset] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -544,6 +548,49 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       },
     ]);
   };
+
+  // Fase 11: aplica el preset de unidades de venta al estado de grupos.
+  // Si ya existe un grupo "Presentación" (case-insensitive), agrega las
+  // unidades elegidas a las existentes (no las reemplaza, para no perder
+  // trabajo del admin).
+  const aplicarUnidadesVenta = ({ unidades }) => {
+    if (!unidades || unidades.length === 0) return;
+    const now = Date.now();
+    const nuevasAdiciones = unidades.map((u, i) => ({
+      _uiId: `a-preset-${now}-${i}`,
+      nombre: u.nombre,
+      precio_extra: u.precio_extra,
+    }));
+    setGrupos((prev) => {
+      const idxExistente = prev.findIndex(
+        (g) => (g.nombre || '').trim().toLowerCase() === GRUPO_PRESENTACION_NOMBRE.toLowerCase()
+      );
+      if (idxExistente >= 0) {
+        // Append al grupo existente (no reemplaza las que el admin haya puesto a mano).
+        return prev.map((g, i) =>
+          i === idxExistente
+            ? { ...g, adiciones: [...g.adiciones, ...nuevasAdiciones] }
+            : g
+        );
+      }
+      // Crear grupo nuevo obligatorio, elige 1.
+      return [
+        ...prev,
+        {
+          _uiId: `g-preset-${now}`,
+          nombre: GRUPO_PRESENTACION_NOMBRE,
+          obligatorio: true,
+          min_selecciones: 1,
+          max_selecciones: 1,
+          adiciones: nuevasAdiciones,
+        },
+      ];
+    });
+    setShowUnidadesPreset(false);
+  };
+  const grupoPresentacionExiste = grupos.some(
+    (g) => (g.nombre || '').trim().toLowerCase() === GRUPO_PRESENTACION_NOMBRE.toLowerCase()
+  );
   const updateGrupo = (uiId, patch) => {
     setGrupos((prev) => prev.map((g) => (g._uiId === uiId ? { ...g, ...patch } : g)));
   };
@@ -1011,6 +1058,21 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
                   >
                     <Plus size={12} /> Grupo de adiciones
                   </button>
+                  {/* Fase 11: preset de unidades de venta (fruver/mercado/abarrotes).
+                      Crea automáticamente un grupo "Presentación" obligatorio con
+                      las unidades que el admin elija. Reutiliza Fase 10. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowUnidadesPreset(true)}
+                    className="flex items-center gap-1 text-xs text-emerald-600 hover:underline"
+                  >
+                    <Scale size={12} /> Unidades de venta (fruver/mercado)
+                    {grupoPresentacionExiste && (
+                      <span className="text-[10px] text-[color:var(--text-muted)] ml-1">
+                        · editar existentes
+                      </span>
+                    )}
+                  </button>
                 </div>
 
                 {/* Adiciones sueltas */}
@@ -1114,6 +1176,14 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
           </div>
         </form>
       </div>
+      {/* Fase 11: modal del preset de unidades de venta (fuera del form para
+          evitar submits accidentales). Se monta solo si el admin lo abrió. */}
+      <UnidadesVentaPreset
+        isOpen={showUnidadesPreset}
+        onClose={() => setShowUnidadesPreset(false)}
+        onConfirm={aplicarUnidadesVenta}
+        grupoYaExiste={grupoPresentacionExiste}
+      />
     </div>
   );
 }
