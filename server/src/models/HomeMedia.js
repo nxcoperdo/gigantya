@@ -1,28 +1,35 @@
 /**
- * Modelo `HomeMedia` (Fase 12).
+ * Modelo `HomeMedia` (Fase 12b).
  *
- * El super-admin de GigantYA (rol `usuarios.tipo_usuario='admin'`) puede
- * subir varios archivos de media (imagen o video) a un "gestor de
- * banners de la home". Elige UNO como activo. La home pública lee el
- * activo con `getActivo()` y lo renderiza.
+ * El super-admin de GigantYA (rol `usuarios.tipo_usuario='admin'`)
+ * elige UNO de los archivos estáticos commiteados en
+ * `client/public/media/` para que sea el banner activo de la home.
  *
  * Decisiones:
  *   - `setActivo` es transaccional: primero desactiva TODOS los que
  *     estén activos, después activa el elegido. Esto garantiza
  *     exactamente 1 activo a la vez sin necesidad de un UNIQUE
  *     constraint (MySQL no soporta `UNIQUE WHERE`).
- *   - `deleteById` NO chequea si es el activo: el controller lo hace
- *     y devuelve 400. Acá solo borra la fila y devuelve affectedRows.
- *   - `count()` se usa en el controller de upload para soft-cap.
+ *   - `listAll` devuelve TODAS las filas de la DB (que referencian
+ *     archivos en client/public/media/). El controller admin cruza
+ *     esta lista con `fs.readdir(...)` del filesystem para mostrar
+ *     solo los que existen.
+ *   - `count()` se mantiene por si más adelante queremos un soft cap
+ *     desde la DB (no se usa en el flujo actual).
  *   - Sin timestamps "actualizado_en" porque la tabla no tiene
- *     edición, solo crear/activar/borrar.
+ *     edición, solo crear/activar.
+ *
+ * Fase 12b: la columna `archivo_path` se renombró a `archivo`
+ * (solo el nombre del archivo, no el path completo). El path completo
+ * es siempre `client/public/media/<archivo>` y la URL pública
+ * es `/media/<archivo>` (servida por `app.use('/media', ...)` en app.js).
  */
 import { query, queryOne, getConnection } from '../config/database.js';
 
-/** Lista todos los archivos subidos (ordenados por más reciente). */
+/** Lista todas las filas de la DB (no chequea filesystem). */
 export async function listAll() {
   return query(
-    `SELECT id, nombre, archivo_path, tipo, mime, size_bytes, activo, subido_por, creado_en
+    `SELECT id, nombre, archivo, tipo, mime, size_bytes, activo, subido_por, creado_en
        FROM home_media
       ORDER BY creado_en DESC, id DESC`
   );
@@ -31,27 +38,39 @@ export async function listAll() {
 /** Devuelve el archivo activo (visible en la home) o null. */
 export async function getActivo() {
   return queryOne(
-    `SELECT id, nombre, archivo_path, tipo, mime, size_bytes, activo, creado_en
+    `SELECT id, nombre, archivo, tipo, mime, size_bytes, activo, creado_en
        FROM home_media
       WHERE activo = 1
       LIMIT 1`
   );
 }
 
-/** Devuelve un archivo por id, o null. */
+/** Devuelve una fila por id, o null. */
 export async function getById(id) {
   return queryOne(
-    `SELECT id, nombre, archivo_path, tipo, mime, size_bytes, activo, subido_por, creado_en
+    `SELECT id, nombre, archivo, tipo, mime, size_bytes, activo, subido_por, creado_en
        FROM home_media
       WHERE id = ?`,
     [Number(id)]
   );
 }
 
+/** Devuelve una fila por nombre de archivo, o null. */
+export async function getByArchivo(archivo) {
+  if (!archivo) return null;
+  return queryOne(
+    `SELECT id, nombre, archivo, tipo, mime, size_bytes, activo, subido_por, creado_en
+       FROM home_media
+      WHERE archivo = ?
+      LIMIT 1`,
+    [String(archivo)]
+  );
+}
+
 /** Crea un nuevo registro. Devuelve el insertId. */
-export async function create({ nombre, archivo_path, tipo, mime, size_bytes, subido_por }) {
+export async function create({ nombre, archivo, tipo, mime, size_bytes, subido_por }) {
   if (!nombre) throw new Error('nombre es requerido');
-  if (!archivo_path) throw new Error('archivo_path es requerido');
+  if (!archivo) throw new Error('archivo es requerido');
   if (!['imagen', 'video'].includes(tipo)) {
     throw new Error(`tipo debe ser 'imagen' o 'video' (recibido: ${tipo})`);
   }
@@ -63,11 +82,11 @@ export async function create({ nombre, archivo_path, tipo, mime, size_bytes, sub
 
   const r = await query(
     `INSERT INTO home_media
-       (nombre, archivo_path, tipo, mime, size_bytes, activo, subido_por)
+       (nombre, archivo, tipo, mime, size_bytes, activo, subido_por)
      VALUES (?, ?, ?, ?, ?, 0, ?)`,
     [
       String(nombre).slice(0, 150),
-      String(archivo_path).slice(0, 255),
+      String(archivo).slice(0, 100),
       tipo,
       String(mime).slice(0, 50),
       Number(size_bytes),
@@ -148,7 +167,7 @@ export async function setActivo(id) {
   }
 }
 
-/** Borra un archivo por id. Devuelve affectedRows (0 o 1). */
+/** Borra una fila por id. Devuelve affectedRows (0 o 1). */
 export async function deleteById(id) {
   const r = await query(
     `DELETE FROM home_media WHERE id = ?`,
@@ -157,7 +176,7 @@ export async function deleteById(id) {
   return r.affectedRows;
 }
 
-/** Total de archivos subidos (para soft cap en el controller de upload). */
+/** Total de filas en la DB (para soft cap si se quiere reintroducir). */
 export async function count() {
   const row = await queryOne(`SELECT COUNT(*) AS total FROM home_media`);
   return Number(row?.total || 0);
@@ -167,6 +186,7 @@ export default {
   listAll,
   getActivo,
   getById,
+  getByArchivo,
   create,
   setActivo,
   deleteById,
