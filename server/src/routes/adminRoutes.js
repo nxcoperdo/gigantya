@@ -9,6 +9,7 @@ import * as BarrioModel from '../models/Barrio.js';
 import { query, queryOne } from '../config/database.js';
 import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 import * as adminHomeMediaController from '../controllers/adminHomeMediaController.js';
+import * as adminHomeHeroController from '../controllers/adminHomeHeroController.js';
 import { createUploader } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
@@ -249,5 +250,21 @@ router.get('/home-media', adminHomeMediaController.list);
 router.post('/home-media', homeMediaUpload.single('file'), adminHomeMediaController.upload);
 router.put('/home-media/:archivo/activate', adminHomeMediaController.setActivo);
 router.delete('/home-media/:archivo', adminHomeMediaController.deleteMedia);
+
+// ========== CMS Hero de Home (Fase 12d) ==========
+// El super-admin puede editar los 4 textos del hero (con toggle ON/OFF
+// cada uno) y agregar N botones custom (label + URL + variant + icono
+// + orden + activo) que aparecen sobre el banner de la home.
+//
+// IMPORTANTE: el orden de las rutas importa. `/home-hero/buttons/reorder`
+// va ANTES de `/home-hero/buttons/:id` para que Express no capture
+// "reorder" como un id numérico.
+router.get('/home-hero/settings', adminHomeHeroController.getSettings);
+router.put('/home-hero/settings', adminHomeHeroController.updateSettings);
+router.get('/home-hero/buttons', adminHomeHeroController.listButtons);
+router.post('/home-hero/buttons', adminHomeHeroController.createButton);
+router.post('/home-hero/buttons/reorder', adminHomeHeroController.reorderButtons);
+router.put('/home-hero/buttons/:id', adminHomeHeroController.updateButton);
+router.delete('/home-hero/buttons/:id', adminHomeHeroController.deleteButton);
 
 export default router;

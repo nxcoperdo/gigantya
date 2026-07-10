@@ -10,6 +10,7 @@
  */
 import { Router } from 'express';
 import * as publicHomeMediaController from '../controllers/publicHomeMediaController.js';
+import * as publicHomeHeroController from '../controllers/publicHomeHeroController.js';
 
 const router = Router();
 
@@ -20,5 +21,14 @@ const router = Router();
  * banner.mp4 hardcodeado en client/public).
  */
 router.get('/media', publicHomeMediaController.getActivo);
+
+/**
+ * GET /api/home/hero (Fase 12d)
+ * Devuelve la config del hero (4 toggles + textos editables) y la lista
+ * de botones custom activos. Lo consume `HomePage.jsx` en mount.
+ * Si la DB falla, el controller devuelve defaults hardcodeados para
+ * que la home no rompa.
+ */
+router.get('/hero', publicHomeHeroController.getHero);
 
 export default router;

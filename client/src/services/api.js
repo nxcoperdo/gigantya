@@ -213,6 +213,21 @@ export const adminService = {
   activateHomeMedia: (archivo) => api.put(`/admin/home-media/${encodeURIComponent(archivo)}/activate`),
   // DELETE usa el nombre del archivo.
   deleteHomeMedia: (archivo) => api.delete(`/admin/home-media/${encodeURIComponent(archivo)}`),
+
+  // CMS Hero de Home (Fase 12d). El super-admin puede editar los 4
+  // textos del hero (con toggle ON/OFF cada uno) y agregar N botones
+  // custom que aparecen sobre el banner. La home pública los consume
+  // vía `homeService.getHero()` (endpoint público, sin auth).
+  // Settings: 1 fila singleton, devuelve/patchea los textos y toggles.
+  getHomeHeroSettings: () => api.get('/admin/home-hero/settings'),
+  updateHomeHeroSettings: (payload) => api.put('/admin/home-hero/settings', payload),
+  // Buttons: CRUD libre (label, url, variant, icono, orden, activo).
+  listHomeHeroButtons: () => api.get('/admin/home-hero/buttons'),
+  createHomeHeroButton: (payload) => api.post('/admin/home-hero/buttons', payload),
+  updateHomeHeroButton: (id, payload) => api.put(`/admin/home-hero/buttons/${id}`, payload),
+  deleteHomeHeroButton: (id) => api.delete(`/admin/home-hero/buttons/${id}`),
+  // Drag & drop reordering: array de ids en el orden deseado.
+  reorderHomeHeroButtons: (ids) => api.post('/admin/home-hero/buttons/reorder', { ids }),
 };
 
 // ========== NOTIFICACIONES ==========
@@ -476,6 +491,10 @@ export const homeService = {
   // Devuelve { media: null } si no hay banner activo, o
   // { media: { id, nombre, archivo_path, tipo, mime } } si hay.
   getActiveHomeMedia: () => api.get('/home/media').then((r) => r.data),
+  // Fase 12d: settings del hero (4 toggles + textos) + botones custom
+  // activos. Lo consume `HomePage.jsx` en mount para renderizar
+  // condicionalmente cada bloque del hero y los botones.
+  getHero: () => api.get('/home/hero').then((r) => r.data),
 };
 
 export default api;

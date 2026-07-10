@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, ShoppingBasket, Clock, Truck, Zap, UtensilsCrossed, ChevronUp, ArrowRight, Croissant } from 'lucide-react';
+import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, ShoppingBasket, Clock, Truck, Zap, UtensilsCrossed, ChevronUp, ArrowRight, Croissant, MessageCircle, Phone, ExternalLink, Coffee, ChevronRight, Send } from 'lucide-react';
 import { restaurantService, preferenceService, categoryService, productService, homeService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, IMAGE_DEFAULT_ATTRS, IMAGE_EAGER_ATTRS } from '../utils/imageHelper';
@@ -17,6 +17,33 @@ import RecentSearches from '../components/RecentSearches';
 // el pickDailyBanner() que rot día por medio. Fase 12b sirvió los archivos
 // vía /media/ (commiteados al repo). Fase 12c los movió a uploads del
 // server (server/uploads/home-media-uploaded/) subidos desde el admin.
+//
+// Fase 12d: además del banner, los 4 bloques del hero (título, subtítulo,
+// buscador, badge) y los botones custom se consumen del backend vía
+// `homeService.getHero()` (configurados desde /admin/home-hero). Cada
+// bloque tiene un toggle ON/OFF y los textos son editables. El cliente
+// renderiza condicionalmente cada uno.
+
+// Whitelist de iconos soportados (Fase 12d). Tiene que matchear la
+// whitelist del backend (adminHomeHeroController.ALLOWED_ICONS). NO
+// importar más iconos de lucide acá — cada import suma al bundle.
+const HERO_ICON_MAP = {
+  MessageCircle, MapPin, Store, Phone, ExternalLink,
+  ShoppingBag, Coffee, ChevronRight, Send,
+};
+
+// Estilos de los botones (Fase 12d). Coinciden con los variants del
+// backend (adminHomeHeroController.ALLOWED_VARIANTS). Cada variant
+// tiene su combinación de clases para las 3 situaciones:
+// sobre banner oscuro con backdrop-blur.
+const HERO_BUTTON_VARIANT_CLS = {
+  primary:
+    'bg-white text-gray-900 hover:bg-white/90 shadow-lg shadow-black/10',
+  secondary:
+    'bg-white/15 text-white border border-white/30 hover:bg-white/25 backdrop-blur-sm',
+  outline:
+    'bg-transparent text-white border-2 border-white/50 hover:bg-white/10 backdrop-blur-sm',
+};
 
 // Tarjeta de restaurante memoizada: solo se re-renderiza si cambian sus props
 const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
@@ -262,6 +289,12 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchHistory, setSearchHistory] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  // Fase 12d: config del hero. `heroSettings` puede ser null mientras
+  // se carga — en ese caso se muestra el hero hardcodeado como antes.
+  // `heroButtons` es [] mientras se carga. Si la API falla, mantenemos
+  // el último valor conocido (no se borra el contenido visible).
+  const [heroSettings, setHeroSettings] = useState(null);
+  const [heroButtons, setHeroButtons] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [filtering, setFiltering] = useState(false);
@@ -310,6 +343,20 @@ export default function HomePage() {
     homeService.getActiveHomeMedia()
       .then((r) => setHomeMedia(r?.media || null))
       .catch(() => setHomeMedia(null));
+    // Cargar la config del hero (textos + botones). Si falla, mantenemos
+    // los defaults (heroSettings=null → usamos valores hardcodeados como
+    // fallback para no romper la primera renderización).
+    homeService.getHero()
+      .then((d) => {
+        setHeroSettings(d?.settings || null);
+        setHeroButtons(Array.isArray(d?.buttons) ? d.buttons : []);
+      })
+      .catch(() => {
+        // Si falla, dejamos null/[] para que el render use los defaults
+        // hardcodeados (mismo contenido que antes de Fase 12d).
+        setHeroSettings(null);
+        setHeroButtons([]);
+      });
   }, [isAuthenticated, user, navigate]);
 
   // Cuando cambia la categoría, el modo de vista, el filtro de modalidad
@@ -599,39 +646,97 @@ export default function HomePage() {
         )}
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-extrabold mb-4 sm:mb-5 animate-fadeIn tracking-tight">
-            Pide lo que <span className="text-white drop-shadow-md">Amas</span>
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-10 md:mb-12 text-white/95 font-light px-2 max-w-2xl mx-auto leading-relaxed animate-fadeIn">
-            Descubre los mejores locales de <span className="font-semibold text-white">Gigante</span> en tu dispositivo
-          </p>
+          {/* Fase 12d: cada bloque del hero se renderiza condicionalmente
+              según `heroSettings`. Si `heroSettings` es null (cargando o
+              API caída), usamos los defaults hardcodeados para que la
+              primera renderización muestre los mismos textos que antes
+              de esta fase. NO cambiamos el comportamiento de filtrado
+              ni del state `searchTerm` — solo ocultamos la UI si el
+              admin apaga el toggle correspondiente. */}
 
-          {/* Search Bar */}
-          <div className="max-w-3xl mx-auto animate-slideUp relative" style={{ animationDelay: '120ms' }}>
-            <div className="relative flex items-center bg-white rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5 transition-shadow duration-200 focus-within:shadow-primary/20 focus-within:ring-2 focus-within:ring-primary/30">
-              <Search className="text-primary absolute left-4 sm:left-5" size={20} />
-              <input
-                type="text"
-                placeholder="Buscar local, producto o categoría..."
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                className="flex-1 pl-12 sm:pl-14 pr-4 sm:pr-6 py-4 sm:py-4.5 outline-none text-gray-800 text-base sm:text-lg placeholder:text-gray-400 min-h-[52px] touch-action-manipulation"
-                aria-label="Buscar locales"
-              />
-            </div>
-            {isSearchFocused && (
-              <RecentSearches
-                searches={searchTerms}
-                onSelect={handleSelectSearch}
-                onClear={clearHistory}
-              />
-            )}
-            <p className="text-xs sm:text-sm mt-3 sm:mt-4 text-white/90 font-light tracking-wide">
-              Más de {restaurants.length} locales disponibles
+          {/* Bloque 1: Título (h1) */}
+          {(!heroSettings || Number(heroSettings.mostrar_titulo ?? 1) === 1) && (
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-extrabold mb-4 sm:mb-5 animate-fadeIn tracking-tight">
+              {heroSettings?.titulo_pre ?? 'Pide lo que'}{' '}
+              <span className="text-white drop-shadow-md">{heroSettings?.titulo_post ?? 'Amas'}</span>
+            </h1>
+          )}
+
+          {/* Bloque 2: Subtítulo (p) */}
+          {(!heroSettings || Number(heroSettings.mostrar_subtitulo ?? 1) === 1) && (
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-10 md:mb-12 text-white/95 font-light px-2 max-w-2xl mx-auto leading-relaxed animate-fadeIn">
+              {heroSettings?.subtitulo_pre ?? 'Descubre los mejores locales de'}{' '}
+              <span className="font-semibold text-white">{heroSettings?.subtitulo_bold ?? 'Gigante'}</span>{' '}
+              {heroSettings?.subtitulo_post ?? 'en tu dispositivo'}
             </p>
-          </div>
+          )}
+
+          {/* Botones custom (Fase 12d). Aparecen entre el subtítulo y el
+              buscador (o al final del hero si no hay subtítulo). Solo se
+              renderizan si la API devolvió al menos un botón activo. */}
+          {heroButtons.length > 0 && (
+            <div
+              className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8 animate-fadeIn"
+              style={{ animationDelay: '60ms' }}
+            >
+              {heroButtons.map((b) => {
+                const Icon = b.icono ? HERO_ICON_MAP[b.icono] : null;
+                const variantCls = HERO_BUTTON_VARIANT_CLS[b.variant] || HERO_BUTTON_VARIANT_CLS.primary;
+                return (
+                  <a
+                    key={b.id}
+                    href={b.url}
+                    target={b.nueva_pestana ? '_blank' : undefined}
+                    rel={b.nueva_pestana ? 'noopener noreferrer' : undefined}
+                    className={[
+                      'inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
+                      variantCls,
+                    ].join(' ')}
+                  >
+                    {Icon && <Icon className="w-4 h-4" aria-hidden="true" />}
+                    {b.label}
+                    {b.nueva_pestana && (
+                      <ExternalLink className="w-3 h-3 opacity-70" aria-hidden="true" />
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Bloque 3: Buscador (input) */}
+          {(!heroSettings || Number(heroSettings.mostrar_buscador ?? 1) === 1) && (
+            <div className="max-w-3xl mx-auto animate-slideUp relative" style={{ animationDelay: '120ms' }}>
+              <div className="relative flex items-center bg-white rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5 transition-shadow duration-200 focus-within:shadow-primary/20 focus-within:ring-2 focus-within:ring-primary/30">
+                <Search className="text-primary absolute left-4 sm:left-5" size={20} />
+                <input
+                  type="text"
+                  placeholder={heroSettings?.buscador_placeholder ?? 'Buscar local, producto o categoría...'}
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                  className="flex-1 pl-12 sm:pl-14 pr-4 sm:pr-6 py-4 sm:py-4.5 outline-none text-gray-800 text-base sm:text-lg placeholder:text-gray-400 min-h-[52px] touch-action-manipulation"
+                  aria-label="Buscar locales"
+                />
+              </div>
+              {isSearchFocused && (
+                <RecentSearches
+                  searches={searchTerms}
+                  onSelect={handleSelectSearch}
+                  onClear={clearHistory}
+                />
+              )}
+
+              {/* Bloque 4: Badge "Más de N locales disponibles" */}
+              {(!heroSettings || Number(heroSettings.mostrar_badge_locales ?? 1) === 1) && (
+                <p className="text-xs sm:text-sm mt-3 sm:mt-4 text-white/90 font-light tracking-wide">
+                  {heroSettings?.badge_locales_pre ?? 'Más de'} {restaurants.length}{' '}
+                  {heroSettings?.badge_locales_sufijo ?? 'locales disponibles'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

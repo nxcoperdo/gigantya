@@ -24,6 +24,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const RestaurantDashboardPage = lazy(() => import('./pages/RestaurantDashboardPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const HomeMediaPage = lazy(() => import('./pages/admin/HomeMediaPage'));
+const HomeHeroPage = lazy(() => import('./pages/admin/HomeHeroPage'));
 
 // POS (Fase 1+)
 const POSLayout = lazy(() => import('./components/pos/POSLayout'));
@@ -122,6 +123,14 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRole="admin">
                         <HomeMediaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/home-hero"
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <HomeHeroPage />
                       </ProtectedRoute>
                     }
                   />

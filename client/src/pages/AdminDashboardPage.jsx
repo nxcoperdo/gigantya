@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../services/api';
 import Loading from '../components/Loading';
-import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity, FileText, History, Eye, Edit2, ImageIcon } from 'lucide-react';
+import { ShieldCheck, Store, Users, ShoppingBag, ShoppingBasket, Banknote, RefreshCcw, AlertCircle, ThumbsUp, ThumbsDown, UserPlus, Trash2, Bell, BarChart3, Package, ClipboardList, X, Save, Tags, Percent, Truck, MapPin, Zap, Ticket, UtensilsCrossed, Croissant, Activity, FileText, History, Eye, Edit2, ImageIcon, Type } from 'lucide-react';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import UserManagementModal from '../components/UserManagementModal';
 import UserDetailModal from '../components/UserDetailModal';
@@ -428,6 +428,15 @@ export default function AdminDashboardPage() {
               >
                 <ImageIcon size={16} />
                 Banner de Home
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/home-hero')}
+                className="btn btn-outline inline-flex items-center gap-2 text-primary border-primary/30"
+                title="Editar los textos y botones del hero de la home pública"
+              >
+                <Type size={16} />
+                Textos del Hero
               </button>
               <button
                 type="button"
