@@ -176,6 +176,113 @@ export async function deleteById(id) {
   return r.affectedRows;
 }
 
+/**
+ * Upsert + activate por nombre de archivo (Fase 12b).
+ *
+ * Si la fila para `archivo` NO existe, la crea con `activo=1` y
+ * desactiva cualquier otra activa. Si YA existe, hace el toggle
+ * transaccional de siempre (lock pesimista sobre las filas con
+ * activo=1, desactivar, activar la elegida).
+ *
+ * Todo dentro de una sola transacción para garantizar que no queden
+ * 2 banners activos a la vez (MySQL no soporta UNIQUE WHERE).
+ *
+ * @returns {Promise<{ok: boolean, created?: boolean, alreadyActive?: boolean}>}
+ *   - ok: true, created: true → la fila se creó recién
+ *   - ok: true, created: false, alreadyActive: true → ya estaba activa
+ *   - ok: true, created: false, alreadyActive: false → se activó recién
+ *   - ok: false → si el archivo tiene nombre inválido
+ */
+export async function upsertAndActivate({ archivo, nombre, tipo, mime, size_bytes, subido_por }) {
+  if (!archivo) throw new Error('archivo es requerido');
+  if (!nombre) throw new Error('nombre es requerido');
+  if (!['imagen', 'video'].includes(tipo)) {
+    throw new Error(`tipo debe ser 'imagen' o 'video' (recibido: ${tipo})`);
+  }
+  if (!mime) throw new Error('mime es requerido');
+  if (!Number.isFinite(Number(size_bytes)) || Number(size_bytes) <= 0) {
+    throw new Error('size_bytes debe ser un número positivo');
+  }
+  if (!subido_por) throw new Error('subido_por es requerido');
+
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1) Buscar la fila por archivo.
+    const [existingRows] = await connection.query(
+      `SELECT id, activo FROM home_media WHERE archivo = ? FOR UPDATE`,
+      [String(archivo)]
+    );
+
+    let targetId;
+    let created = false;
+    if (existingRows.length === 0) {
+      // No existe → la creamos con activo=1.
+      const [insertResult] = await connection.query(
+        `INSERT INTO home_media
+           (nombre, archivo, tipo, mime, size_bytes, activo, subido_por)
+         VALUES (?, ?, ?, ?, ?, 1, ?)`,
+        [
+          String(nombre).slice(0, 150),
+          String(archivo).slice(0, 100),
+          tipo,
+          String(mime).slice(0, 50),
+          Number(size_bytes),
+          Number(subido_por),
+        ]
+      );
+      targetId = insertResult.insertId;
+      created = true;
+      // No hace falta desactivar otras porque la nueva ya entra activa=1
+      // y las demás no se tocan. Pero por seguridad hacemos el lock
+      // + desactivar para mantener la invariante "1 activo a la vez".
+      const [currentActivos] = await connection.query(
+        `SELECT id FROM home_media WHERE activo = 1 AND id <> ? FOR UPDATE`,
+        [targetId]
+      );
+      for (const row of currentActivos) {
+        await connection.query(
+          `UPDATE home_media SET activo = 0 WHERE id = ?`,
+          [row.id]
+        );
+      }
+    } else {
+      // Ya existe → toggle.
+      const existing = existingRows[0];
+      targetId = existing.id;
+      if (Number(existing.activo) === 1) {
+        await connection.commit();
+        return { ok: true, created: false, alreadyActive: true };
+      }
+      // Lock sobre las filas actualmente activas (excluyendo esta).
+      const [currentActivos] = await connection.query(
+        `SELECT id FROM home_media WHERE activo = 1 AND id <> ? FOR UPDATE`,
+        [targetId]
+      );
+      for (const row of currentActivos) {
+        await connection.query(
+          `UPDATE home_media SET activo = 0 WHERE id = ?`,
+          [row.id]
+        );
+      }
+      // Activar la elegida.
+      await connection.query(
+        `UPDATE home_media SET activo = 1 WHERE id = ?`,
+        [targetId]
+      );
+    }
+
+    await connection.commit();
+    return { ok: true, created, alreadyActive: false };
+  } catch (e) {
+    await connection.rollback();
+    throw e;
+  } finally {
+    connection.release();
+  }
+}
+
 /** Total de filas en la DB (para soft cap si se quiere reintroducir). */
 export async function count() {
   const row = await queryOne(`SELECT COUNT(*) AS total FROM home_media`);
@@ -189,6 +296,7 @@ export default {
   getByArchivo,
   create,
   setActivo,
+  upsertAndActivate,
   deleteById,
   count,
 };

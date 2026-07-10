@@ -232,9 +232,11 @@ router.delete('/coupons/:id', couponController.adminDeleteCoupon);
 // ni deletes (los archivos viven en el repo).
 //
 // Endpoints:
-//   - GET    /api/admin/home-media              → lista archivos del disco
-//   - PUT    /api/admin/home-media/:id/activate → marca uno como activo
+//   - GET  /api/admin/home-media                       → lista archivos del disco
+//   - PUT  /api/admin/home-media/:archivo/activate     → marca uno como activo
+//                                                        (upsert: crea la fila si
+//                                                        no existe)
 router.get('/home-media', adminHomeMediaController.list);
-router.put('/home-media/:id/activate', adminHomeMediaController.setActivo);
+router.put('/home-media/:archivo/activate', adminHomeMediaController.setActivo);
 
 export default router;

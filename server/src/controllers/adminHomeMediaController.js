@@ -3,7 +3,7 @@
  *
  * Endpoints (todos protegidos por `requireAdmin` desde `adminRoutes.js`):
  *   - GET    /api/admin/home-media              → list (lee filesystem + DB)
- *   - PUT    /api/admin/home-media/:id/activate → setActivo
+ *   - PUT    /api/admin/home-media/:archivo/activate → setActivo
  *
  * Fase 12b: ya no hay upload ni delete. Los banners son assets
  * estáticos commiteados en `client/public/media/`. El admin solo
@@ -20,8 +20,11 @@
  *     exóticos, agregar `file-type` o leer los primeros bytes.
  *   - Si la carpeta `client/public/media/` no existe, devuelve lista
  *     vacía con un warning. No falla con 500 — es estado válido.
- *   - `setActivo` no cambió. Sigue siendo transaccional (lock pesimista
- *     para evitar race conditions entre 2 admins).
+ *   - `setActivo` recibe el nombre del ARCHIVO (no el id) y hace
+ *     upsert: si la fila no existe, la crea con `activo=1` y
+ *     desactivando cualquier otra activa. Si existe, hace el toggle
+ *     transaccional de siempre. Esto permite activar un banner
+ *     commiteado al repo sin tener que pre-insertar la fila.
  */
 import fs from 'fs';
 import path from 'path';
@@ -125,22 +128,79 @@ export async function list(req, res) {
   }
 }
 
-/** PUT /api/admin/home-media/:id/activate */
+/**
+ * PUT /api/admin/home-media/:archivo/activate
+ *
+ * Marca el banner identificado por `archivo` (nombre del archivo en
+ * client/public/media/, ej: 'banner.mp4') como activo.
+ *
+ * - Si la fila NO existe: la crea con `activo=1` y desactiva cualquier
+ *   otra activa (transaccional). Útil para activar un banner commiteado
+ *   al repo por primera vez.
+ * - Si la fila SÍ existe: hace el toggle de siempre (lock pesimista
+ *   sobre las filas activas, desactiva todas, activa la elegida).
+ *
+ * El parámetro ahora es `:archivo` en vez de `:id` porque los items
+ * que devuelve `list` pueden tener `id: null` (cuando el archivo
+ * todavía no se activó nunca). Usar `archivo` como key evita un PUT
+ * con id=null → 404.
+ */
 export async function setActivo(req, res) {
   try {
     if (req.user.tipo_usuario !== 'admin') {
       return res.status(403).json({ error: 'Solo administradores pueden activar banners' });
     }
-    const { id } = req.params;
-    const result = await HomeMedia.setActivo(id);
-    if (!result.ok) {
-      return res.status(404).json({ error: 'Banner no encontrado' });
+    const { archivo } = req.params;
+    if (!archivo) {
+      return res.status(400).json({ error: 'Falta el parámetro archivo' });
     }
+
+    // 1) Verificar que el archivo existe en el filesystem.
+    const filePath = path.join(PUBLIC_MEDIA_DIR, archivo);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        error: `El archivo "${archivo}" no existe en client/public/media/`,
+      });
+    }
+    // Verificar que es un tipo soportado.
+    const ext = path.extname(archivo).slice(1).toLowerCase();
+    const typeInfo = EXT_TO_TYPE[ext];
+    if (!typeInfo) {
+      return res.status(400).json({
+        error: `Tipo de archivo no soportado: .${ext}. Solo imágenes (jpg/png/webp/gif/avif) o videos (mp4/webm/mov).`,
+      });
+    }
+
+    // 2) Derivar info del archivo.
+    let size_bytes = 0;
+    try {
+      const stat = fs.statSync(filePath);
+      size_bytes = stat.size;
+    } catch (_) { /* no bloqueante */ }
+    const { tipo, mime } = typeInfo;
+    const nombre = path.basename(archivo, path.extname(archivo));
+
+    // 3) Upsert + activación transaccional.
+    const result = await HomeMedia.upsertAndActivate({
+      archivo,
+      nombre,
+      tipo,
+      mime,
+      size_bytes,
+      subido_por: req.user.id,
+    });
+
+    if (!result.ok) {
+      return res.status(500).json({ error: 'Error activando banner' });
+    }
+
     const activo = await HomeMedia.getActivo();
     res.json({
       mensaje: result.alreadyActive
         ? 'Este banner ya estaba activo'
-        : 'Banner activado correctamente',
+        : (result.created
+            ? 'Banner creado y activado correctamente'
+            : 'Banner activado correctamente'),
       activo,
     });
   } catch (error) {

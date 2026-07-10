@@ -204,7 +204,9 @@ export const adminService = {
   // archivos estáticos commiteados en client/public/media/ y marca
   // UNO como activo. Sin uploads ni deletes.
   listHomeMedia: () => api.get('/admin/home-media'),
-  activateHomeMedia: (id) => api.put(`/admin/home-media/${id}/activate`),
+  // PUT usa el nombre del ARCHIVO (no el id) porque los items pueden
+  // tener id=null si nunca se activaron. El backend hace upsert.
+  activateHomeMedia: (archivo) => api.put(`/admin/home-media/${encodeURIComponent(archivo)}/activate`),
 };
 
 // ========== NOTIFICACIONES ==========

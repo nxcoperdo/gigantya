@@ -59,11 +59,11 @@ export default function HomeMediaPage() {
   const showError = (msg) => { setError(msg); setSuccess(''); };
   const showSuccess = (msg) => { setSuccess(msg); setError(''); };
 
-  const handleActivate = async (id, nombre) => {
+  const handleActivate = async (archivo, nombre) => {
     try {
-      setActionId(id);
+      setActionId(archivo); // Usamos archivo como actionId porque puede no haber id
       setError('');
-      await adminService.activateHomeMedia(id);
+      await adminService.activateHomeMedia(archivo);
       showSuccess(`"${nombre}" ahora es el banner activo`);
       await fetchList();
     } catch (e) {
@@ -162,8 +162,8 @@ export default function HomeMediaPage() {
                 key={item.archivo}
                 item={item}
                 isActive={Number(item.activo) === 1}
-                isLoading={actionId === item.id}
-                onActivate={() => handleActivate(item.id, item.nombre)}
+                isLoading={actionId === item.archivo}
+                onActivate={() => handleActivate(item.archivo, item.nombre)}
               />
             ))}
           </div>
