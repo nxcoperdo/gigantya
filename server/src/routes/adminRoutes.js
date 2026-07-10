@@ -8,17 +8,7 @@ import * as SectorModel from '../models/Sector.js';
 import * as BarrioModel from '../models/Barrio.js';
 import { query, queryOne } from '../config/database.js';
 import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
-import { createUploader } from '../middleware/uploadMiddleware.js';
 import * as adminHomeMediaController from '../controllers/adminHomeMediaController.js';
-
-// Uploader dedicado para CMS de banner de Home. Whitelist: imágenes y
-// videos cortos. 20MB max (los videos del hero no necesitan más). La
-// subcarpeta 'home-media' se crea automáticamente si no existe.
-const homeMediaUpload = createUploader({
-  subdir: 'home-media',
-  allowedTypes: /jpeg|jpg|png|webp|mp4|webm/,
-  maxSize: 20 * 1024 * 1024,
-});
 
 const router = express.Router();
 
@@ -236,12 +226,15 @@ router.get('/coupons/:id', couponController.adminGetCoupon);
 router.put('/coupons/:id', couponController.adminUpdateCoupon);
 router.delete('/coupons/:id', couponController.adminDeleteCoupon);
 
-// ========== CMS Banner de Home (Fase 12) ==========
-// Permite al super-admin subir varios archivos de media (imagen o video)
-// y elegir UNO como activo. La home pública (`/`) lo lee y lo renderiza.
+// ========== CMS Banner de Home (Fase 12b) ==========
+// Los banners son assets estáticos commiteados en client/public/media/.
+// El super-admin solo VE la lista y marca UNO como activo. Sin uploads
+// ni deletes (los archivos viven en el repo).
+//
+// Endpoints:
+//   - GET    /api/admin/home-media              → lista archivos del disco
+//   - PUT    /api/admin/home-media/:id/activate → marca uno como activo
 router.get('/home-media', adminHomeMediaController.list);
-router.post('/home-media', homeMediaUpload.single('file'), adminHomeMediaController.upload);
 router.put('/home-media/:id/activate', adminHomeMediaController.setActivo);
-router.delete('/home-media/:id', adminHomeMediaController.deleteMedia);
 
 export default router;
