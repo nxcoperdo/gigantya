@@ -167,12 +167,12 @@ export default function AdminDashboardPage() {
   };
 
   const handleUpdatePlan = async (restaurantId, newPlan) => {
-    // Si es plan profesional/premium, abrir modal con fecha de vencimiento.
-    // Si es básico, enviar sin fecha.
-    if (newPlan === 'basico') {
+    // Free y Básico: enviar directo al backend sin fecha de vencimiento.
+    // El modal de fecha solo se abre para planes de pago.
+    if (newPlan === 'free' || newPlan === 'basico') {
       try {
         setError('');
-        await adminService.updateRestaurantPlan(restaurantId, { plan: 'basico' });
+        await adminService.updateRestaurantPlan(restaurantId, { plan: newPlan });
         await loadData();
       } catch (err) {
         setError(err.response?.data?.error || 'Error al actualizar el plan');
@@ -1138,6 +1138,7 @@ export default function AdminDashboardPage() {
                                 onChange={(e) => handleUpdatePlan(res.id, e.target.value)}
                                 className="text-xs p-1 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded outline-none"
                               >
+                                <option value="free">🆓 Free</option>
                                 <option value="basico">🥉 Básico</option>
                                 <option value="profesional">🥈 Profesional</option>
                                 <option value="premium">🥇 Premium</option>
@@ -1570,7 +1571,7 @@ function PlanAssignmentModal({ plan, onClose, onSubmit }) {
               step="1000"
               min="0"
               className="w-full p-2 border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="120000"
+              placeholder="50000"
             />
           </div>
           <div className="space-y-1">
