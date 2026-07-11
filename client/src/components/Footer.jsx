@@ -101,28 +101,28 @@ export default function Footer() {
             <h4 className="font-heading font-bold text-base text-[color:var(--text-on-inverted)] mb-5 tracking-wide">Legal</h4>
             <ul className="text-[color:var(--text-muted)] text-sm space-y-3">
               <li>
-                <a href="#" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
+                <Link to="/terminos" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
                   <span className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  Términos de Servicio
-                </a>
+                  Términos y Condiciones
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
+                <Link to="/privacidad" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
                   <span className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                   Política de Privacidad
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
+                <Link to="/cookies" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
                   <span className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  Cookies
-                </a>
+                  Política de Cookies
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
+                <Link to="/legal/restaurante" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
                   <span className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  Reportar Abuso
-                </a>
+                  Acuerdo para Locales
+                </Link>
               </li>
             </ul>
           </div>
@@ -174,6 +174,14 @@ export default function Footer() {
 
         {/* Divider */}
         <div className="border-t border-[color:var(--border-strong)] pt-8">
+          <p className="text-[color:var(--text-muted)] text-xs leading-relaxed mb-4 max-w-4xl">
+            <strong className="text-[color:var(--text-on-inverted)]">GigantYA es una plataforma tecnológica de intermediación</strong> entre
+            usuarios y restaurantes. Los productos son vendidos y entregados directamente por cada
+            restaurante, quien es responsable por su calidad, seguridad, contenido y legalidad.
+            GigantYA no procesa los pagos entre el usuario y el restaurante; la transacción se
+            realiza directamente entre ambos.{' '}
+            <Link to="/terminos" className="text-primary underline">Ver Términos completos</Link>.
+          </p>
           <div className="flex flex-col md:flex-row justify-between items-center text-[color:var(--text-muted)] text-sm gap-4">
             <p className="font-light">
               &copy; {currentYear} <span className="font-bold text-primary">GigantYA</span>. Todos los derechos reservados para Code Repair Tech

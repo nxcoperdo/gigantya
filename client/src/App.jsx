@@ -8,6 +8,7 @@ import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 import Loading from './components/Loading';
+import CookiesBanner from './components/legal/CookiesBanner';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -25,6 +26,12 @@ const RestaurantDashboardPage = lazy(() => import('./pages/RestaurantDashboardPa
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const HomeMediaPage = lazy(() => import('./pages/admin/HomeMediaPage'));
 const HomeHeroPage = lazy(() => import('./pages/admin/HomeHeroPage'));
+
+// Páginas legales (TyC, Privacidad, Cookies, Merchant Agreement)
+const TerminosPage = lazy(() => import('./pages/legal/TerminosPage'));
+const PrivacidadPage = lazy(() => import('./pages/legal/PrivacidadPage'));
+const CookiesPage = lazy(() => import('./pages/legal/CookiesPage'));
+const MerchantAgreementPage = lazy(() => import('./pages/legal/MerchantAgreementPage'));
 
 // POS (Fase 1+)
 const POSLayout = lazy(() => import('./components/pos/POSLayout'));
@@ -135,6 +142,14 @@ export default function App() {
                     }
                   />
 
+                  {/* Páginas legales (públicas, sin auth) */}
+                  <Route path="/terminos" element={<TerminosPage />} />
+                  <Route path="/privacidad" element={<PrivacidadPage />} />
+                  <Route path="/cookies" element={<CookiesPage />} />
+                  {/* Merchant Agreement es público (lectura) pero la
+                      firma del botón "Acepto" requiere auth del dueño. */}
+                  <Route path="/legal/restaurante" element={<MerchantAgreementPage />} />
+
                   {/* POS (Fase 1+): personal del restaurante. Cubre cualquier
                       rol staff (cajero/mesero/cocina/restaurante/admin). */}
                   <Route
@@ -196,6 +211,10 @@ export default function App() {
           </div>
         </CartProvider>
       </AuthProvider>
+      {/* Banner de cookies: aparece en cualquier página si el usuario
+          nunca aceptó/rechazó o si pasaron 12 meses. Es invisible si
+          ya hay consentimiento vigente. */}
+      <CookiesBanner />
       </ThemeProvider>
     </Router>
   );

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { zonaService } from '../services/api';
+import { zonaService, legalService } from '../services/api';
 import { MapPin, AlertCircle, ChevronDown } from 'lucide-react';
+import LegalCheckbox from '../components/legal/LegalCheckbox';
 // Sin AddressAutocomplete ni AddressMapPicker: el usuario escribe la dirección
 // como texto libre. El restaurante la geocodifica en el iframe de embed si no
 // hay coordenadas (AddressMapPreview.jsx hace fallback por texto).
@@ -24,6 +25,13 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Aceptaciones legales (TyC + Privacidad). Se envían al backend
+  // después de un registro exitoso. NO son parte del payload de register
+  // porque el backend las registra en una tabla separada con timestamp
+  // y versión, que es lo que exige la Ley 1581/2012.
+  const [acceptTyc, setAcceptTyc] = useState(false);
+  const [acceptPriv, setAcceptPriv] = useState(false);
+  const [legalErrors, setLegalErrors] = useState({});
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -98,6 +106,20 @@ export default function RegisterPage() {
       return;
     }
 
+    // Validar aceptaciones legales (Ley 1581/2012 art. 9: consentimiento
+    // expreso previo). Si falta alguna, mostramos el error en el
+    // checkbox correspondiente, no como mensaje general.
+    const newLegalErrors = {};
+    if (!acceptTyc) newLegalErrors.tyc = 'Debés aceptar los Términos y Condiciones';
+    if (!acceptPriv) newLegalErrors.privacidad = 'Debés aceptar la Política de Privacidad';
+    if (Object.keys(newLegalErrors).length > 0) {
+      setLegalErrors(newLegalErrors);
+      setError('Aceptá los documentos legales para continuar');
+      setLoading(false);
+      return;
+    }
+    setLegalErrors({});
+
     if (!formData.direccion.trim()) {
       setError('La dirección es obligatoria');
       setLoading(false);
@@ -136,6 +158,21 @@ export default function RegisterPage() {
         place_id: null,
       };
       await register(payload);
+
+      // Registrar aceptaciones legales como paso separado. Si falla,
+      // no rompemos el registro del usuario (el log legal es defensivo,
+      // no crítico para el flujo). El error se loguea en consola.
+      try {
+        // Las dos aceptaciones en paralelo. Si alguna falla, las otras
+        // igual quedan registradas.
+        await Promise.allSettled([
+          legalService.aceptar({ tipo: 'tyc', version: 'v1.0-2026-07-10' }),
+          legalService.aceptar({ tipo: 'privacidad', version: 'v1.0-2026-07-10' }),
+        ]);
+      } catch (legalErr) {
+        console.warn('[Legal] No se pudieron registrar aceptaciones:', legalErr);
+      }
+
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrarse');
@@ -380,6 +417,17 @@ export default function RegisterPage() {
               autoComplete="new-password"
               minLength={6}
               required
+            />
+          </div>
+
+          {/* Aceptaciones legales obligatorias (Ley 1581/2012 art. 9) */}
+          <div className="pt-3 border-t border-gray-200">
+            <LegalCheckbox
+              tyc={acceptTyc}
+              privacidad={acceptPriv}
+              onChangeTyc={setAcceptTyc}
+              onChangePrivacidad={setAcceptPriv}
+              errors={legalErrors}
             />
           </div>
 

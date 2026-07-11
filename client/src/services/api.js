@@ -497,5 +497,28 @@ export const homeService = {
   getHero: () => api.get('/home/hero').then((r) => r.data),
 };
 
+// ========== LEGAL (TyC, Privacidad, Cookies, Merchant) ==========
+// Servicio de documentos legales. getVersion es público, lo consume
+// la página de cada documento + el banner de cookies + el checkbox
+// del registro. El resto requiere auth.
+export const legalService = {
+  // Devuelve { versions: { tyc, privacidad, cookies, merchant } }
+  getVersion: () => api.get('/legal/version').then((r) => r.data),
+
+  // Registra una aceptación. Se llama desde:
+  //   - Banner de cookies (visitante anónimo permitido)
+  //   - Modal de TyC/Privacidad en el registro de usuarios
+  //   - Modal de Merchant Agreement al activar la suscripción
+  // Body: { tipo, version, restaurante_id? }
+  aceptar: (payload) => api.post('/legal/aceptar', payload).then((r) => r.data),
+
+  // Historial del usuario autenticado.
+  getMisAceptaciones: () => api.get('/legal/mis-aceptaciones').then((r) => r.data),
+
+  // Admin: aceptaciones de un local específico.
+  getAceptacionesRestaurante: (restauranteId) =>
+    api.get(`/legal/restaurante/${restauranteId}/aceptaciones`).then((r) => r.data),
+};
+
 export default api;
 
