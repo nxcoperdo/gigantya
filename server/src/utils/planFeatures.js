@@ -28,6 +28,7 @@ export const PLAN_FEATURES = {
     promociones: false,
     etiqueta_destacado: false,
     redes_sociales: false,
+    page_builder: false,
     pos: false,
   },
   basico: {
@@ -40,6 +41,7 @@ export const PLAN_FEATURES = {
     promociones: false,
     etiqueta_destacado: false,
     redes_sociales: false,
+    page_builder: false,
     pos: false,
   },
   profesional: {
@@ -52,6 +54,7 @@ export const PLAN_FEATURES = {
     promociones: true,
     etiqueta_destacado: true,
     redes_sociales: false,
+    page_builder: true,
     pos: false,
   },
   premium: {
@@ -64,6 +67,7 @@ export const PLAN_FEATURES = {
     promociones: true,
     etiqueta_destacado: true,
     redes_sociales: true,
+    page_builder: true,
     pos: false,
   },
   golden_plus: {
@@ -76,6 +80,7 @@ export const PLAN_FEATURES = {
     promociones: true,
     etiqueta_destacado: true,
     redes_sociales: true,
+    page_builder: true,
     pos: true,
   },
 };

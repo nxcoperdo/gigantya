@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService, userService } from '../services/api';
 import Loading from '../components/Loading';
@@ -13,7 +14,7 @@ import OnboardingTip from '../components/help/OnboardingTip';
 import DashboardHelpBanner from '../components/help/DashboardHelpBanner';
 import DashboardTour from '../components/help/DashboardTour';
 import ReactivateHelpMenuItem from '../components/help/ReactivateHelpMenuItem';
-import { getPlanLimit } from '../utils/planFeatures';
+import { getPlanLimit, canAccessPlan } from '../utils/planFeatures';
 import {
   LayoutDashboard,
   Clock3,
@@ -775,7 +776,7 @@ export default function RestaurantDashboardPage() {
                   <Ticket size={16} />
                   Cupones
                 </button>
-                {restaurant?.plan && restaurant.plan !== 'basico' && (
+                {canAccessPlan(restaurant?.plan, 'page_builder') && (
                   <>
                     <button
                       onClick={() => setActiveTab('builder')}
@@ -904,10 +905,18 @@ export default function RestaurantDashboardPage() {
             refreshData={refreshData}
           />
         ) : activeTab === 'builder' ? (
-          <PageBuilder
-            restaurant={restaurant}
-            onSave={refreshData}
-          />
+          // Guard: si el Free (o Básico) entra al tab por URL directa,
+          // redirigir al tab de Gestión en vez de mostrarle el editor.
+          // El botón del tab ya está oculto con canAccessPlan arriba,
+          // pero un Free podría tipear la URL manualmente.
+          canAccessPlan(restaurant?.plan, 'page_builder') ? (
+            <PageBuilder
+              restaurant={restaurant}
+              onSave={refreshData}
+            />
+          ) : (
+            <Navigate to="/dashboard?tab=management" replace />
+          )
         ) : (
           <>
             {/* Capa 1 — manual contextual: tips contextuales.

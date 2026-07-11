@@ -20,6 +20,7 @@ export const PLAN_FEATURES = {
     multiples_fotos: false,
     estadisticas: false,
     redes_sociales: false,
+    page_builder: false,
     pos: false,
   },
   basico: {
@@ -29,6 +30,7 @@ export const PLAN_FEATURES = {
     multiples_fotos: false,
     estadisticas: false,
     redes_sociales: false,
+    page_builder: false,
     pos: false,
   },
   profesional: {
@@ -38,6 +40,7 @@ export const PLAN_FEATURES = {
     multiples_fotos: true,
     estadisticas: true,
     redes_sociales: false,
+    page_builder: true,
     pos: false,
   },
   premium: {
@@ -47,6 +50,7 @@ export const PLAN_FEATURES = {
     multiples_fotos: true,
     estadisticas: true,
     redes_sociales: true,
+    page_builder: true,
     pos: false,
   },
   golden_plus: {
@@ -56,6 +60,7 @@ export const PLAN_FEATURES = {
     multiples_fotos: true,
     estadisticas: true,
     redes_sociales: true,
+    page_builder: true,
     pos: true,
   },
 };
