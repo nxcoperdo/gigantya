@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService } from '../services/api';
+import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService, userService } from '../services/api';
 import Loading from '../components/Loading';
 import ProductModal from '../components/ProductModal';
 import RestaurantModal from '../components/RestaurantModal';
@@ -320,6 +320,33 @@ export default function RestaurantDashboardPage() {
       setExporting(false);
     }
   };
+
+  // Capa 3 del manual contextual: marca `ultimo_acceso_dashboard` cada
+  // vez que el dueño abre esta pantalla. Es el flag que mira el cron
+  // semanal para decidir si mandar el email de repaso. Fire-and-forget:
+  // si falla (sin red, server caído) la app sigue funcionando; la
+  // próxima visita lo reintenta.
+  //
+  // Throttle: solo escribimos si pasaron al menos 60s desde la última
+  // actualización. Evita golpear la BD con un PUT cada vez que el user
+  // navega entre tabs del dashboard (Pedidos → Gestión → Stats → ...).
+  useEffect(() => {
+    const ULTIMO_ACCESO_KEY = 'gigantya_ultimo_acceso_dashboard_ts';
+    const MIN_INTERVAL_MS = 60_000;
+
+    const lastTs = Number(localStorage.getItem(ULTIMO_ACCESO_KEY) || 0);
+    const now = Date.now();
+    if (now - lastTs < MIN_INTERVAL_MS) return;
+
+    localStorage.setItem(ULTIMO_ACCESO_KEY, String(now));
+    userService
+      .setOnboardingKey('ultimo_acceso_dashboard', new Date().toISOString())
+      .catch((err) => {
+        // Rollback del throttle para reintentar la próxima vez
+        localStorage.removeItem(ULTIMO_ACCESO_KEY);
+        console.warn('[dashboard] no se pudo marcar ultimo_acceso_dashboard:', err?.response?.data?.error || err.message);
+      });
+  }, []);
 
   useEffect(() => {
     const loadProfile = async () => {

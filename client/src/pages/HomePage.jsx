@@ -318,25 +318,26 @@ export default function HomePage() {
   // populares + un "+X más" que expande in-line. En las otras vistas el
   // catálogo es chico y se muestra completo (sin botón de colapso).
   const [categoriasExpanded, setCategoriasExpanded] = useState(false);
-  // Refs y state del carrusel de banners destacados (FeaturedBanner).
-  // Antes era una animación CSS pura (`translateX(-50%)`), pero eso
-  // peleaba con el dedo del usuario en móvil y no permitía pausar
-  // limpiamente. Ahora el movimiento lo maneja un rAF que avanza
-  // `scrollLeft` — el scroll horizontal nativo del browser, así el
-  // dedo puede arrastrar y soltar sin que nada pelee.
-  //   - `featuredScrollerRef`   → el contenedor scrolleable
-  //   - `featuredTrackRef`      → el track interno (w-max)
-  //   - `featuredRafRef`        → id del rAF activo
-  //   - `featuredPausedRef`     → si el usuario está interactuando
-  //   - `featuredResumeAtRef`   → timestamp para reanudar tras soltar
-  // Usamos refs (no state) porque el rAF corre fuera del ciclo de
-  // render y no queremos re-renders por cada frame.
+  // Refs del carrusel de banners destacados (FeaturedBanner).
+  // El carrusel es arrastrable y auto-animado. El movimiento lo
+  // maneja un rAF que aplica `transform: translateX()` al track.
+  //   - `featuredScrollerRef`    → wrapper (overflow:hidden, relative)
+  //   - `featuredTrackRef`       → track (position:absolute, will-change)
+  //   - `featuredRafRef`         → id del rAF activo
+  //   - `featuredPausedRef`      → true mientras el usuario arrastra
+  //   - `featuredOffsetRef`      → posición actual del track (px, negativo)
+  //   - `featuredLastTsRef`      → timestamp del frame anterior
+  //   - `featuredPointerXRef`    → clientX al iniciar drag (-1 si no hay)
+  //   - `featuredResumeTimerRef` → timer para reanudar tras soltar
+  // Usamos refs (no state) porque el rAF corre fuera del render.
   const featuredScrollerRef = useRef(null);
   const featuredTrackRef = useRef(null);
   const featuredRafRef = useRef(null);
   const featuredPausedRef = useRef(false);
-  const featuredResumeAtRef = useRef(0);
+  const featuredOffsetRef = useRef(0);
   const featuredLastTsRef = useRef(0);
+  const featuredPointerXRef = useRef(-1);
+  const featuredResumeTimerRef = useRef(null);
   // Banner del hero: viene de GET /api/home/media. Si es null, se
   // muestra el fallback estático `/media/banner.mp4`. Ver admin en
   // /admin/home-media para cambiarlo.
@@ -620,48 +621,76 @@ export default function HomePage() {
   }, []);
 
   // Lógica del carrusel de banners destacados.
-  // El movimiento se hace avanzando `scrollLeft` con rAF. El navegador
-  // se encarga de la inercia táctil, scroll-snap, scrollbars, etc.
-  //   - Velocidad: ~50 px/s (constante, en píxeles de CSS).
-  //   - Loop: cuando `scrollLeft` supera el ancho del primer set de
-  //     banners (= scrollWidth/2, porque duplicamos el array), lo
-  //     "reseteamos" restando esa mitad. El usuario nunca nota el
-  //     salto porque el segundo set es idéntico al primero.
-  //   - Pausa al interactuar: `onPointerDown` / `onTouchStart`
-  //     marcan `featuredPausedRef.current = true` y un timer reactiva
-  //     el rAF 1.2s después. El rAF se cancela durante la pausa para
-  //     no desperdiciar CPU.
+  // El track se mueve aplicando `transform: translateX(offset)` desde
+  // un rAF. El usuario puede arrastrar con el dedo/ratón: al hacer
+  // pointerdown capturamos la posición, pausamos el rAF, y movemos
+  // el track 1:1 con el delta del puntero. Al soltar, 1.2s después
+  // se reanuda la animación automática desde la posición actual.
+  //
+  // Loop infinito: el array de banners está duplicado en el JSX (set
+  // 1 = set 2), así que `halfWidth` (ancho de un set) marca el
+  // momento de "saltar" de vuelta. Cuando `offset <= -halfWidth`
+  // le sumamos `halfWidth` para volver al inicio. Como ambos sets
+  // son visualmente idénticos, el ojo no nota el salto.
   const FEATURED_SPEED_PX_PER_SEC = 50;
   const FEATURED_RESUME_DELAY_MS = 1200;
+  const FEATURED_DRAG_THRESHOLD_PX = 4;
+
+  // Aplica el offset actual al track. Helper pequeño para no repetir
+  // el `transform` en 4 sitios.
+  const applyFeaturedOffset = useCallback(() => {
+    const track = featuredTrackRef.current;
+    if (track) {
+      track.style.transform = `translate3d(${featuredOffsetRef.current}px, 0, 0)`;
+    }
+  }, []);
+
   const stepFeatured = useCallback((ts) => {
-    const el = featuredScrollerRef.current;
-    if (!el) return;
-    const last = featuredLastTsRef.current || ts;
-    const dt = ts - last;
-    featuredLastTsRef.current = ts;
-    // Si está en pausa o la pestaña no está visible, no avanzamos
-    // pero seguimos pidiendo frames para que cuando se reactive siga.
-    if (!featuredPausedRef.current && document.visibilityState === 'visible') {
+    // Solo avanzamos si no hay drag activo y la pestaña es visible.
+    if (
+      !featuredPausedRef.current
+      && document.visibilityState === 'visible'
+    ) {
       const track = featuredTrackRef.current;
       if (track) {
+        const last = featuredLastTsRef.current || ts;
+        const dt = Math.min(ts - last, 100); // cap para evitar saltos tras pestaña oculta
+        featuredLastTsRef.current = ts;
         const halfWidth = track.scrollWidth / 2;
         if (halfWidth > 0) {
           const delta = (FEATURED_SPEED_PX_PER_SEC * dt) / 1000;
-          let next = el.scrollLeft + delta;
+          let next = featuredOffsetRef.current - delta; // negativo = hacia la izquierda
           // Loop infinito: cuando llegamos al final del primer set,
-          // reseteamos al inicio del segundo set (que es idéntico).
-          if (next >= halfWidth) next -= halfWidth;
-          el.scrollLeft = next;
+          // reseteamos al inicio del segundo set (idéntico).
+          if (next <= -halfWidth) next += halfWidth;
+          featuredOffsetRef.current = next;
+          applyFeaturedOffset();
         }
       }
+    } else {
+      // Si está en pausa, solo actualizamos el timestamp para que
+      // el próximo frame activo no salte por el delta acumulado.
+      featuredLastTsRef.current = ts;
     }
     featuredRafRef.current = requestAnimationFrame(stepFeatured);
-  }, []);
+  }, [applyFeaturedOffset]);
 
-  // Inicia el rAF del carrusel. Se monta una sola vez al cargar la home.
+  // Inicia el rAF cuando hay banners. Se rearranca si la cantidad
+  // cambia (filtros) o si se monta/desmonta.
   useEffect(() => {
-    if (featuredBanners.length === 0) return undefined;
+    if (featuredBanners.length === 0) {
+      if (featuredRafRef.current) {
+        cancelAnimationFrame(featuredRafRef.current);
+        featuredRafRef.current = null;
+      }
+      return undefined;
+    }
+    // Reset al arrancar con un set nuevo de banners.
     featuredLastTsRef.current = 0;
+    featuredPausedRef.current = false;
+    featuredPointerXRef.current = -1;
+    featuredOffsetRef.current = 0;
+    applyFeaturedOffset();
     featuredRafRef.current = requestAnimationFrame(stepFeatured);
     return () => {
       if (featuredRafRef.current) {
@@ -669,28 +698,76 @@ export default function HomePage() {
         featuredRafRef.current = null;
       }
     };
-    // stepFeatured es estable (useCallback con deps []), así que
-    // solo nos importa el flag "hay banners" para (re)arrancar.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [featuredBanners.length > 0]);
+  }, [featuredBanners.length, stepFeatured, applyFeaturedOffset]);
 
-  // Pausa al interactuar (pointer/touch) y programa la reanudación.
-  const featuredResumeTimerRef = useRef(null);
-  const pauseFeaturedMarquee = useCallback(() => {
+  // Handlers de drag. Usamos Pointer Events (cubre mouse, touch y pen).
+  // Solo capturamos el pointer cuando el usuario realmente arrastró
+  // (umbral FEATURED_DRAG_THRESHOLD_PX), así un click/tap simple no
+  // se malinterpreta como drag.
+  const handleFeaturedPointerDown = useCallback((e) => {
+    // Guardamos la X inicial y un flag "posible drag". El rAF sigue
+    // corriendo pero no avanza porque `featuredPausedRef` queda en
+    // true. Si el usuario suelta sin moverse, fue un click — el
+    // Link del banner se encarga de la navegación normalmente.
+    featuredPointerXRef.current = e.clientX;
+    // Pausamos inmediatamente; el resume timer (si existía) se
+    // reemplaza por uno nuevo en pointerup.
     featuredPausedRef.current = true;
     if (featuredResumeTimerRef.current) {
       clearTimeout(featuredResumeTimerRef.current);
-    }
-    featuredResumeTimerRef.current = setTimeout(() => {
-      featuredPausedRef.current = false;
-      // Reseteamos lastTs para que el primer frame post-pausa no
-      // salte por el delta acumulado.
-      featuredLastTsRef.current = 0;
       featuredResumeTimerRef.current = null;
-    }, FEATURED_RESUME_DELAY_MS);
+    }
   }, []);
 
-  // Cleanup del timer al desmontar.
+  // Pointermove a nivel de window: si el usuario arrastra el dedo
+  // fuera del wrapper, no perdemos el evento. Usamos un listener
+  // que añadimos en pointerdown y quitamos en pointerup.
+  useEffect(() => {
+    const handleMove = (e) => {
+      if (featuredPointerXRef.current === -1) return;
+      const dx = e.clientX - featuredPointerXRef.current;
+      if (Math.abs(dx) < FEATURED_DRAG_THRESHOLD_PX) return;
+      // Marcamos que estamos arrastrando de verdad.
+      featuredPointerXRef.current = e.clientX;
+      const track = featuredTrackRef.current;
+      if (!track) return;
+      const halfWidth = track.scrollWidth / 2;
+      let next = featuredOffsetRef.current + dx; // dx positivo = arrastró a la derecha
+      // Wrap en el rango [-halfWidth, 0]. Si pasa los extremos, da
+      // la vuelta para mantener el loop infinito.
+      if (next > 0) next -= halfWidth;
+      if (next <= -halfWidth) next += halfWidth;
+      featuredOffsetRef.current = next;
+      applyFeaturedOffset();
+    };
+
+    const handleUp = () => {
+      if (featuredPointerXRef.current === -1) return;
+      featuredPointerXRef.current = -1;
+      // Reanudamos la animación automática 1.2s después de soltar.
+      if (featuredResumeTimerRef.current) {
+        clearTimeout(featuredResumeTimerRef.current);
+      }
+      featuredResumeTimerRef.current = setTimeout(() => {
+        featuredPausedRef.current = false;
+        featuredLastTsRef.current = 0; // evita salto por delta acumulado
+        featuredResumeTimerRef.current = null;
+      }, FEATURED_RESUME_DELAY_MS);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleUp);
+    };
+  }, [applyFeaturedOffset]);
+
+  // Cleanup del timer al desmontar (el rAF ya se cancela en el effect
+  // de arriba, y los listeners de window se quitan en el cleanup del
+  // effect de drag).
   useEffect(() => {
     return () => {
       if (featuredResumeTimerRef.current) {
@@ -1018,25 +1095,31 @@ export default function HomePage() {
         )}
 
         {/* Featured Banners Marquee.
-            - El movimiento lo maneja un rAF en JS (stepFeatured) que
-              avanza `scrollLeft` ~50 px/s. Cero animación CSS — el
-              scroll horizontal nativo del browser permite arrastrar
-              con el dedo y el scroll vertical de la página sigue
-              intacto (touch-action: pan-x en CSS).
-            - Loop infinito: el track contiene los banners duplicados,
-              cuando `scrollLeft` llega a la mitad, lo reseteamos
-              restando esa mitad. Como los dos sets son idénticos,
-              el ojo no nota el salto.
-            - Pausa al interactuar: pointerdown/touchstart pausan
-              el rAF y programan la reanudación 1.2s después (en
-              `pauseFeaturedMarquee`). */}
+            - Wrapper con overflow-hidden y position:relative. El track
+              se posiciona con `position:absolute` y se mueve vía
+              `transform: translate3d(X, 0, 0)` desde un rAF en JS.
+            - El usuario puede arrastrar con el dedo/ratón:
+              pointerdown captura la X, pausamos el rAF, y los
+              pointermove actualizan el offset 1:1 con el delta.
+              Al soltar, 1.2s después se reanuda la animación
+              automática desde la posición actual.
+            - Loop infinito: el array de banners está duplicado en el
+              JSX (set 1 = set 2), cuando `offset <= -halfWidth` lo
+              reseteamos sumando `halfWidth`. Como los dos sets son
+              idénticos, el ojo no nota el salto.
+            - El scroll vertical de la página sigue intacto porque
+              el track tiene `pointer-events` y el wrapper no
+              intercepta el scroll. */}
         {featuredBanners.length > 0 && (
           <div
             ref={featuredScrollerRef}
-            className="mb-12 sm:mb-16 md:mb-24 relative marquee-scroller"
-            onPointerDown={pauseFeaturedMarquee}
+            className="mb-12 sm:mb-16 md:mb-24 relative overflow-hidden h-40 sm:h-48 select-none touch-pan-y"
+            onPointerDown={handleFeaturedPointerDown}
           >
-            <div ref={featuredTrackRef} className="flex gap-4 sm:gap-6 w-max">
+            <div
+              ref={featuredTrackRef}
+              className="flex gap-4 sm:gap-6 absolute left-0 top-0 will-change-transform cursor-grab active:cursor-grabbing"
+            >
               {/* First set of banners */}
               {featuredBanners.map((res) => (
                 <FeaturedBanner key={`banner-1-${res.id}`} restaurant={res} keyPrefix="banner-1" />

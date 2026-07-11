@@ -689,33 +689,13 @@ label {
   animation: pulse 3s ease-in-out infinite;
 }
 
-/* Carrusel de banners destacados (FeaturedBanner) en la home.
-   El movimiento lo maneja un rAF en JS (stepFeatured) que avanza
-   `scrollLeft`. Por eso este wrapper es un scroller nativo:
-   - `overflow-x: auto` + scroll-snap → el dedo arrastra y al
-     soltar el banner se "acomoda".
-   - `touch-action: pan-x` → el scroll vertical de la página sigue
-     funcionando mientras arrastras el carrusel.
-   - Sin scrollbar visible (queda limpio como un carrusel). */
-.marquee-scroller {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none; /* Firefox */
-  touch-action: pan-x;
-}
-.marquee-scroller::-webkit-scrollbar { display: none; }
-
-.marquee-scroller > * {
-  scroll-snap-align: start;
-}
-
-/* Se conservan las clases de marquee CSS (`animate-marquee` y
-   `pause-marquee:hover`) por compatibilidad con cualquier otro
-   componente del proyecto que aún las use. La home ya no las
-   usa — el movimiento del carrusel de banners destacados es
-   100% JS vía rAF. */
+/* El carrusel de banners destacados (FeaturedBanner) en la home ya
+   no usa animación CSS ni scroll nativo. El movimiento se hace con
+   `transform: translate3d()` desde un rAF en JS (HomePage.jsx →
+   stepFeatured + handleFeaturedPointerDown). Las clases CSS que
+   quedan son para mantener compatibilidad con cualquier otro
+   componente del proyecto que aún las use, pero el carrusel de la
+   home no las consume. */
 .animate-marquee {
   animation: marquee 35s linear infinite;
 }
