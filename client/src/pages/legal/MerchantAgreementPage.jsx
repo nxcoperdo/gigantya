@@ -82,7 +82,7 @@ export default function MerchantAgreementPage() {
   return (
     <LegalLayout
       title="Acuerdo Comercial con Restaurantes"
-      subtitle="El contrato que firmás al activar tu local en GigantYA. Por favor, leelo completo antes de aceptar."
+      subtitle="El contrato que firmas al activar tu local en GigantYA. Por favor, léelo completo antes de aceptar."
       version={version}
       updatedAt="10 de julio de 2026"
       toc={TOC}
@@ -96,11 +96,6 @@ export default function MerchantAgreementPage() {
           <li><strong>GigantYA:</strong> Nicolas Perdomo Rodriguez, CC 1141116665</li>
           <li><strong>El Restaurante:</strong> la persona natural o jurídica que se registra como oferente en la plataforma</li>
         </ul>
-        <blockquote>
-          <strong>⚠️ Documento pendiente de revisión legal.</strong> El texto debe ser firmado por
-          un abogado colombiano antes de su publicación definitiva. Datos del responsable
-          actualizados como persona natural; serán reemplazados al constituir la SAS.
-        </blockquote>
 
         <h2 id="s2">2. Objeto</h2>
         <p>
@@ -327,15 +322,15 @@ export default function MerchantAgreementPage() {
             </p>
             <p className="text-sm text-gray-600 mt-1">
               Se registró tu aceptación con fecha {new Date(confirmation?.creado_en || Date.now()).toLocaleString('es-CO')}.
-              Guardá este comprobante para tus archivos.
+              Guarda este comprobante para tus archivos.
             </p>
           </div>
         ) : (
           <>
             <p className="text-sm text-gray-700 mb-3">
               {scrolledToEnd
-                ? '✓ Leíste el acuerdo completo. Ahora podés aceptarlo.'
-                : 'Desplazate hasta el final del documento para habilitar el botón de aceptación.'}
+                ? '✓ Leíste el acuerdo completo. Ahora puedes aceptarlo.'
+                : 'Desplázate hasta el final del documento para habilitar el botón de aceptación.'}
             </p>
             <button
               onClick={handleAccept}

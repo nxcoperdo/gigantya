@@ -264,7 +264,7 @@ function IngredientesTab({ ingredientes, onAdjust, onEdit, onDelete, isOwner }) 
         <Package className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
         <p className="text-base font-semibold text-[color:var(--text)]">No hay ingredientes cargados todavía</p>
         <p className="text-sm text-[color:var(--text-muted)] mt-1">
-          {isOwner ? 'Hacé click en "Nuevo ingrediente" para empezar.' : 'El dueño aún no cargó ingredientes.'}
+          {isOwner ? 'Haz click en "Nuevo ingrediente" para empezar.' : 'El dueño aún no cargó ingredientes.'}
         </p>
       </div>
     );

@@ -296,7 +296,7 @@ export default function RestaurantModal({ isOpen, onClose, onSave, restaurant })
                 className="w-full px-4 py-2 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-base)] text-[color:var(--text-primary)] focus:ring-2 focus:ring-primary outline-none transition-all"
               />
               <p className="text-xs text-[color:var(--text-muted)] mt-1">
-                Déjalo vacío si no querés mostrar un tiempo estimado. Se mostrará a los clientes en la página del local.
+                Déjalo vacío si no quieres mostrar un tiempo estimado. Se mostrará a los clientes en la página del local.
               </p>
             </div>
 

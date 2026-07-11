@@ -440,7 +440,7 @@ export default function RestaurantDetailsPage() {
              <div>
                <p className="font-bold">Retiro en mostrador</p>
                <p className="text-sm opacity-90">
-                 Podés hacer tu pedido por la app y retirarlo en el local.
+                 Puedes hacer tu pedido por la app y retirarlo en el local.
                  No hacemos envíos a domicilio para este local.
                </p>
              </div>

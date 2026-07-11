@@ -22,7 +22,7 @@ export default function CookiesPage() {
   return (
     <LegalLayout
       title="Política de Cookies"
-      subtitle="Qué cookies usamos, para qué, y cómo podés gestionarlas."
+      subtitle="Qué cookies usamos, para qué, y cómo puedes gestionarlas."
       version={version}
       updatedAt="10 de julio de 2026"
       toc={TOC}
@@ -30,7 +30,7 @@ export default function CookiesPage() {
       <h2 id="s1">1. ¿Qué son las cookies?</h2>
       <p>
         Las cookies son pequeños archivos de texto que un sitio web almacena en tu dispositivo
-        cuando lo visitás. Sirven para que el sitio funcione correctamente, recuerde tus
+        cuando lo visitas. Sirven para que el sitio funcione correctamente, recuerde tus
         preferencias y, en algunos casos, para fines de análisis y marketing.
       </p>
 
@@ -64,7 +64,7 @@ export default function CookiesPage() {
       </table>
 
       <h3>2.3. Cookies de análisis (opcional)</h3>
-      <p>Nos permiten entender cómo usás la plataforma para mejorarla.</p>
+      <p>Nos permiten entender cómo usas la plataforma para mejorarla.</p>
       <table>
         <thead>
           <tr><th>Cookie</th><th>Finalidad</th><th>Duración</th></tr>
@@ -88,19 +88,19 @@ export default function CookiesPage() {
 
       <h2 id="s3">3. Cómo gestionar las cookies</h2>
       <p>
-        Podés aceptar, rechazar o configurar las cookies mediante el <strong>banner de
+        Puedes aceptar, rechazar o configurar las cookies mediante el <strong>banner de
         consentimiento</strong> que aparece al ingresar a la plataforma. Tus preferencias se
-        guardan por 12 meses y podés cambiarlas en cualquier momento desde{' '}
+        guardan por 12 meses y puedes cambiarlas en cualquier momento desde{' '}
         <em>Configuración de cuenta &gt; Privacidad &gt; Cookies</em>.
       </p>
       <p>
-        También podés desactivar las cookies directamente en tu navegador. Si lo hacés, algunas
+        También puedes desactivar las cookies directamente en tu navegador. Si lo haces, algunas
         funciones de la plataforma pueden no estar disponibles.
       </p>
 
       <h2 id="s4">4. Terceros</h2>
       <p>
-        Algunos terceros (Google, Meta) pueden usar cookies cuando interactuás con sus
+        Algunos terceros (Google, Meta) pueden usar cookies cuando interactúas con sus
         servicios embebidos. Estos terceros tienen sus propias políticas:
       </p>
       <ul>

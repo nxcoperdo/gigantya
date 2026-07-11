@@ -137,7 +137,7 @@ export default function HomeMediaPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[color:var(--text-primary)] tracking-tight">Banner de la Home</h1>
               <p className="text-sm text-[color:var(--text-muted)] mt-1">
-                Subí varios archivos y elegí cuál se muestra en la página principal.
+                Sube varios archivos y elige cuál se muestra en la página principal.
               </p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function HomeMediaPage() {
             <Upload size={48} className="mx-auto text-[color:var(--text-muted)] mb-4" />
             <h3 className="text-lg font-heading font-semibold mb-2">No hay banners subidos</h3>
             <p className="text-sm text-[color:var(--text-muted)] mb-4">
-              Subí tu primera imagen o video para empezar.
+              Sube tu primera imagen o video para empezar.
             </p>
             <button
               type="button"

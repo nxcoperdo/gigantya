@@ -17,7 +17,7 @@ const router = express.Router();
  *   - es_carrito_multi_local (opcional, "1" / "true"): si el carrito
  *                      tiene productos de varios locales. En ese caso
  *                      se buscan cupones GLOBALES (el cupón de local
- *                      no puede aplicar porque no sabés a cuál local
+ *                      no puede aplicar porque no sabes a cuál local
  *                      cobrarle).
  */
 export async function validateCoupon(req, res) {

@@ -125,7 +125,7 @@ export default function StaffPage() {
       ) : staff.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-10 text-center">
           <UsersIcon className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
-          <p className="text-base font-semibold text-[color:var(--text)]">No tenés personal del POS todavía</p>
+          <p className="text-base font-semibold text-[color:var(--text)]">No tienes personal del POS todavía</p>
           <p className="text-sm text-[color:var(--text-muted)] mt-1 mb-4">
             Crea el primer miembro (cajero, mesero o cocina) para empezar.
           </p>
@@ -388,7 +388,7 @@ function TempPasswordModal({ staff, onClose, onCopy, copiado }) {
         </header>
         <div className="p-4 space-y-3">
           <p className="text-sm text-[color:var(--text-muted)]">
-            Compartí esta contraseña temporal con <strong className="text-[color:var(--text)]">{staff.nombre}</strong>.
+            Comparte esta contraseña temporal con <strong className="text-[color:var(--text)]">{staff.nombre}</strong>.
             <br />
             <span className="text-rose-300 font-semibold">No se mostrará de nuevo.</span>
           </p>

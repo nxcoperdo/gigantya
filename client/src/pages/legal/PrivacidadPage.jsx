@@ -44,11 +44,6 @@ export default function PrivacidadPage() {
         <li><strong>Correo electrónico:</strong> privacidad@gigantya.com</li>
         <li><strong>Teléfono:</strong> +57 311 532 0211</li>
       </ul>
-      <blockquote>
-        <strong>⚠️ Documento pendiente de revisión legal.</strong> El texto debe ser firmado por
-        un abogado colombiano antes de su publicación definitiva. Datos del responsable
-        actualizados como persona natural; serán reemplazados al constituir la SAS.
-      </blockquote>
 
       <h2 id="s2">2. Marco legal</h2>
       <p>
@@ -145,7 +140,7 @@ export default function PrivacidadPage() {
       </p>
 
       <h2 id="s8">8. Derechos del titular (Art. 17 Ley 1581/2012)</h2>
-      <p>Como titular de los datos personales, tenés los siguientes derechos:</p>
+      <p>Como titular de los datos personales, tienes los siguientes derechos:</p>
       <ol>
         <li><strong>Conocer, actualizar y rectificar</strong> tus datos personales</li>
         <li><strong>Solicitar prueba de la autorización</strong> otorgada</li>
@@ -156,7 +151,7 @@ export default function PrivacidadPage() {
       </ol>
 
       <h2 id="s9">9. Procedimiento para ejercer tus derechos</h2>
-      <p>Para conocer, actualizar, rectificar, suprimir o revocar, podés:</p>
+      <p>Para conocer, actualizar, rectificar, suprimir o revocar, puedes:</p>
       <ul>
         <li><strong>Email:</strong> privacidad@gigantya.com</li>
         <li><strong>Formulario en la plataforma:</strong> Configuración de cuenta &gt; Privacidad</li>
@@ -166,7 +161,7 @@ export default function PrivacidadPage() {
         <li><strong>Consulta:</strong> máximo 10 días hábiles</li>
         <li><strong>Reclamo:</strong> máximo 15 días hábiles</li>
       </ul>
-      <p>Si la respuesta es insatisfactoria o no se responde en plazo, podés elevar una queja ante la <strong>Superintendencia de Industria y Comercio (SIC)</strong>.</p>
+      <p>Si la respuesta es insatisfactoria o no se responde en plazo, puedes elevar una queja ante la <strong>Superintendencia de Industria y Comercio (SIC)</strong>.</p>
 
       <h2 id="s10">10. Seguridad de los datos</h2>
       <p>Implementamos medidas técnicas, humanas y administrativas razonables para proteger tus datos, conforme al principio de <strong>responsabilidad demostrada</strong> (artículo 26 Ley 1581/2012):</p>
@@ -188,7 +183,7 @@ export default function PrivacidadPage() {
       <p>Al cumplirse estos plazos, los datos se eliminan de forma segura o se anonimizan.</p>
 
       <h2 id="s12">12. Cookies y tecnologías similares</h2>
-      <p>Usamos cookies y tecnologías similares. Para más información, consultá nuestra <a href="/cookies">Política de Cookies</a>.</p>
+      <p>Usamos cookies y tecnologías similares. Para más información, consulta nuestra <a href="/cookies">Política de Cookies</a>.</p>
 
       <h2 id="s13">13. Menores de edad</h2>
       <p>
@@ -199,7 +194,7 @@ export default function PrivacidadPage() {
 
       <h2 id="s14">14. Modificaciones a esta política</h2>
       <p>
-        Podés modificar esta política. Te avisaremos por email o mediante aviso en la
+        Puedes modificar esta política. Te avisaremos por email o mediante aviso en la
         plataforma con al menos <strong>15 días de anticipación</strong>.
       </p>
     </LegalLayout>

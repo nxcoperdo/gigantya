@@ -102,7 +102,7 @@ export default function MergeTableModal({ mesaInicial, onClose, onMerged }) {
           ) : (
             <>
               <p className="text-sm text-[color:var(--text-muted)] mb-3">
-                Elegí la mesa <strong className="text-rose-400">origen</strong> (cede sus pedidos) y la mesa{' '}
+                Elige la mesa <strong className="text-rose-400">origen</strong> (cede sus pedidos) y la mesa{' '}
                 <strong className="text-emerald-400">destino</strong> (los recibe).
               </p>
 

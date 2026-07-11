@@ -136,6 +136,68 @@ export async function getLatestByRestaurante(restauranteId, tipo) {
 }
 
 /**
+ * Devuelve qué tipos de documento ya fueron aceptados a la versión
+ * vigente por un usuario (o por los restaurantes donde es dueño).
+ *
+ * Es el motor del modal obligatorio: el frontend llama a este método
+ * (vía GET /api/legal/estado) y según lo que devuelva, muestra el
+ * modal de TyC/Privacidad (clientes) o Merchant (dueños).
+ *
+ * @param {Object} params
+ * @param {number|null} params.usuarioId   - id del usuario logueado
+ * @param {number[]}    params.restauranteIds - ids de locales donde es dueño
+ * @returns {Promise<{
+ *   user:    { tyc: boolean, privacidad: boolean },
+ *   merchants: Array<{ restaurante_id: number, merchant: boolean }>
+ * }>}
+ */
+export async function getAcceptedState({ usuarioId, restauranteIds = [] }) {
+  const versions = getCurrentVersions();
+  const state = {
+    user: { tyc: false, privacidad: false },
+    merchants: restauranteIds.map((id) => ({
+      restaurante_id: parseInt(id, 10),
+      merchant: false,
+    })),
+  };
+
+  // Si no hay nada para chequear, devolver el state vacío.
+  if (!usuarioId && restauranteIds.length === 0) return state;
+
+  // 1. Aceptaciones del usuario (TyC + Privacidad)
+  if (usuarioId) {
+    const sqlUser = `
+      SELECT tipo, version
+      FROM aceptaciones_legales
+      WHERE usuario_id = ?
+        AND tipo IN ('tyc', 'privacidad')
+      ORDER BY creado_en DESC
+    `;
+    const rows = await query(sqlUser, [parseInt(usuarioId, 10)]);
+    for (const row of rows) {
+      if (row.tipo === 'tyc' && row.version === versions.tyc) state.user.tyc = true;
+      if (row.tipo === 'privacidad' && row.version === versions.privacidad) state.user.privacidad = true;
+    }
+  }
+
+  // 2. Aceptaciones de cada local donde es dueño (Merchant Agreement)
+  for (const entry of state.merchants) {
+    if (!entry.restaurante_id || Number.isNaN(entry.restaurante_id)) continue;
+    const sqlRest = `
+      SELECT version
+      FROM aceptaciones_legales
+      WHERE restaurante_id = ? AND tipo = 'merchant'
+      ORDER BY creado_en DESC
+      LIMIT 1
+    `;
+    const row = await queryOne(sqlRest, [entry.restaurante_id]);
+    if (row && row.version === versions.merchant) entry.merchant = true;
+  }
+
+  return state;
+}
+
+/**
  * Devuelve todas las versiones actuales de los documentos legales.
  * Lo usa el frontend al montar para saber qué versiones están vigentes
  * y mostrar el badge de "v1.0" en cada página.

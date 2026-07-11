@@ -1353,7 +1353,7 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                 </span>
               </div>
               <p className="text-sm text-amber-800 mb-3">
-                Conocé tu <strong>hora pico</strong>, tus <strong>clientes recurrentes</strong>, la <strong>tasa de cancelación</strong>, el <strong>tiempo promedio de preparación</strong>, los <strong>productos sin ventas</strong> y mucho más.
+                Conoce tu <strong>hora pico</strong>, tus <strong>clientes recurrentes</strong>, la <strong>tasa de cancelación</strong>, el <strong>tiempo promedio de preparación</strong>, los <strong>productos sin ventas</strong> y mucho más.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <button

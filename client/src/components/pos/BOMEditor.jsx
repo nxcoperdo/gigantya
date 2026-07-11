@@ -160,7 +160,7 @@ export default function BOMEditor({ productoId, onClose, onSaved }) {
             <div className="rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--bg)] p-8 text-center">
               <ChefHat className="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true" />
               <p className="text-sm text-[color:var(--text)] font-medium">
-                No tenés ingredientes cargados
+                No tienes ingredientes cargados
               </p>
               <p className="text-xs text-[color:var(--text-muted)] mt-1 mb-3">
                 Primero creá los ingredientes en Inventario.

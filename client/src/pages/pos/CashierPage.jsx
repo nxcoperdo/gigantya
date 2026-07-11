@@ -311,7 +311,7 @@ export default function CashierPage() {
               <span className="font-bold text-amber-300">Caja cerrada</span>
             </div>
             <p className="text-sm text-[color:var(--text-muted)] flex-1 min-w-0">
-              Abrí la caja con un fondo inicial para empezar a cobrar.
+              Abre la caja con un fondo inicial para empezar a cobrar.
             </p>
             <button
               onClick={() => setShowOpenModal(true)}

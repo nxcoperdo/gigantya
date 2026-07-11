@@ -273,7 +273,7 @@ export async function validateCoupon(codigo, restaurante_id, total_pedido, optio
       throw new Error('No existe un cupón global de la plataforma con ese código');
     }
     if (es_carrito_multi_local) {
-      throw new Error('Cupón no encontrado. Si querés usar un cupón de un local, sacá los productos de otros locales del carrito');
+      throw new Error('Cupón no encontrado. Si quieres usar un cupón de un local, saca los productos de otros locales del carrito');
     }
     throw new Error('Cupón inválido, expirado o no disponible para este restaurante');
   }

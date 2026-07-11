@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 import Loading from './components/Loading';
 import CookiesBanner from './components/legal/CookiesBanner';
+import LegalGate from './components/legal/LegalGate';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -215,6 +216,11 @@ export default function App() {
           nunca aceptó/rechazó o si pasaron 12 meses. Es invisible si
           ya hay consentimiento vigente. */}
       <CookiesBanner />
+      {/* Gate legal: bloquea la app hasta que el usuario logueado haya
+          aceptado los documentos que correspondan a su rol (TyC+Privacidad
+          para clientes, + Merchant para dueños de restaurantes). Es
+          invisible si ya están todos aceptados. */}
+      <LegalGate />
       </ThemeProvider>
     </Router>
   );

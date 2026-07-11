@@ -114,7 +114,7 @@ export default function UnidadesVentaPreset({ isOpen, onClose, onConfirm, grupoY
         )}
 
         <p className="px-4 pt-3 pb-2 text-xs text-[color:var(--text-muted)]">
-          Tildá las unidades que querés ofrecer para este producto y poné el precio de cada una. El cliente va a tener que elegir 1 obligatoriamente.
+          Tilda las unidades que quieres ofrecer para este producto y pon el precio de cada una. El cliente va a tener que elegir 1 obligatoriamente.
         </p>
 
         {/* Lista scrolleable */}
@@ -165,7 +165,7 @@ export default function UnidadesVentaPreset({ isOpen, onClose, onConfirm, grupoY
         <div className="flex items-center justify-between gap-2 p-4 border-t border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)]">
           <span className="text-xs text-[color:var(--text-muted)]">
             {unidadesActivas.length === 0
-              ? 'Tildá al menos una unidad'
+              ? 'Tilda al menos una unidad'
               : `${unidadesActivas.length} unidad${unidadesActivas.length === 1 ? '' : 'es'} seleccionada${unidadesActivas.length === 1 ? '' : 's'}`}
           </span>
           <div className="flex gap-2">

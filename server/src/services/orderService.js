@@ -399,7 +399,7 @@ export async function createOrderCore(orderData, options = {}) {
  * físicamente en el POS (ej: está revisando su dashboard desde otro lado).
  * Si la disparáramos para POS, sería duplicada con el toast.
  *
- * Si querés que el dueño también la vea en su NotificationCenter cuando
+ * Si quieres que el dueño también la vea en su NotificationCenter cuando
  * está en el POS, el camino a usar es el `pos:order_created` por socket
  * (el frontend puede decidir si encolar ahí también).
  */

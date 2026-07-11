@@ -40,7 +40,7 @@ export default function TerminosPage() {
   return (
     <LegalLayout
       title="Términos y Condiciones"
-      subtitle="Reglas que rigen tu uso de GigantYA. Al usar la plataforma, las aceptás."
+      subtitle="Reglas que rigen tu uso de GigantYA. Al usar la plataforma, las aceptas."
       version={version}
       updatedAt="10 de julio de 2026"
       toc={TOC}
@@ -58,17 +58,12 @@ export default function TerminosPage() {
         <li><strong>Teléfono:</strong> +57 311 532 0211</li>
         <li><strong>Sitio web:</strong> https://gigantya.com</li>
       </ul>
-      <blockquote>
-        <strong>⚠️ Documento pendiente de revisión legal.</strong> Los textos definitivos deben
-        ser firmados por un abogado colombiano antes de su publicación definitiva. Datos del
-        responsable actualizados como persona natural; serán reemplazados al constituir la SAS.
-      </blockquote>
 
       <h2 id="s2">2. Aceptación de los términos</h2>
       <p>
         Al crear una cuenta en GigantYA, hacer clic en "Acepto" o utilizar nuestros servicios,
-        declarás que leíste, entendiste y aceptás estos Términos y Condiciones en su totalidad.
-        Si no estás de acuerdo, debés abstenerte de usar la plataforma.
+        declaras que leíste, entendiste y aceptas estos Términos y Condiciones en su totalidad.
+        Si no estás de acuerdo, debes abstenerte de usar la plataforma.
       </p>
       <p>
         Guardamos <strong>constancia de la aceptación</strong> (fecha, hora, dirección IP y
@@ -127,20 +122,20 @@ export default function TerminosPage() {
 
       <h2 id="s5">5. Edad mínima</h2>
       <p>
-        Para usar GigantYA debés tener <strong>al menos 18 años</strong>. Los menores de edad
+        Para usar GigantYA debes tener <strong>al menos 18 años</strong>. Los menores de edad
         no pueden registrarse ni realizar pedidos, en cumplimiento del artículo 53 de la Ley
         1480 de 2011.
       </p>
 
       <h2 id="s6">6. Registro y cuenta</h2>
-      <p>Para usar ciertas funciones debés crear una cuenta. Te comprometés a:</p>
+      <p>Para usar ciertas funciones debes crear una cuenta. Te comprometes a:</p>
       <ul>
         <li>Brindar información <strong>verdadera, exacta y actualizada</strong></li>
         <li>Mantener la confidencialidad de tu contraseña</li>
         <li>No compartir tu cuenta con terceros</li>
         <li>Notificarnos inmediatamente ante uso no autorizado</li>
       </ul>
-      <p>Podés cerrar tu cuenta en cualquier momento desde tu perfil.</p>
+      <p>Puedes cerrar tu cuenta en cualquier momento desde tu perfil.</p>
 
       <h2 id="s7">7. Pedidos, precios y pagos</h2>
       <ul>
@@ -212,7 +207,7 @@ export default function TerminosPage() {
 
       <h2 id="s12">12. Cancelaciones</h2>
       <ul>
-        <li><strong>Antes de "Confirmado por el local":</strong> podés cancelar sin cargo.</li>
+        <li><strong>Antes de "Confirmado por el local":</strong> puedes cancelar sin cargo.</li>
         <li><strong>Después de "Confirmado":</strong> el restaurante puede aceptar o rechazar la cancelación según el estado de la preparación.</li>
         <li><strong>Errores del restaurante:</strong> el restaurante asume el costo del reembolso.</li>
         <li><strong>Errores de la plataforma:</strong> GigantYA intermedia la cancelación.</li>
@@ -233,10 +228,10 @@ export default function TerminosPage() {
 
       <h2 id="s14">14. Reseñas y contenido generado</h2>
       <ul>
-        <li>Podés dejar reseñas honestas y respetuosas.</li>
+        <li>Puedes dejar reseñas honestas y respetuosas.</li>
         <li>Las reseñas son <strong>moderadas</strong>. GigantYA puede eliminar las que violen estas reglas o sean manifiestamente falsas.</li>
         <li>Está prohibido manipular reseñas o pedir reseñas falsas a cambio de beneficios.</li>
-        <li>Al publicar una reseña, otorgás a GigantYA una licencia no exclusiva, mundial y gratuita para reproducirla y mostrarla en la plataforma.</li>
+        <li>Al publicar una reseña, otorgas a GigantYA una licencia no exclusiva, mundial y gratuita para reproducirla y mostrarla en la plataforma.</li>
       </ul>
 
       <h2 id="s15">15. Propiedad intelectual</h2>
@@ -270,7 +265,7 @@ export default function TerminosPage() {
 
       <h2 id="s18">18. Indemnidad</h2>
       <p>
-        Aceptás <strong>indemnizar y mantener indemne</strong> a GigantYA frente a cualquier
+        Aceptas <strong>indemnizar y mantener indemne</strong> a GigantYA frente a cualquier
         reclamo, daño, pérdida, multa o gasto (incluidos honorarios legales) que surja de:
       </p>
       <ul>
@@ -281,16 +276,16 @@ export default function TerminosPage() {
 
       <h2 id="s19">19. Modificaciones</h2>
       <p>
-        Podés modificar estos TyC en cualquier momento. Te avisaremos por email o mediante
+        Puedes modificar estos TyC en cualquier momento. Te avisaremos por email o mediante
         aviso visible en la plataforma con al menos <strong>15 días de anticipación</strong> a
-        la entrada en vigencia. Si seguís usando la plataforma después de esa fecha, se
-        considerará que aceptás los nuevos términos.
+        la entrada en vigencia. Si sigues usando la plataforma después de esa fecha, se
+        considerará que aceptas los nuevos términos.
       </p>
 
       <h2 id="s20">20. Suspensión y terminación</h2>
       <p>
-        Podés cerrar tu cuenta en cualquier momento. GigantYA puede suspender o cerrar tu cuenta,
-        con o sin aviso, si violás estos TyC, sospechamos fraude o actividad ilícita, o por
+        Puedes cerrar tu cuenta en cualquier momento. GigantYA puede suspender o cerrar tu cuenta,
+        con o sin aviso, si violas estos TyC, sospechamos fraude o actividad ilícita, o por
         requerimientos legales o de autoridades.
       </p>
 
@@ -303,15 +298,15 @@ export default function TerminosPage() {
 
       <h2 id="s22">22. Notificaciones</h2>
       <ul>
-        <li>De GigantYA hacia vos: al email registrado en tu cuenta, o mediante aviso en la plataforma</li>
-        <li>De vos hacia GigantYA: al email de PQR indicado en la sección 1</li>
+        <li>De GigantYA hacia ti: al email registrado en tu cuenta, o mediante aviso en la plataforma</li>
+        <li>De ti hacia GigantYA: al email de PQR indicado en la sección 1</li>
       </ul>
 
       <h2 id="s23">23. Disposiciones finales</h2>
       <ul>
         <li>Si alguna cláusula es declarada inválida por un tribunal, las demás siguen vigentes.</li>
         <li>El hecho de que GigantYA no ejerza un derecho no implica renuncia al mismo.</li>
-        <li>Estos TyC constituyen el acuerdo completo entre vos y GigantYA respecto del uso de la plataforma.</li>
+        <li>Estos TyC constituyen el acuerdo completo entre tú y GigantYA respecto del uso de la plataforma.</li>
       </ul>
     </LegalLayout>
   );

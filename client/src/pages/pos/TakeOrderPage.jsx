@@ -269,7 +269,7 @@ function TakeOrderInner() {
             <div className="col-span-full flex flex-col items-center justify-center text-center py-12 text-[color:var(--text-muted)] border-2 border-dashed border-[color:var(--border)] rounded-xl">
               <Search className="w-6 h-6 mb-2 opacity-40" aria-hidden="true" />
               <p className="text-sm font-medium">No hay productos disponibles</p>
-              {busqueda && <p className="text-xs mt-1">Probá limpiar el buscador o cambiar de categoría.</p>}
+              {busqueda && <p className="text-xs mt-1">Prueba limpiar el buscador o cambiar de categoría.</p>}
             </div>
           )}
         </div>

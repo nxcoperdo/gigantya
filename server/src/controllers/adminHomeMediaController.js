@@ -153,7 +153,7 @@ export async function upload(req, res) {
     if (total >= MAX_FILES) {
       try { fs.unlinkSync(req.file.path); } catch (_) { /* best effort */ }
       return res.status(400).json({
-        error: `Máximo ${MAX_FILES} banners. Borrá alguno antes de subir más.`,
+        error: `Máximo ${MAX_FILES} banners. Borra alguno antes de subir más.`,
         currentCount: total,
         maxAllowed: MAX_FILES,
       });

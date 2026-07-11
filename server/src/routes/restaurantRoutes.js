@@ -17,12 +17,12 @@ router.get('/', restaurantController.listRestaurants);
 /**
  * Rutas /me y /me/stats van ANTES de /:id.
  *
- * En Express las rutas se matchean en orden de declaración. Si declarás
+ * En Express las rutas se matchean en orden de declaración. Si declaras
  * `router.get('/:id', ...)` antes que `router.get('/me', ...)`, Express
  * matchea `id="me"` contra el handler genérico y nunca llega a /me.
  * Por eso las rutas estáticas/con prefijos más específicos van primero.
  *
- * Si en el futuro agregás más rutas como /me/..., mantené este bloque
+ * Si en el futuro agregas más rutas como /me/..., mantén este bloque
  * agrupado arriba de las rutas con `:id`.
  */
 router.get('/me', verifyToken, restaurantController.getMyRestaurant);

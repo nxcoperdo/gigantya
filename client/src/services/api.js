@@ -515,6 +515,10 @@ export const legalService = {
   // Historial del usuario autenticado.
   getMisAceptaciones: () => api.get('/legal/mis-aceptaciones').then((r) => r.data),
 
+  // Estado actual del gate: qué le falta aceptar al usuario y a sus locales.
+  // Lo consume <LegalGate /> al montar y cada vez que cambia el usuario.
+  getEstado: () => api.get('/legal/estado').then((r) => r.data),
+
   // Admin: aceptaciones de un local específico.
   getAceptacionesRestaurante: (restauranteId) =>
     api.get(`/legal/restaurante/${restauranteId}/aceptaciones`).then((r) => r.data),

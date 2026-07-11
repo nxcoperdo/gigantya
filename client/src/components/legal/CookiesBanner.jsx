@@ -123,7 +123,7 @@ export default function CookiesBanner() {
               </div>
 
               <p className="text-sm text-gray-600 mb-4">
-                Elegí qué tipo de cookies aceptás. Podés cambiar tu elección en cualquier
+                Elige qué tipo de cookies aceptas. Puedes cambiar tu elección en cualquier
                 momento desde <em>Configuración &gt; Privacidad &gt; Cookies</em>.
               </p>
 
@@ -144,7 +144,7 @@ export default function CookiesBanner() {
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-900">Analíticas</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Nos ayudan a entender cómo usás la plataforma para mejorarla.
+                      Nos ayudan a entender cómo usas la plataforma para mejorarla.
                     </p>
                   </div>
                   <input
@@ -203,7 +203,7 @@ export default function CookiesBanner() {
                 </p>
                 <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
                   Usamos cookies propias y de terceros para que la plataforma funcione, recordar
-                  tus preferencias y mejorar el servicio. Podés aceptar todas, rechazar las
+                  tus preferencias y mejorar el servicio. Puedes aceptar todas, rechazar las
                   opcionales o configurar tu elección. Consultá nuestra{' '}
                   <Link to="/cookies" className="text-indigo-600 underline">
                     Política de Cookies

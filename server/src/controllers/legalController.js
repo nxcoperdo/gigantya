@@ -24,6 +24,7 @@
  *     para devolver 400 con mensaje claro antes de tocar la DB.
  */
 import * as LegalModel from '../models/LegalAcceptance.js';
+import { query } from '../config/database.js';
 
 const ALLOWED_TYPES = ['tyc', 'privacidad', 'cookies', 'merchant'];
 
@@ -62,6 +63,82 @@ export async function getMisAceptaciones(req, res) {
   } catch (error) {
     console.error('[Legal] Error en getMisAceptaciones:', error);
     res.status(500).json({ error: 'Error al obtener aceptaciones' });
+  }
+}
+
+/**
+ * GET /api/legal/estado
+ * Requiere auth. Devuelve qué documentos le falta aceptar al usuario
+ * logueado a la versión vigente.
+ *
+ * Shape de respuesta:
+ *   {
+ *     versions: { tyc, privacidad, cookies, merchant },
+ *     user:    { tyc: boolean, privacidad: boolean, missing: ['tyc', 'privacidad'] },
+ *     merchants: [
+ *       { restaurante_id, restaurante_nombre, merchant: boolean, missing: ['merchant'] }
+ *     ]
+ *   }
+ *
+ * `missing` es lo que el frontend necesita para decidir qué modal abrir.
+ *
+ * `merchants` solo se popula para usuarios con `tipo_usuario` = 'restaurante'
+ * o 'admin' (los clientes no necesitan firmar el Merchant Agreement).
+ */
+export async function getEstado(req, res) {
+  try {
+    const userId = req.user?.id;
+    const userTipo = req.user?.tipo_usuario;
+    if (!userId) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    // 1. Listar locales donde el usuario es dueño (no staff).
+    //    Un cliente nunca aparece acá. Un dueño puede tener varios locales
+    //    (en el futuro); un admin también.
+    let restauranteIds = [];
+    if (userTipo === 'restaurante' || userTipo === 'admin') {
+      const rows = await query(
+        'SELECT id, nombre FROM restaurantes WHERE usuario_id = ? ORDER BY id',
+        [userId]
+      );
+      restauranteIds = rows;
+    }
+
+    // 2. Calcular estado de aceptaciones
+    const state = await LegalModel.getAcceptedState({
+      usuarioId: userId,
+      restauranteIds: restauranteIds.map((r) => r.id),
+    });
+
+    // 3. Calcular `missing` por bloque y mezclar info de los locales
+    const userMissing = [];
+    if (!state.user.tyc) userMissing.push('tyc');
+    if (!state.user.privacidad) userMissing.push('privacidad');
+
+    const merchants = restauranteIds.map((r) => {
+      const entry = state.merchants.find((m) => m.restaurante_id === r.id) || { merchant: false };
+      const missing = entry.merchant ? [] : ['merchant'];
+      return {
+        restaurante_id: r.id,
+        restaurante_nombre: r.nombre,
+        merchant: entry.merchant,
+        missing,
+      };
+    });
+
+    res.json({
+      versions: LegalModel.getCurrentVersions(),
+      user: {
+        tyc: state.user.tyc,
+        privacidad: state.user.privacidad,
+        missing: userMissing,
+      },
+      merchants,
+    });
+  } catch (error) {
+    console.error('[Legal] Error en getEstado:', error);
+    res.status(500).json({ error: 'Error al obtener estado legal' });
   }
 }
 
@@ -157,6 +234,7 @@ export async function aceptar(req, res) {
 export default {
   getVersion,
   getMisAceptaciones,
+  getEstado,
   getAceptacionesRestaurante,
   aceptar,
 };

@@ -21,7 +21,7 @@ export default function LoginPage() {
     } catch (err) {
       const data = err.response?.data;
       if (data?.code === 'EMAIL_NOT_FOUND') {
-        setError('Ese correo no está registrado. ¿Querés crear una cuenta?');
+        setError('Ese correo no está registrado. ¿Quieres crear una cuenta?');
       } else if (data?.code === 'INVALID_PASSWORD') {
         setError('La contraseña es incorrecta. ¿Olvidaste tu contraseña?');
       } else {

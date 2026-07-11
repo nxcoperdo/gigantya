@@ -35,6 +35,9 @@ router.get('/version', legalController.getVersion);
 // Autenticado: mis aceptaciones
 router.get('/mis-aceptaciones', verifyToken, legalController.getMisAceptaciones);
 
+// Autenticado: estado de qué falta aceptar (motor del modal bloqueante)
+router.get('/estado', verifyToken, legalController.getEstado);
+
 // Aceptación: acepta con o sin auth (visitantes anónimos para cookies).
 // verifyToken corre cuando hay token, pero el controller ya maneja el
 // caso userId=null para visitantes anónimos.

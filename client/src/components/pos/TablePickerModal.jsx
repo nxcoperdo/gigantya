@@ -125,7 +125,7 @@ export default function TablePickerModal({ onClose, onPicked }) {
               <div className="flex flex-col items-center text-center py-6 text-[color:var(--text-muted)] border-2 border-dashed border-[color:var(--border)] rounded-xl">
                 <Coffee className="w-7 h-7 mb-2 opacity-40" aria-hidden="true" />
                 <p className="text-sm font-medium">No hay mesas libres</p>
-                <p className="text-xs mt-1">Probá con Recoger o Domicilio.</p>
+                <p className="text-xs mt-1">Prueba con Recoger o Domicilio.</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">

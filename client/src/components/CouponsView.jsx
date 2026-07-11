@@ -1048,7 +1048,7 @@ function CouponUsagesView({
           </p>
           <p className="text-sm text-[color:var(--text-muted)] mt-1">
             {hasAnyFilter
-              ? 'Probá limpiar los filtros o ampliar el rango de fechas'
+              ? 'Prueba limpiar los filtros o ampliar el rango de fechas'
               : 'Los pedidos que apliquen un cupón aparecerán acá'}
           </p>
         </div>

@@ -447,7 +447,7 @@ export default function CheckoutPage() {
       // barrio_id (catálogo de zonas). Esto NO aplica a modalidades sin envío.
       if (!esModalidadSinEnvio && !barrioIdEnviar) {
         const mensaje = useNewAddress
-          ? 'Para calcular el envío, elegí un sector y barrio de la lista.'
+          ? 'Para calcular el envío, elige un sector y barrio de la lista.'
           : 'La dirección seleccionada no tiene barrio. Edítala para precisar la ubicación.';
         setErrorModal({ isOpen: true, message: mensaje });
         setLoading(false);
@@ -614,7 +614,7 @@ export default function CheckoutPage() {
         ) && (
           <div className="mb-6 card-lg">
             <h2 className="text-lg font-heading font-bold text-[color:var(--text-primary)] mb-3">
-              ¿Cómo querés recibir tu pedido?
+              ¿Cómo quieres recibir tu pedido?
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Botón de envío: visible solo si el local ofrece domicilio. */}
