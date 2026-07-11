@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { runDailyChecks } from './subscriptionCron.js';
+import { runWeeklyDigest } from './weeklyDigestCron.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -22,6 +23,12 @@ export function startScheduler() {
 
   cron.schedule(expression, runDailyChecks);
   logger.info(`[scheduler] Job diario de suscripciones programado a las ${hora} (cron: ${expression})`);
+
+  // Job semanal: lunes 8:13am (corremos a los :13 para no coincidir con la
+  // manada de crons que arrancan en punto). Manda un email a los dueños
+  // de locales que no entraron al dashboard en 7+ días.
+  cron.schedule('13 8 * * 1', runWeeklyDigest);
+  logger.info('[scheduler] Job semanal de repaso programado los lunes 8:13am (cron: 13 8 * * 1)');
 }
 
 export default { startScheduler };

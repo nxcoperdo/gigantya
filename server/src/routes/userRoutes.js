@@ -18,5 +18,14 @@ router.get('/profile', verifyToken, userController.getProfile);
  */
 router.put('/profile', verifyToken, userController.updateProfile);
 
+/**
+ * @route   PUT /api/users/me/onboarding
+ * @desc    Actualizar un flag del JSON `usuarios.otros_datos` del usuario
+ *          logueado (tour completado, tips dismissed, último acceso).
+ *          Body: { key: 'onboarding.tips_dismissed.crear_producto', value: true }
+ * @access  Private
+ */
+router.put('/me/onboarding', verifyToken, userController.updateOnboarding);
+
 export default router;
 

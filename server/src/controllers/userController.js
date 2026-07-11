@@ -50,15 +50,57 @@ export async function updateProfile(req, res) {
       usuario
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error actualizando perfil',
-      detalles: error.message 
+      detalles: error.message
     });
+  }
+}
+
+/**
+ * Actualiza un flag del JSON `usuarios.otros_datos` del usuario logueado.
+ *
+ * Body: { key: 'onboarding.tips_dismissed.crear_producto', value: true }
+ *
+ * Whitelist de keys permitidas: previene que se escriba cualquier cosa
+ * en `otros_datos` (que es JSON libre). Si en el futuro hay que agregar
+ * más keys, se agregan al array y listo.
+ *
+ * Devuelve el `usuario` actualizado (con `otros_datos` mergeado) para
+ * que el front lo guarde en localStorage sin pedir otro round-trip.
+ */
+export async function updateOnboarding(req, res) {
+  try {
+    const { key, value } = req.body;
+    if (!key || typeof key !== 'string') {
+      return res.status(400).json({ error: 'Falta el campo "key"' });
+    }
+
+    const ALLOWED_KEYS = [
+      'onboarding.dashboard_tour_completed',
+      'onboarding.dashboard_tour_dismissed_at',
+      'onboarding.tips_dismissed.crear_producto',
+      'onboarding.tips_dismissed.abrir_caja',
+      'onboarding.tips_dismissed.ver_reportes',
+      'onboarding.tips_dismissed.tomar_pedido',
+      'ultimo_acceso_dashboard',
+    ];
+    if (!ALLOWED_KEYS.includes(key)) {
+      return res.status(400).json({ error: `Key "${key}" no permitida` });
+    }
+
+    await UserModel.setOtrosDatosPath(req.user.id, key, value);
+
+    const usuario = await UserModel.getUserById(req.user.id);
+    res.json({ mensaje: 'Onboarding actualizado', usuario });
+  } catch (error) {
+    res.status(500).json({ error: 'Error actualizando onboarding', detalles: error.message });
   }
 }
 
 export default {
   getProfile,
-  updateProfile
+  updateProfile,
+  updateOnboarding,
 };
 

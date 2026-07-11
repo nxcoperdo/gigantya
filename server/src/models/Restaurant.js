@@ -561,6 +561,50 @@ export async function rejectRestaurant(id) {
   }
 }
 
+/**
+ * Devuelve los restaurantes cuyo dueño no accedió al dashboard en los
+ * últimos `dias` días. Se usa por el cron semanal para mandar el email
+ * de "repaso" de tips contextuales (Capa 3 del manual contextual).
+ *
+ * `ultimo_acceso_dashboard` vive en `usuarios.otros_datos` (JSON) y se
+ * actualiza desde el cliente cada vez que el dueño abre `/dashboard`.
+ *
+ * Devuelve un array de `{ usuario_id, restaurante_id, nombre }`. Si
+ * `ultimo_acceso_dashboard` es `NULL` (usuario nuevo que nunca entró al
+ * dashboard) también cuenta como "inactivo".
+ */
+export async function getRestaurantesInactivos(dias) {
+  // MySQL 8 acepta tanto `JSON_EXTRACT(... <@)` como comparaciones directas
+  // sobre el valor. Como el valor guardado es ISO8601 con `T` y `Z`,
+  // comparamos contra un `DATETIME` sin la Z: usamos el string "YYYY-MM-DD HH:MM:SS".
+  // Truco: la columna ya es DATETIME comparable como string.
+  const limite = new Date(Date.now() - dias * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 19)
+    .replace('T', ' ');
+
+  const sql = `
+    SELECT u.id AS usuario_id,
+           r.id AS restaurante_id,
+           r.nombre
+    FROM usuarios u
+    INNER JOIN restaurantes r ON r.id = u.restaurante_id
+    WHERE u.tipo_usuario = 'restaurante'
+      AND u.estado = 'activo'
+      AND r.estado = 'activo'
+      AND (
+        JSON_UNQUOTE(JSON_EXTRACT(u.otros_datos, '$.ultimo_acceso_dashboard')) IS NULL
+        OR JSON_UNQUOTE(JSON_EXTRACT(u.otros_datos, '$.ultimo_acceso_dashboard')) < ?
+      )
+  `;
+  const rows = await query(sql, [limite]);
+  return rows.map(r => ({
+    usuario_id: r.usuario_id,
+    restaurante_id: r.restaurante_id,
+    nombre: r.nombre,
+  }));
+}
+
 export default {
   createRestaurant,
   createRestaurantWithConnection,
@@ -572,6 +616,7 @@ export default {
   getUserById,
   updateRestaurant,
   approveRestaurant,
-  rejectRestaurant
+  rejectRestaurant,
+  getRestaurantesInactivos,
 };
 

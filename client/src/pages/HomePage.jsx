@@ -318,16 +318,25 @@ export default function HomePage() {
   // populares + un "+X más" que expande in-line. En las otras vistas el
   // catálogo es chico y se muestra completo (sin botón de colapso).
   const [categoriasExpanded, setCategoriasExpanded] = useState(false);
-  // Ref al scroller del carrusel de banners destacados. Se usa para
-  // detectar scroll/touch del usuario y pausar la animación CSS del
-  // marquee (en desktop). En móvil la animación ya está desactivada
-  // por CSS — el scroll-snap toma el control.
+  // Refs y state del carrusel de banners destacados (FeaturedBanner).
+  // Antes era una animación CSS pura (`translateX(-50%)`), pero eso
+  // peleaba con el dedo del usuario en móvil y no permitía pausar
+  // limpiamente. Ahora el movimiento lo maneja un rAF que avanza
+  // `scrollLeft` — el scroll horizontal nativo del browser, así el
+  // dedo puede arrastrar y soltar sin que nada pelee.
+  //   - `featuredScrollerRef`   → el contenedor scrolleable
+  //   - `featuredTrackRef`      → el track interno (w-max)
+  //   - `featuredRafRef`        → id del rAF activo
+  //   - `featuredPausedRef`     → si el usuario está interactuando
+  //   - `featuredResumeAtRef`   → timestamp para reanudar tras soltar
+  // Usamos refs (no state) porque el rAF corre fuera del ciclo de
+  // render y no queremos re-renders por cada frame.
   const featuredScrollerRef = useRef(null);
-  // Pausa del marquee cuando el usuario interactúa con él. En desktop
-  // mantiene la animación corriendo hasta que el usuario hace hover,
-  // scroll horizontal o lo toca. Tras 1.5s sin interacción, reanuda.
-  const [isFeaturedPaused, setIsFeaturedPaused] = useState(false);
-  const featuredResumeTimerRef = useRef(null);
+  const featuredTrackRef = useRef(null);
+  const featuredRafRef = useRef(null);
+  const featuredPausedRef = useRef(false);
+  const featuredResumeAtRef = useRef(0);
+  const featuredLastTsRef = useRef(0);
   // Banner del hero: viene de GET /api/home/media. Si es null, se
   // muestra el fallback estático `/media/banner.mp4`. Ver admin en
   // /admin/home-media para cambiarlo.
@@ -610,21 +619,75 @@ export default function HomePage() {
     }
   }, []);
 
-  // Pausa la animación del marquee de banners destacados cuando el
-  // usuario interactúa con él. Se programa un timer para reanudar
-  // 1.5s después de la última interacción, así no queda estático
-  // para siempre. En móvil la animación ya está desactivada por CSS,
-  // pero el ref igual marca `.is-paused` por si el media query
-  // cambia (rotación, resize, etc.).
+  // Lógica del carrusel de banners destacados.
+  // El movimiento se hace avanzando `scrollLeft` con rAF. El navegador
+  // se encarga de la inercia táctil, scroll-snap, scrollbars, etc.
+  //   - Velocidad: ~50 px/s (constante, en píxeles de CSS).
+  //   - Loop: cuando `scrollLeft` supera el ancho del primer set de
+  //     banners (= scrollWidth/2, porque duplicamos el array), lo
+  //     "reseteamos" restando esa mitad. El usuario nunca nota el
+  //     salto porque el segundo set es idéntico al primero.
+  //   - Pausa al interactuar: `onPointerDown` / `onTouchStart`
+  //     marcan `featuredPausedRef.current = true` y un timer reactiva
+  //     el rAF 1.2s después. El rAF se cancela durante la pausa para
+  //     no desperdiciar CPU.
+  const FEATURED_SPEED_PX_PER_SEC = 50;
+  const FEATURED_RESUME_DELAY_MS = 1200;
+  const stepFeatured = useCallback((ts) => {
+    const el = featuredScrollerRef.current;
+    if (!el) return;
+    const last = featuredLastTsRef.current || ts;
+    const dt = ts - last;
+    featuredLastTsRef.current = ts;
+    // Si está en pausa o la pestaña no está visible, no avanzamos
+    // pero seguimos pidiendo frames para que cuando se reactive siga.
+    if (!featuredPausedRef.current && document.visibilityState === 'visible') {
+      const track = featuredTrackRef.current;
+      if (track) {
+        const halfWidth = track.scrollWidth / 2;
+        if (halfWidth > 0) {
+          const delta = (FEATURED_SPEED_PX_PER_SEC * dt) / 1000;
+          let next = el.scrollLeft + delta;
+          // Loop infinito: cuando llegamos al final del primer set,
+          // reseteamos al inicio del segundo set (que es idéntico).
+          if (next >= halfWidth) next -= halfWidth;
+          el.scrollLeft = next;
+        }
+      }
+    }
+    featuredRafRef.current = requestAnimationFrame(stepFeatured);
+  }, []);
+
+  // Inicia el rAF del carrusel. Se monta una sola vez al cargar la home.
+  useEffect(() => {
+    if (featuredBanners.length === 0) return undefined;
+    featuredLastTsRef.current = 0;
+    featuredRafRef.current = requestAnimationFrame(stepFeatured);
+    return () => {
+      if (featuredRafRef.current) {
+        cancelAnimationFrame(featuredRafRef.current);
+        featuredRafRef.current = null;
+      }
+    };
+    // stepFeatured es estable (useCallback con deps []), así que
+    // solo nos importa el flag "hay banners" para (re)arrancar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featuredBanners.length > 0]);
+
+  // Pausa al interactuar (pointer/touch) y programa la reanudación.
+  const featuredResumeTimerRef = useRef(null);
   const pauseFeaturedMarquee = useCallback(() => {
-    setIsFeaturedPaused(true);
+    featuredPausedRef.current = true;
     if (featuredResumeTimerRef.current) {
       clearTimeout(featuredResumeTimerRef.current);
     }
     featuredResumeTimerRef.current = setTimeout(() => {
-      setIsFeaturedPaused(false);
+      featuredPausedRef.current = false;
+      // Reseteamos lastTs para que el primer frame post-pausa no
+      // salte por el delta acumulado.
+      featuredLastTsRef.current = 0;
       featuredResumeTimerRef.current = null;
-    }, 1500);
+    }, FEATURED_RESUME_DELAY_MS);
   }, []);
 
   // Cleanup del timer al desmontar.
@@ -954,30 +1017,26 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Featured Banners Marquee
-            - Wrapper con `marquee-scroller` (overflow-x + scroll-snap): el
-              dedo puede arrastrarlo horizontalmente en móvil sin que la
-              animación CSS pelee. En desktop el drag también funciona
-              (trackpad, shift+rueda, etc.).
-            - La animación `animate-marquee` se PAUSA apenas el usuario
-              interactúa (toque, scroll, hover) y se reanuda 1.5s
-              después de la última interacción, vía `.is-paused`.
-            - `touch-action: pan-x` (en CSS) deja que el scroll vertical
-              de la página siga funcionando mientras arrastras el
-              carrusel horizontalmente. */}
+        {/* Featured Banners Marquee.
+            - El movimiento lo maneja un rAF en JS (stepFeatured) que
+              avanza `scrollLeft` ~50 px/s. Cero animación CSS — el
+              scroll horizontal nativo del browser permite arrastrar
+              con el dedo y el scroll vertical de la página sigue
+              intacto (touch-action: pan-x en CSS).
+            - Loop infinito: el track contiene los banners duplicados,
+              cuando `scrollLeft` llega a la mitad, lo reseteamos
+              restando esa mitad. Como los dos sets son idénticos,
+              el ojo no nota el salto.
+            - Pausa al interactuar: pointerdown/touchstart pausan
+              el rAF y programan la reanudación 1.2s después (en
+              `pauseFeaturedMarquee`). */}
         {featuredBanners.length > 0 && (
           <div
             ref={featuredScrollerRef}
-            className={`mb-12 sm:mb-16 md:mb-24 relative pause-marquee marquee-scroller ${isFeaturedPaused ? 'is-paused' : ''}`}
-            onTouchStart={pauseFeaturedMarquee}
+            className="mb-12 sm:mb-16 md:mb-24 relative marquee-scroller"
             onPointerDown={pauseFeaturedMarquee}
-            onWheel={(e) => {
-              // En desktop, si la rueda es horizontal (trackpad), pausa.
-              if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) pauseFeaturedMarquee();
-            }}
-            onScroll={() => pauseFeaturedMarquee()}
           >
-            <div className="flex gap-4 sm:gap-6 animate-marquee w-max">
+            <div ref={featuredTrackRef} className="flex gap-4 sm:gap-6 w-max">
               {/* First set of banners */}
               {featuredBanners.map((res) => (
                 <FeaturedBanner key={`banner-1-${res.id}`} restaurant={res} keyPrefix="banner-1" />

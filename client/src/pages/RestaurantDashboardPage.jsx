@@ -9,6 +9,7 @@ import CouponsView from '../components/CouponsView';
 import PaymentTabs from '../components/PaymentTabs';
 import PageBuilder from '../components/PageBuilder';
 import RestaurantShippingTaxModal from '../components/RestaurantShippingTaxModal';
+import OnboardingTip from '../components/help/OnboardingTip';
 import {
   LayoutDashboard,
   Clock3,
@@ -644,6 +645,7 @@ export default function RestaurantDashboardPage() {
               <div className="flex overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-hide gap-2">
                 <button
                   onClick={() => setActiveTab('orders')}
+                  data-tour="dashboard-tab-pedidos"
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'orders'
                       ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
@@ -661,6 +663,7 @@ export default function RestaurantDashboardPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab('management')}
+                  data-tour="dashboard-tab-gestion"
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'management'
                       ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
@@ -675,6 +678,7 @@ export default function RestaurantDashboardPage() {
                     setActiveTab('payments');
                     setPendingProofsCount(0);
                   }}
+                  data-tour="dashboard-tab-pagos"
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'payments'
                       ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
@@ -692,6 +696,7 @@ export default function RestaurantDashboardPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab('coupons')}
+                  data-tour="dashboard-tab-cupones"
                   className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === 'coupons'
                       ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
@@ -716,6 +721,7 @@ export default function RestaurantDashboardPage() {
                     </button>
                     <button
                       onClick={() => setActiveTab('stats')}
+                      data-tour="dashboard-tab-stats"
                       className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                         activeTab === 'stats'
                           ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
@@ -823,19 +829,34 @@ export default function RestaurantDashboardPage() {
             onSave={refreshData}
           />
         ) : (
-          <ManagementView
-            products={products}
-            productsLoading={productsLoading}
-            stats={stats}
-            togglingProductId={togglingProductId}
-            handleToggleProduct={handleToggleProduct}
-            openProductModal={openProductModal}
-            handleDeleteProduct={handleDeleteProduct}
-            deletingProductId={deletingProductId}
-            restaurant={restaurant}
-            profile={profile}
-            setIsRestaurantModalOpen={setIsRestaurantModalOpen}
-          />
+          <>
+            {/* Capa 1 — manual contextual: tip de "crear producto" la primera vez */}
+            {activeTab === 'management' && (
+              <OnboardingTip
+                tipKey="crear_producto"
+                title="¿Cómo creo mi primer producto?"
+                steps={[
+                  'Hacé click en "+ Nuevo producto"',
+                  'Llená nombre, descripción y precio',
+                  'Elegí una categoría y subí una foto',
+                  'Marcalo como disponible y guardá',
+                ]}
+              />
+            )}
+            <ManagementView
+              products={products}
+              productsLoading={productsLoading}
+              stats={stats}
+              togglingProductId={togglingProductId}
+              handleToggleProduct={handleToggleProduct}
+              openProductModal={openProductModal}
+              handleDeleteProduct={handleDeleteProduct}
+              deletingProductId={deletingProductId}
+              restaurant={restaurant}
+              profile={profile}
+              setIsRestaurantModalOpen={setIsRestaurantModalOpen}
+            />
+          </>
         )}
       </div>
 

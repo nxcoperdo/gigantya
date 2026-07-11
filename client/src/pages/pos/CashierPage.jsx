@@ -31,6 +31,7 @@ import { formatDateTime } from '../../utils/dateHelper';
 import ChargeModal from '../../components/pos/ChargeModal';
 import CashCountModal from '../../components/pos/CashCountModal';
 import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
+import OnboardingTip from '../../components/help/OnboardingTip';
 
 const POLL_MS = 15_000;
 
@@ -231,6 +232,20 @@ export default function CashierPage() {
 
   return (
     <div className="space-y-4">
+      {/* Capa 1 — manual contextual: tip de "abrir caja" la primera vez */}
+      {!loadingSesion && !cajaAbierta && (
+        <OnboardingTip
+          tipKey="abrir_caja"
+          title="¿Cómo abro la caja?"
+          steps={[
+            'Hacé click en "Abrir caja"',
+            'Poné el fondo inicial (lo que hay en la registradora al empezar el día)',
+            'Confirmá — ya podés empezar a cobrar los pedidos pendientes',
+          ]}
+          action={!showOpenModal ? { label: 'Abrir caja ahora', onClick: () => setShowOpenModal(true) } : undefined}
+        />
+      )}
+
       {/* Header */}
       <header className="flex items-center gap-3 flex-wrap">
         <div

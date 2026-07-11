@@ -25,6 +25,7 @@ import ProductCustomizationModal from '../../components/ProductCustomizationModa
 import TablePickerModal from '../../components/pos/TablePickerModal';
 import WalkInCustomerModal from '../../components/pos/WalkInCustomerModal';
 import AutoPrintIframe from '../../components/pos/AutoPrintIframe';
+import OnboardingTip from '../../components/help/OnboardingTip';
 import { formatCurrency } from '../../utils/formatHelper';
 
 const inputCls = 'w-full pl-9 pr-3 py-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary,#3b82f6)]/40 focus:border-[color:var(--primary,#3b82f6)] transition';
@@ -197,6 +198,17 @@ function TakeOrderInner() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
       {/* ============ IZQUIERDA: selección ============ */}
       <div className="lg:col-span-2 space-y-3 min-w-0">
+        {/* Capa 1 — manual contextual: tip de "tomar pedido" la primera vez */}
+        <OnboardingTip
+          tipKey="tomar_pedido"
+          title="¿Cómo tomo un pedido?"
+          steps={[
+            'Elegí si es mesa, recoger o domicilio (arriba a la derecha)',
+            'Buscá productos en el buscador o tocá una categoría',
+            'Tocá un producto para sumarlo al pedido',
+            'Revisá el total a la derecha y enviá a cocina',
+          ]}
+        />
         <header className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div

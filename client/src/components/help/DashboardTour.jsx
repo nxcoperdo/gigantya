@@ -1,0 +1,375 @@
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { userService } from '../../services/api';
+
+/**
+ * Tour paso a paso del dashboard (Capa 2 del manual contextual).
+ *
+ * Hecho a mano (sin driver.js / react-joyride) para:
+ *   - 0 KB extra de bundle
+ *   - control total de estilos y accesibilidad
+ *   - respeto de prefers-reduced-motion
+ *
+ * Estructura de cada step:
+ *   - target: selector CSS del elemento a resaltar (usamos `data-tour="..."`)
+ *   - title:  título visible
+ *   - description: descripción breve (1-2 oraciones)
+ *   - side:   posición preferida del popover ('bottom' | 'top' | 'left' | 'right')
+ *
+ * Funciona en mobile: si el viewport es < 640px o el target es muy chico,
+ * el popover se centra en pantalla con scroll interno.
+ *
+ * Accesibilidad:
+ *   - role="dialog" + aria-modal="true" + aria-labelledby
+ *   - focus al primer botón al cambiar de step
+ *   - Escape cierra el tour (y marca como completado)
+ *   - prefers-reduced-motion desactivado via tailwind `motion-reduce:`
+ *   - body scroll bloqueado mientras el tour está abierto
+ */
+const STEPS = [
+  {
+    target: 'h1',
+    title: '👋 Bienvenido a tu dashboard',
+    description: 'Acá ves todo lo que pasa en tu local: pedidos en vivo, ventas, productos y configuraciones. Te mostramos lo principal en 7 pasos.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-tab-pedidos"]',
+    title: '📋 Pestaña Pedidos',
+    description: 'Acá ves los pedidos que van entrando. Cambiá su estado a "Preparando", "Listo" o "Entregado" a medida que avanza el pedido.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-tab-gestion"]',
+    title: '⚙️ Pestaña Gestión',
+    description: 'Agregá y editá tus productos, categorías y modificadores. Lo que publiques acá es lo que ven tus clientes.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-tab-pagos"]',
+    title: '💰 Pestaña Pagos',
+    description: 'Subí los comprobantes de pago de tu suscripción mensual y mirá el historial de pagos anteriores.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-tab-cupones"]',
+    title: '🎟️ Pestaña Cupones',
+    description: 'Creá cupones de descuento para tus clientes (ej: "VERANO20" para 20% off los lunes).',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-tab-stats"]',
+    title: '📊 Pestaña Estadísticas',
+    description: 'Conocé tu hora pico, tus clientes recurrentes, la tasa de cancelación, el tiempo promedio de preparación y mucho más.',
+    side: 'bottom',
+  },
+];
+
+export default function DashboardTour({ onClose }) {
+  const { refreshUser } = useAuth();
+  const [stepIndex, setStepIndex] = useState(0);
+  const [targetRect, setTargetRect] = useState(null);
+  const [targetFound, setTargetFound] = useState(true);
+  const firstButtonRef = useRef(null);
+  // Se persiste solo 1 vez (en handleClose) para evitar golpear la API
+  // cada vez que el user navega entre steps.
+  const completedRef = useRef(false);
+
+  const currentStep = STEPS[stepIndex];
+
+  // Calcular posición del target y hacer scrollIntoView. Recalcula en
+  // cada cambio de step y cada vez que el viewport cambia (resize/scroll).
+  const recomputeRect = useCallback(() => {
+    if (!currentStep) return;
+    const el = document.querySelector(currentStep.target);
+    if (!el) {
+      // Target no presente: el popover se centra en pantalla para no
+      // romper el flujo. Útil para steps que aún no se renderizaron
+      // (p.ej. el tab "Stats" en plan basico).
+      setTargetFound(false);
+      setTargetRect(null);
+      return;
+    }
+    setTargetFound(true);
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Esperamos un poco para que el smooth scroll termine antes de
+    // medir el rect.
+    setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      setTargetRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    }, 280);
+  }, [currentStep]);
+
+  useEffect(() => {
+    recomputeRect();
+    window.addEventListener('resize', recomputeRect);
+    window.addEventListener('scroll', recomputeRect, true);
+    return () => {
+      window.removeEventListener('resize', recomputeRect);
+      window.removeEventListener('scroll', recomputeRect, true);
+    };
+  }, [recomputeRect]);
+
+  // Focus automático al cambiar step (accesibilidad teclado).
+  useEffect(() => {
+    if (firstButtonRef.current) firstButtonRef.current.focus();
+  }, [stepIndex]);
+
+  // Bloquear scroll del body mientras el tour está abierto. Restauramos
+  // el valor original (no siempre '') por si la página ya estaba en un
+  // estado especial (poco probable, pero defendámonos).
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Escape cierra el tour (y marca como completado).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClose = useCallback(async () => {
+    onClose();
+    if (completedRef.current) return;
+    completedRef.current = true;
+    try {
+      await userService.setOnboardingKey('onboarding.dashboard_tour_completed', true);
+      if (refreshUser) await refreshUser();
+    } catch (err) {
+      console.error('[DashboardTour] no se pudo persistir completed:', err?.response?.data?.error || err.message);
+    }
+  }, [onClose, refreshUser]);
+
+  const next = () => {
+    if (stepIndex < STEPS.length - 1) setStepIndex(stepIndex + 1);
+    else handleClose();
+  };
+  const prev = () => { if (stepIndex > 0) setStepIndex(stepIndex - 1); };
+
+  const popoverStyle = useMemo(
+    () => computePopoverPosition(targetRect, currentStep?.side),
+    [targetRect, currentStep]
+  );
+
+  if (!currentStep) return null;
+
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === STEPS.length - 1;
+
+  return (
+    <div
+      className="fixed inset-0 z-[110]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tour-step-title"
+    >
+      {/* Backdrop con cutout: 4 paneles que forman un marco alrededor del
+          target. El click en cualquier panel cierra el tour. Si el target
+          no existe, solo se muestra el backdrop uniforme (sin marco). */}
+      {targetRect ? (
+        <>
+          <div
+            className="absolute bg-black/65 transition-all duration-200"
+            style={{ top: 0, left: 0, right: 0, height: Math.max(0, targetRect.top - 8) }}
+            onClick={handleClose}
+            aria-hidden="true"
+          />
+          <div
+            className="absolute bg-black/65 transition-all duration-200"
+            style={{
+              top: Math.max(0, targetRect.top - 8),
+              left: 0,
+              width: Math.max(0, targetRect.left - 8),
+              height: targetRect.height + 16,
+            }}
+            onClick={handleClose}
+            aria-hidden="true"
+          />
+          <div
+            className="absolute bg-black/65 transition-all duration-200"
+            style={{
+              top: Math.max(0, targetRect.top - 8),
+              left: targetRect.left + targetRect.width + 8,
+              right: 0,
+              height: targetRect.height + 16,
+            }}
+            onClick={handleClose}
+            aria-hidden="true"
+          />
+          <div
+            className="absolute bg-black/65 transition-all duration-200"
+            style={{
+              top: targetRect.top + targetRect.height + 8,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+            onClick={handleClose}
+            aria-hidden="true"
+          />
+
+          {/* Highlight ring: marco visual alrededor del target. */}
+          <div
+            className="absolute border-2 border-primary rounded-lg pointer-events-none animate-fadeIn motion-reduce:animate-none"
+            style={{
+              top: targetRect.top - 8,
+              left: targetRect.left - 8,
+              width: targetRect.width + 16,
+              height: targetRect.height + 16,
+            }}
+            aria-hidden="true"
+          />
+        </>
+      ) : !targetFound ? (
+        <div
+          className="absolute inset-0 bg-black/65"
+          onClick={handleClose}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {/* Popover con el contenido del step */}
+      <div
+        className="absolute bg-white dark:bg-[color:var(--bg-elevated)] rounded-2xl shadow-2xl p-4 sm:p-5 w-[min(360px,90vw)] border border-gray-200 dark:border-gray-700 animate-fadeIn motion-reduce:animate-none"
+        style={popoverStyle}
+      >
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h2 id="tour-step-title" className="text-base sm:text-lg font-bold text-[color:var(--text-primary)] pr-2">
+            {currentStep.title}
+          </h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Cerrar tour"
+            className="flex-shrink-0 -mr-1 -mt-1 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[36px] min-h-[36px] flex items-center justify-center"
+          >
+            <X className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          </button>
+        </div>
+        <p className="text-sm text-[color:var(--text-secondary)] mb-4 leading-relaxed">
+          {currentStep.description}
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-[color:var(--text-muted)] font-medium">
+            Paso {stepIndex + 1} de {STEPS.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              ref={isFirst ? firstButtonRef : null}
+              type="button"
+              onClick={prev}
+              disabled={isFirst}
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-[color:var(--text-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-0.5"
+            >
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Anterior</span>
+            </button>
+            <button
+              ref={!isFirst ? firstButtonRef : null}
+              type="button"
+              onClick={next}
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary/90 active:scale-95 transition-transform min-h-[36px] inline-flex items-center gap-0.5"
+            >
+              <span>{isLast ? 'Finalizar' : 'Siguiente'}</span>
+              {!isLast && <ChevronRight className="w-4 h-4" aria-hidden="true" />}
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="mt-3 w-full text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)] underline min-h-[32px]"
+        >
+          Saltar tour
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Decide dónde colocar el popover en función de la posición del target
+ * y del viewport.
+ *
+ * Reglas:
+ *   - Si no hay rect (target no encontrado) → centrado.
+ *   - Si el viewport es chico (<640px) o el target es muy chico (<80px)
+ *     → centrado (no hay espacio para anclar bien).
+ *   - Si no, intenta la `preferredSide`. Si no entra, busca arriba,
+ *     derecha o izquierda, en ese orden.
+ */
+function computePopoverPosition(rect, preferredSide) {
+  if (!rect || (typeof window !== 'undefined' && (window.innerWidth < 640 || rect.width < 80 || rect.height < 80))) {
+    return {
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      maxHeight: '80vh',
+      overflowY: 'auto',
+    };
+  }
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const POPOVER_W = 360;
+  const POPOVER_H_ESTIMATE = 220; // estimación; el contenido real puede ser más alto
+  const GAP = 16;
+  const EDGE = 12;
+
+  const fits = (top, left) =>
+    top >= EDGE &&
+    left >= EDGE &&
+    top + POPOVER_H_ESTIMATE <= vh - EDGE &&
+    left + POPOVER_W <= vw - EDGE;
+
+  const clampLeft = (left) => Math.max(EDGE, Math.min(left, vw - POPOVER_W - EDGE));
+
+  // 1) preferredSide = bottom (caso más común en este tour)
+  if (preferredSide === 'bottom') {
+    const top = rect.top + rect.height + GAP;
+    const left = clampLeft(rect.left);
+    if (fits(top, left)) return { top, left };
+  }
+
+  // 2) bottom sin preferredSide también
+  {
+    const top = rect.top + rect.height + GAP;
+    const left = clampLeft(rect.left);
+    if (fits(top, left)) return { top, left };
+  }
+
+  // 3) top
+  {
+    const top = rect.top - GAP - POPOVER_H_ESTIMATE;
+    const left = clampLeft(rect.left);
+    if (fits(top, left)) return { top, left };
+  }
+
+  // 4) right
+  if (rect.left + rect.width + GAP + POPOVER_W <= vw - EDGE) {
+    const top = Math.max(EDGE, Math.min(rect.top, vh - POPOVER_H_ESTIMATE - EDGE));
+    return { top, left: rect.left + rect.width + GAP };
+  }
+
+  // 5) left
+  if (rect.left - GAP - POPOVER_W >= EDGE) {
+    const top = Math.max(EDGE, Math.min(rect.top, vh - POPOVER_H_ESTIMATE - EDGE));
+    return { top, left: rect.left - GAP - POPOVER_W };
+  }
+
+  // 6) fallback: centrado
+  return {
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    maxHeight: '80vh',
+    overflowY: 'auto',
+  };
+}

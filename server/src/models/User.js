@@ -214,6 +214,37 @@ export async function getUserProfile(id) {
 }
 
 /**
+ * Setea un valor en `usuarios.otros_datos` siguiendo un path con puntos
+ * (`"onboarding.tips_dismissed.crear_producto"`). Usa `JSON_SET` de MySQL,
+ * que crea el path si no existe. Si `otros_datos` es `NULL` lo inicializa
+ * a un objeto vacío con `COALESCE`.
+ *
+ * Devuelve `true` si la fila fue afectada, `false` si no se encontró.
+ *
+ * NOTA: el path que llega a MySQL debe llevar comillas en cada nivel
+ * (`$.onboarding.tips_dismissed.crear_producto`). El caller solo manda
+ * la versión con puntos — la transformación ocurre acá.
+ */
+export async function setOtrosDatosPath(userId, dotPath, value) {
+  // Defensa: no permitir paths que no sean alfanuméricos con puntos.
+  // MySQL rechaza paths con caracteres raros y queremos fallar pronto
+  // con un error legible en vez de un 500 genérico.
+  if (!/^[a-zA-Z0-9_.]+$/.test(dotPath)) {
+    throw new Error(`Path inválido: "${dotPath}"`);
+  }
+  const jsonPath = '$.' + dotPath;
+  const valueJson = JSON.stringify(value);
+
+  const sql = `
+    UPDATE usuarios
+    SET otros_datos = JSON_SET(COALESCE(otros_datos, JSON_OBJECT()), ?, ?)
+    WHERE id = ?
+  `;
+  const [result] = await query(sql, [jsonPath, valueJson, userId]);
+  return result.affectedRows > 0;
+}
+
+/**
  * Marcar la última actividad del usuario. Pensado para llamarse como
  * fire-and-forget desde el middleware `verifyToken`: el caller NO debe
  * `await` la promesa, y debe encadenarle un `.catch()` para evitar
@@ -265,6 +296,7 @@ export default {
   getUserById,
   verifyPassword,
   updateUser,
+  setOtrosDatosPath,
   changePassword,
   getUserProfile,
   touchLastActivity,

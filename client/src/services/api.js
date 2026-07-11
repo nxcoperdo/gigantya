@@ -119,6 +119,10 @@ export const orderService = {
 export const userService = {
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
+  // Onboarding / tour / tips: persiste flags en `usuarios.otros_datos`
+  // (ver PUT /api/users/me/onboarding en el server). Acepta paths con
+  // puntos tipo 'onboarding.tips_dismissed.crear_producto'.
+  setOnboardingKey: (key, value) => api.put('/users/me/onboarding', { key, value }).then(r => r.data),
 };
 
 // ========== DIRECCIONES ==========

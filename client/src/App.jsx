@@ -10,6 +10,7 @@ import ScrollToTop from './components/ScrollToTop';
 import Loading from './components/Loading';
 import CookiesBanner from './components/legal/CookiesBanner';
 import LegalGate from './components/legal/LegalGate';
+import HelpButton from './components/help/HelpButton';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -209,6 +210,13 @@ export default function App() {
             </main>
 
             <Footer />
+
+            {/* Botón flotante de ayuda "?" + tour guiado (Fase 13).
+                Solo aparece en /dashboard y /pos/* para roles staff.
+                IMPORTANTE: debe ir DENTRO del <AuthProvider> porque
+                usa useAuth() para saber si hay un usuario logueado
+                y leer `user.otros_datos.onboarding.dashboard_tour_completed`. */}
+            <HelpButton />
 
             {/* Banner de cookies: aparece en cualquier página si el usuario
                 nunca aceptó/rechazó o si pasaron 12 meses. Es invisible si

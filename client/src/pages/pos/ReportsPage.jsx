@@ -38,6 +38,7 @@ import {
 } from 'recharts';
 import { posReportsService } from '../../services/api';
 import { formatCurrency } from '../../utils/formatHelper';
+import OnboardingTip from '../../components/help/OnboardingTip';
 
 // Paleta de colores estable (no se randomiza entre renders para
 // evitar "parpadeo" cuando se re-renderiza el donut).
@@ -116,6 +117,18 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-5">
+      {/* Capa 1 — manual contextual: tip de "ver reportes" la primera vez */}
+      <OnboardingTip
+        tipKey="ver_reportes"
+        title="Cómo leer tus reportes"
+        steps={[
+          'Elegí el rango de fechas (arriba a la derecha)',
+          'Revisá las 4 cards de KPIs (pedidos, ventas, ticket, items)',
+          'El gráfico de líneas muestra la venta por día/semana/mes',
+          'Abajo: top 10 productos y métodos de pago',
+        ]}
+      />
+
       {/* Header con filtros */}
       <header className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-4">
         <div className="flex items-center gap-3 flex-wrap">

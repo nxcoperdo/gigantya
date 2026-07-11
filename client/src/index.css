@@ -689,22 +689,21 @@ label {
   animation: pulse 3s ease-in-out infinite;
 }
 
-/* Marquee arrastrable en móvil.
-   - El contenedor tiene `overflow-x-auto` + scroll-snap, así que el dedo
-     puede arrastrarlo horizontalmente sin que la animación pelee.
-   - La animación `animate-marquee` sigue corriendo en desktop y se PAUSA
-     apenas el usuario interactúa (toque/scroll) — la marca `.is-paused`
-     la pone el componente desde JS.
-   - En móvil (donde el scroll-snap manda), la animación CSS ya no se
-     aplica: el scroll nativo del browser es la animación. Se siente
-     más natural y el usuario nunca pelea contra el translateX. */
+/* Carrusel de banners destacados (FeaturedBanner) en la home.
+   El movimiento lo maneja un rAF en JS (stepFeatured) que avanza
+   `scrollLeft`. Por eso este wrapper es un scroller nativo:
+   - `overflow-x: auto` + scroll-snap → el dedo arrastra y al
+     soltar el banner se "acomoda".
+   - `touch-action: pan-x` → el scroll vertical de la página sigue
+     funcionando mientras arrastras el carrusel.
+   - Sin scrollbar visible (queda limpio como un carrusel). */
 .marquee-scroller {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
   scrollbar-width: none; /* Firefox */
-  touch-action: pan-x; /* móvil: solo pan horizontal, el vertical sigue yendo a la página */
+  touch-action: pan-x;
 }
 .marquee-scroller::-webkit-scrollbar { display: none; }
 
@@ -712,25 +711,17 @@ label {
   scroll-snap-align: start;
 }
 
+/* Se conservan las clases de marquee CSS (`animate-marquee` y
+   `pause-marquee:hover`) por compatibilidad con cualquier otro
+   componente del proyecto que aún las use. La home ya no las
+   usa — el movimiento del carrusel de banners destacados es
+   100% JS vía rAF. */
 .animate-marquee {
   animation: marquee 35s linear infinite;
 }
 
-.pause-marquee:hover .animate-marquee,
-.marquee-scroller.is-paused .animate-marquee {
+.pause-marquee:hover .animate-marquee {
   animation-play-state: paused;
-}
-
-/* En móvil nos importa más el arrastre del dedo que el marquee infinito.
-   Mantenemos la animación solo en >= sm (768px) y en el wrapper con
-   la clase `.marquee-scroller` la desactivamos para que el scroll-snap
-   tome el control. */
-@media (max-width: 767px) {
-  /* En móvil, la animación CSS compite con el dedo — la apagamos.
-     El scroll-snap del contenedor se encarga del movimiento. */
-  .marquee-scroller .animate-marquee {
-    animation: none !important;
-  }
 }
 
 /* ============ Filter transitions ============

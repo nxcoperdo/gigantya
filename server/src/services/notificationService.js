@@ -97,6 +97,26 @@ function normalizePhoneForWhatsApp(rawPhone) {
 }
 
 // ====================================================
+// HELPERS COMPARTIDOS
+// ====================================================
+
+/**
+ * Escapa caracteres HTML para que strings de usuario no rompan el
+ * layout ni abran un XSS al renderizarse dentro de `innerHTML` (que
+ * es como se mandan los emails). Exportado para que cualquier job
+ * que mande HTML pueda reusarlo en vez de duplicar la lógica.
+ */
+export function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ====================================================
 // PLANTILLAS DE EMAILS
 // ====================================================
 
@@ -314,12 +334,12 @@ const EmailTemplates = {
         <h1 style="color: white; margin: 0;">⚠️ Pago Rechazado</h1>
       </div>
       <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px;">
-        <p style="font-size: 16px; color: #333;">Hola <strong>${pedido.cliente_nombre}</strong>,</p>
+        <p style="font-size: 16px; color: #333;">Hola <strong>${escapeHtml(pedido.cliente_nombre)}</strong>,</p>
         <p style="font-size: 16px; color: #555;">Tu pago ha sido rechazado. Por favor, verifica la información e intenta nuevamente.</p>
 
         <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <p><strong>Pedido #${pedido.id}</strong></p>
-          <p><strong>Motivo:</strong> ${motivo || 'No especificado'}</p>
+          <p><strong>Motivo:</strong> ${escapeHtml(motivo || 'No especificado')}</p>
         </div>
 
         <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
@@ -331,7 +351,35 @@ const EmailTemplates = {
         </div>
       </div>
     </div>
-  `
+  `,
+
+  /**
+   * Dueño de local: repaso semanal con tips contextuales.
+   * Se manda solo si el dueño no entró al dashboard en 7+ días
+   * (ver `weeklyDigestCron.js`).
+   */
+  weeklyDigest: ({ nombre, restaurante, link, tips }) => `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #1f2937; font-size: 22px; margin: 0 0 8px;">Hola ${escapeHtml(String(nombre).split(' ')[0])} 👋</h1>
+      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
+        Hace tiempo que no entras a GigantYA para revisar <strong>${escapeHtml(restaurante)}</strong>.
+        Acá van 3 tips rápidos que te pueden servir:
+      </p>
+      ${tips.map(t => `
+        <div style="border-left: 4px solid #FF6B00; background: #fff7ed; padding: 14px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+          <h3 style="margin: 0 0 4px; color: #1f2937; font-size: 15px;">${escapeHtml(t.titulo)}</h3>
+          <p style="margin: 0 0 8px; color: #4b5563; font-size: 14px; line-height: 1.5;">${escapeHtml(t.texto)}</p>
+          <a href="${escapeHtml(t.link)}" style="color: #FF6B00; font-size: 13px; font-weight: 600; text-decoration: none;">Ir ahora →</a>
+        </div>
+      `).join('')}
+      <p style="margin-top: 24px; text-align: center;">
+        <a href="${escapeHtml(link)}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Abrir mi dashboard</a>
+      </p>
+      <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+        Recibiste este email porque sos dueño de un local en GigantYA. Si querés dejar de recibirlo, podés escribirnos a <a href="mailto:coderepairtech@gmail.com" style="color: #9ca3af; text-decoration: underline;">coderepairtech@gmail.com</a>.
+      </p>
+    </div>
+  `,
 };
 
 // ====================================================
@@ -392,7 +440,8 @@ function getSubjectForTemplate(template, pedido) {
     orderDelivered: `🎉 Pedido #${pedido.id} entregado - GigantYA`,
     newOrderRestaurant: `🔔 Nuevo Pedido #${pedido.id} - GigantYA`,
     paymentApproved: `✅ Pago aprobado - Pedido #${pedido.id}`,
-    paymentRejected: `⚠️ Pago rechazado - Pedido #${pedido.id}`
+    paymentRejected: `⚠️ Pago rechazado - Pedido #${pedido.id}`,
+    weeklyDigest: '💡 3 tips rápidos para tu local - GigantYA',
   };
   return subjects[template] || 'Notificación de GigantYA';
 }

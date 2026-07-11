@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { authService } from '../services/api';
+import { authService, userService } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -77,6 +77,31 @@ export function AuthProvider({ children }) {
     logout();
   };
 
+  /**
+   * Refresca el user desde /api/users/profile y actualiza localStorage
+   * y el state. Útil después de un PUT a /me/onboarding para que el
+   * front vea los flags de `otros_datos.onboarding` actualizados sin
+   * tener que recargar la página.
+   *
+   * Devuelve el `usuario` refrescado o `null` si falló (no crítico:
+   * logueamos y seguimos para no romper el flujo del usuario).
+   */
+  const refreshUser = async () => {
+    try {
+      const { usuario } = await userService.getProfile();
+      if (usuario) {
+        localStorage.setItem('user', JSON.stringify(usuario));
+        setUser(usuario);
+      }
+      return usuario || null;
+    } catch (err) {
+      // No crítico: la app sigue funcionando con el state viejo.
+      // El próximo refresh (otro PUT, otro login) lo sincronizará.
+      console.error('[auth] refreshUser falló:', err?.response?.data?.error || err.message);
+      return null;
+    }
+  };
+
   const value = {
     user,
     token,
@@ -87,6 +112,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     clearLocalSession,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
