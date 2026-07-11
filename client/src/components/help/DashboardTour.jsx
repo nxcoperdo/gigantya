@@ -12,10 +12,15 @@ import { userService } from '../../services/api';
  *   - respeto de prefers-reduced-motion
  *
  * Estructura de cada step:
- *   - target: selector CSS del elemento a resaltar (usamos `data-tour="..."`)
- *   - title:  título visible
- *   - description: descripción breve (1-2 oraciones)
- *   - side:   posición preferida del popover ('bottom' | 'top' | 'left' | 'right')
+ *   - target:       selector CSS del elemento a resaltar (usamos `data-tour="..."`)
+ *   - title:        título visible
+ *   - description:  descripción breve (2-4 oraciones, una sola idea por oración)
+ *   - side:         posición preferida del popover ('bottom' | 'top' | 'left' | 'right')
+ *   - activateTab?: id del tab al que cambiar antes de iluminar (opcional).
+ *                   Cuando el step pide cambiar de tab, el tour dispara el
+ *                   callback `onActivateTab(tabId)` antes de hacer scroll,
+ *                   y le da 320ms extra al render del nuevo tab antes de
+ *                   medir el rect.
  *
  * Funciona en mobile: si el viewport es < 640px o el target es muy chico,
  * el popover se centra en pantalla con scroll interno.
@@ -31,42 +36,77 @@ const STEPS = [
   {
     target: 'h1',
     title: '👋 Bienvenido a tu dashboard',
-    description: 'Acá ves todo lo que pasa en tu local: pedidos en vivo, ventas, productos y configuraciones. Te mostramos lo principal en 7 pasos.',
+    description: 'Acá arriba tenés 3 cosas clave: el saldo actual, el plan que tenés contratado y los datos de tu local. Todos se pueden editar desde "Mi cuenta" cuando quieras.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-refresh"]',
+    title: '🔄 Refrescar datos',
+    description: 'Los pedidos, ventas y productos se actualizan solos cada 7 segundos. Pero si hiciste algo en otra pestaña o querés forzar la actualización, hacé click acá. La hora de la última actualización aparece al lado.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-shipping"]',
+    title: '🚚 Envíos e Impuestos',
+    description: 'Acá configurás cuánto cobrás por envío a domicilio, el porcentaje de impuesto (IVA) y si querés aceptar retiro en local. Lo configurás UNA vez y se aplica a todos los pedidos hasta que lo vuelvas a cambiar.',
     side: 'bottom',
   },
   {
     target: '[data-tour="dashboard-tab-pedidos"]',
     title: '📋 Pestaña Pedidos',
-    description: 'Acá ves los pedidos que van entrando. Cambiá su estado a "Preparando", "Listo" o "Entregado" a medida que avanza el pedido.',
+    description: 'Acá ves los pedidos que van entrando en tiempo real. Cada pedido pasa por 4 estados: Pendiente → Preparando → Listo → Entregado. Cambialos a medida que avanza. También podés imprimir la comanda o cancelar un pedido si el cliente se arrepiente.',
     side: 'bottom',
+    activateTab: 'orders',
   },
   {
     target: '[data-tour="dashboard-tab-gestion"]',
     title: '⚙️ Pestaña Gestión',
-    description: 'Agregá y editá tus productos, categorías y modificadores. Lo que publiques acá es lo que ven tus clientes.',
+    description: 'Acá viven tus productos, categorías y modificadores. Lo que publiques acá es lo que ven tus clientes en la página del local. Te mostramos 2 cosas clave de esta pestaña:',
+    side: 'bottom',
+    activateTab: 'management',
+  },
+  {
+    target: '[data-tour="dashboard-new-product"]',
+    title: '➕ Nuevo producto',
+    description: 'Hacé click en "+ Nuevo producto" para crear uno. Necesitás: nombre, precio, descripción corta, foto, categoría. Si tiene modificadores (ej: "Tamaño grande", "Sin cebolla") los agregás aparte. Error común: olvidar marcar el switch "Disponible" al final antes de guardar — el producto queda creado pero no se muestra al cliente.',
+    side: 'bottom',
+  },
+  {
+    target: '[data-tour="dashboard-toggle-product"]',
+    title: '⏸️ Pausar y reanudar productos',
+    description: 'El switch verde/rojo a la izquierda de cada producto te permite pausarlo sin eliminarlo. Útil cuando se te agota un ingrediente a la noche, o para sacar de la carta un plato solo los lunes. Cuando lo reactivás, vuelve a aparecer automáticamente.',
     side: 'bottom',
   },
   {
     target: '[data-tour="dashboard-tab-pagos"]',
     title: '💰 Pestaña Pagos',
-    description: 'Subí los comprobantes de pago de tu suscripción mensual y mirá el historial de pagos anteriores.',
+    description: 'Subí los comprobantes de pago de tu suscripción mensual (PSE, transferencia, Nequi). También ves el historial completo de pagos anteriores. Si el plan vence, tu local pasa automáticamente a Básico hasta que renueves — algunas funciones se desactivan.',
     side: 'bottom',
+    activateTab: 'payments',
   },
   {
     target: '[data-tour="dashboard-tab-cupones"]',
     title: '🎟️ Pestaña Cupones',
-    description: 'Creá cupones de descuento para tus clientes (ej: "VERANO20" para 20% off los lunes).',
+    description: 'Creá cupones de descuento para tus clientes: por porcentaje (ej: 20% off) o monto fijo (ej: $5.000 off). Definí vigencia, cantidad máxima de usos y el código que el cliente ingresa al pedir. Ejemplo: "VERANO20" para 20% los lunes.',
     side: 'bottom',
+    activateTab: 'coupons',
   },
   {
     target: '[data-tour="dashboard-tab-stats"]',
     title: '📊 Pestaña Estadísticas',
-    description: 'Conocé tu hora pico, tus clientes recurrentes, la tasa de cancelación, el tiempo promedio de preparación y mucho más.',
+    description: 'Conocé tu hora pico, tus 10 productos más vendidos, clientes recurrentes vs nuevos, tasa de cancelación, tiempo promedio de preparación y ticket promedio. Todo exportable a Excel para que lleves tu propio registro.',
     side: 'bottom',
+    activateTab: 'stats',
+  },
+  {
+    target: '[data-tour="dashboard-fab-help"]',
+    title: '❓ ¿Te olvidaste algo?',
+    description: 'Este botón "?" lo tenés siempre disponible abajo a la derecha. Te abre este tour de nuevo o te lleva al soporte. También vas a ver tips contextuales en cada pestaña — aparecen arriba de todo y se silencian con un click.',
+    side: 'left',
   },
 ];
 
-export default function DashboardTour({ onClose }) {
+export default function DashboardTour({ onClose, onActivateTab }) {
   const { refreshUser } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
@@ -80,8 +120,15 @@ export default function DashboardTour({ onClose }) {
 
   // Calcular posición del target y hacer scrollIntoView. Recalcula en
   // cada cambio de step y cada vez que el viewport cambia (resize/scroll).
+  //
+  // Si el step pide `activateTab`, disparamos el callback del padre
+  // ANTES de buscar el target. Esto le da tiempo al nuevo tab de
+  // renderear antes de que midamos el rect (320ms en vez de 280ms).
   const recomputeRect = useCallback(() => {
     if (!currentStep) return;
+    if (currentStep.activateTab && onActivateTab) {
+      onActivateTab(currentStep.activateTab);
+    }
     const el = document.querySelector(currentStep.target);
     if (!el) {
       // Target no presente: el popover se centra en pantalla para no
@@ -93,13 +140,13 @@ export default function DashboardTour({ onClose }) {
     }
     setTargetFound(true);
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Esperamos un poco para que el smooth scroll termine antes de
-    // medir el rect.
+    // Esperamos un poco para que el smooth scroll + el render del tab
+    // (si hubo activateTab) terminen antes de medir el rect.
     setTimeout(() => {
       const r = el.getBoundingClientRect();
       setTargetRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-    }, 280);
-  }, [currentStep]);
+    }, currentStep.activateTab ? 320 : 280);
+  }, [currentStep, onActivateTab]);
 
   useEffect(() => {
     recomputeRect();

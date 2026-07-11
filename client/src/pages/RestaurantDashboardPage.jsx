@@ -807,6 +807,7 @@ export default function RestaurantDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsShippingTaxModalOpen(true)}
+                  data-tour="dashboard-shipping"
                   className="btn btn-outline inline-flex items-center justify-center gap-2 min-h-[44px] border-primary/40 text-primary hover:bg-primary/5"
                 >
                   <DollarSign size={16} />
@@ -815,6 +816,7 @@ export default function RestaurantDashboardPage() {
                 <button
                   type="button"
                   onClick={refreshData}
+                  data-tour="dashboard-refresh"
                   className="btn btn-primary inline-flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   <RefreshCcw size={16} />
@@ -907,19 +909,79 @@ export default function RestaurantDashboardPage() {
           />
         ) : (
           <>
-            {/* Capa 1 — manual contextual: tip de "crear producto" la primera vez */}
+            {/* Capa 1 — manual contextual: tips contextuales.
+                Cada tip aparece solo cuando tiene sentido:
+                  - crear_producto:    siempre que entra a Gestión
+                  - duplicar_producto: solo si ya hay ≥1 producto
+                  - pausar_producto:   solo si ya hay ≥1 producto
+                El tip de modificadores_producto lo agregaremos en otro
+                commit: debe vivir adentro del ProductModal (cuando el
+                dueño está editando un producto, no en la lista). */}
             {activeTab === 'management' && (
+              <>
+                <OnboardingTip
+                  tipKey="crear_producto"
+                  title="¿Cómo creo mi primer producto?"
+                  steps={[
+                    'Hacé click en "+ Nuevo producto"',
+                    'Llená nombre, descripción y precio',
+                    'Elegí una categoría y subí una foto',
+                    'Marcá el switch "Disponible" y guardá',
+                  ]}
+                />
+                {products.length > 0 && (
+                  <>
+                    <OnboardingTip
+                      tipKey="duplicar_producto"
+                      title="¿Necesitás un producto similar?"
+                      steps={[
+                        'Hacé click en el ícono de copiar (📋) del producto',
+                        'Se abre el formulario con todo copiado',
+                        'Cambiá nombre, precio o lo que necesites',
+                        'Guardá — el original queda intacto',
+                      ]}
+                    />
+                    <OnboardingTip
+                      tipKey="pausar_producto"
+                      title="Pausar un producto sin eliminarlo"
+                      steps={[
+                        'Hacé click en el switch verde/rojo del producto',
+                        'Pasa a "No disponible" — desaparece del menú del cliente',
+                        'Cuando lo vuelvas a activar, aparece de nuevo automáticamente',
+                        'Ideal para fin de jornada o cuando se agota un ingrediente',
+                      ]}
+                    />
+                  </>
+                )}
+              </>
+            )}
+            {activeTab === 'payments' && (
               <OnboardingTip
-                tipKey="crear_producto"
-                title="¿Cómo creo mi primer producto?"
+                tipKey="subir_comprobante"
+                title="¿Cómo subo el comprobante de pago?"
                 steps={[
-                  'Hacé click en "+ Nuevo producto"',
-                  'Llená nombre, descripción y precio',
-                  'Elegí una categoría y subí una foto',
-                  'Marcalo como disponible y guardá',
+                  'Hacé click en "Subir comprobante"',
+                  'Arrastrá la foto del recibo o PDF (drag & drop)',
+                  'O click en el área para elegir el archivo',
+                  'Elegí el mes que corresponde y confirmá',
                 ]}
               />
             )}
+            {activeTab === 'coupons' && (
+              <OnboardingTip
+                tipKey="crear_cupon"
+                title="¿Cómo creo un cupón?"
+                steps={[
+                  'Hacé click en "+ Nuevo cupón"',
+                  'Elegí si es porcentaje (%) o monto fijo ($)',
+                  'Definí vigencia y cantidad máxima de usos',
+                  'El código lo ven los clientes al pedir (ej: "VERANO20")',
+                ]}
+              />
+            )}
+            {/* Nota: NO agregamos tip de "plan_y_vencimiento" porque ya hay
+                una alerta naranja grande en el header (línea 842) que
+                cumple esa función. Poner 2 banners amarillos sería ruido. */}
             <ManagementView
               products={products}
               productsLoading={productsLoading}
@@ -939,11 +1001,23 @@ export default function RestaurantDashboardPage() {
 
       {/* Capa 2 del manual contextual: tour guiado. Se monta solo cuando
           `tourOpen` es true. El `key={tourKey}` fuerza remontaje cada
-          vez que se reabre, así el step counter arranca en 0. */}
+          vez que se reabre, así el step counter arranca en 0. El
+          `onActivateTab` permite que el tour cambie de tab antes de
+          iluminar el target (steps 4, 5, 8, 9, 10). */}
       {tourOpen && (
         <DashboardTour
           key={tourKey}
           onClose={() => setTourOpen(false)}
+          onActivateTab={(tabId) => {
+            if (tabId === 'stats' || tabId === 'builder') {
+              // Stats/Builder solo existen en planes != básico
+              if (restaurant?.plan && restaurant.plan !== 'basico') {
+                setActiveTab(tabId);
+              }
+            } else {
+              setActiveTab(tabId);
+            }
+          }}
         />
       )}
 
@@ -1165,6 +1239,7 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
             <button
               type="button"
               onClick={() => openProductModal()}
+              data-tour="dashboard-new-product"
               className="btn btn-primary btn-small inline-flex items-center gap-1.5 min-h-[40px]"
             >
               <Plus size={14} />
@@ -1182,7 +1257,7 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
           </div>
         ) : (
           <div className="space-y-3 max-h-[500px] sm:max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
-            {products.map((product) => {
+            {products.map((product, idx) => {
               const available = product.disponible === 1 || product.disponible === true;
               return (
                 <div key={product.id} className="border border-[color:var(--border-default)] rounded-xl p-3 sm:p-4 bg-[color:var(--bg-elevated)] hover:shadow-sm transition-shadow">
@@ -1202,6 +1277,7 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
                         type="button"
                         onClick={() => handleToggleProduct(product.id)}
                         disabled={togglingProductId === product.id}
+                        data-tour={idx === 0 ? 'dashboard-toggle-product' : undefined}
                         className="text-primary hover:text-primaryDark transition-colors p-1"
                         title={available ? 'Desactivar disponibilidad' : 'Activar disponibilidad'}
                       >

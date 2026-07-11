@@ -46,10 +46,13 @@ export default function HelpButton() {
     <>
       {/* Botón flotante. Posición: bottom-right, encima de cualquier modal
           del layout (z-40) pero por debajo del tour (z-110) para que el
-          spotlight del tour lo cubra limpiamente. */}
+          spotlight del tour lo cubra limpiamente. El `data-tour` lo
+          usa el último step del DashboardTour para que el spotlight
+          pueda encontrarlo vía document.querySelector. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
+        data-tour="dashboard-fab-help"
         aria-label={tourCompleted ? 'Ver tour de ayuda de nuevo' : 'Ver tour de ayuda'}
         title={tourCompleted ? 'Ver tour de ayuda de nuevo' : 'Ver tour de ayuda'}
         className="fixed bottom-5 right-5 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-transform flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-primary/30"
