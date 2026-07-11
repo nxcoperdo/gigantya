@@ -30,25 +30,25 @@ const STEPS = [
   {
     target: '[data-tour="home-search"]',
     title: '🔍 Buscar locales o productos',
-    description: 'Escribe el nombre de un local, un plato o una categoría. La búsqueda se actualiza mientras escribís.',
+    description: 'Escribe el nombre de un local, un plato o una categoría. La búsqueda se actualiza mientras escribes.',
     side: 'bottom',
   },
   {
     target: '[data-tour="home-toggle-domicilio"]',
     title: '🚚 Con o sin domicilio',
-    description: 'Elegí si querés ver locales que envían a domicilio o solo los que reciben pedidos para retirar en el mostrador.',
+    description: 'Elige si quieres ver locales que envían a domicilio o solo los que reciben pedidos para retirar en el mostrador.',
     side: 'bottom',
   },
   {
     target: '[data-tour="home-toggle-nicho"]',
     title: '🍔 Filtrar por tipo de local',
-    description: 'Acá separás restaurantes, comida rápida, mercados y panaderías. Tocá uno para ver solo ese tipo.',
+    description: 'Aquí separas restaurantes, comida rápida, mercados y panaderías. Toca uno para ver solo ese tipo.',
     side: 'bottom',
   },
   {
     target: '[data-tour="home-categorias"]',
     title: '🏷️ Filtrar por categoría',
-    description: 'Las categorías te permiten acotar la lista: hamburguesas, pizzas, desayunos, etc. Tocá una y la lista se actualiza.',
+    description: 'Las categorías te permiten acotar la lista: hamburguesas, pizzas, desayunos, etc. Toca una y la lista se actualiza.',
     side: 'bottom',
   },
   {
@@ -60,7 +60,7 @@ const STEPS = [
   {
     target: '[data-tour="home-card-local"]',
     title: '👆 Cómo pedir',
-    description: 'Tocá la tarjeta de un local para ver su menú. Desde ahí elegís los productos, los agregás al carrito y confirmás el pedido.',
+    description: 'Toca la tarjeta de un local para ver su menú. Desde ahí eliges los productos, los agregas al carrito y confirmas el pedido.',
     side: 'left',
   },
   {

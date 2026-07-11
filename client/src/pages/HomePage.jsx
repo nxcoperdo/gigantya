@@ -1521,7 +1521,7 @@ export default function HomePage() {
                   title="¿Cómo busco un local o un plato?"
                   steps={[
                     'Escribe en el buscador de arriba (ej: "pizza", "hamburguesa")',
-                    'La lista se actualiza mientras escribís',
+                    'La lista se actualiza mientras escribes',
                     'Toca una categoría de las que aparecen abajo del buscador',
                     'O usa los filtros para ver solo un tipo de local',
                   ]}
