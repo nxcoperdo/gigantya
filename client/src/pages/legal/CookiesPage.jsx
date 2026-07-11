@@ -111,7 +111,7 @@ export default function CookiesPage() {
       <h2 id="s5">5. Más información</h2>
       <p>
         Para cualquier duda sobre cookies, contactanos a{' '}
-        <a href="mailto:privacidad@gigantya.com">privacidad@gigantya.com</a>.
+        <a href="mailto:coderepairtech@gmail.com">coderepairtech@gmail.com</a>.
       </p>
     </LegalLayout>
   );

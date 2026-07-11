@@ -276,7 +276,7 @@ function TycText() {
         <li><strong>NIT:</strong> CC 1141116665</li>
         <li><strong>Domicilio:</strong> Calle 4 #7-79, Gigante, Huila</li>
         <li><strong>Teléfono:</strong> +57 311 532 0211</li>
-        <li><strong>Email:</strong> contacto@gigantya.com</li>
+        <li><strong>Email:</strong> coderepairtech@gmail.com</li>
       </ul>
       <h2>2. Aceptación</h2>
       <p>Al hacer clic en "Acepto" o usar la plataforma, declaras que leíste y aceptas estos Términos en su totalidad.</p>
@@ -319,7 +319,7 @@ function TycText() {
       <h2>21. Ley aplicable</h2>
       <p>Leyes de Colombia. Tribunales de Bogotá D.C.</p>
       <h2>22. Notificaciones</h2>
-      <p>De GigantYA al email registrado. De ti a contacto@gigantya.com.</p>
+      <p>De GigantYA al email registrado. De ti a coderepairtech@gmail.com.</p>
       <h2>23. Disposiciones finales</h2>
       <p>Cláusulas inválidas no afectan el resto. El no ejercicio de un derecho no implica renuncia.</p>
     </>
@@ -335,7 +335,7 @@ function PrivacidadText() {
         <li><strong>NIT:</strong> CC 1141116665</li>
         <li><strong>Domicilio:</strong> Calle 4 #7-79, Gigante, Huila</li>
         <li><strong>Teléfono:</strong> +57 311 532 0211</li>
-        <li><strong>Email:</strong> privacidad@gigantya.com</li>
+        <li><strong>Email:</strong> coderepairtech@gmail.com</li>
       </ul>
       <h2>2. Marco legal</h2>
       <p>Ley 1581 de 2012, Decreto 1377 de 2013, Sentencia C-748 de 2011.</p>
@@ -353,7 +353,7 @@ function PrivacidadText() {
       <h2>7. Derechos del titular</h2>
       <p>Conocer, actualizar, rectificar, solicitar prueba de la autorización, ser informado, presentar quejas ante la SIC, revocar, suprimir, acceder gratuitamente.</p>
       <h2>8. Procedimiento</h2>
-      <p>Email a privacidad@gigantya.com. Consulta: 10 días hábiles. Reclamo: 15 días hábiles. Si la respuesta no satisface, queja ante la SIC.</p>
+      <p>Email a coderepairtech@gmail.com. Consulta: 10 días hábiles. Reclamo: 15 días hábiles. Si la respuesta no satisface, queja ante la SIC.</p>
       <h2>9. Seguridad</h2>
       <p>Cifrado bcrypt en contraseñas, HTTPS, acceso por roles, logs de auditoría, backups cifrados.</p>
       <h2>10. Retención</h2>
@@ -361,7 +361,7 @@ function PrivacidadText() {
       <h2>11. Cookies</h2>
       <p>Ver <a href="/cookies" target="_blank" rel="noopener noreferrer">Política de Cookies</a>.</p>
       <h2>12. Menores</h2>
-      <p>Plataforma no dirigida a menores de 18. Si un padre/madre/tutor detecta datos de un menor, escribir a privacidad@gigantya.com para supresión inmediata.</p>
+      <p>Plataforma no dirigida a menores de 18. Si un padre/madre/tutor detecta datos de un menor, escribir a coderepairtech@gmail.com para supresión inmediata.</p>
       <h2>13. Modificaciones</h2>
       <p>15 días de anticipación por email o aviso.</p>
     </>

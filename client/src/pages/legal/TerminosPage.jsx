@@ -54,7 +54,7 @@ export default function TerminosPage() {
         <li><strong>Razón social:</strong> Nicolas Perdomo Rodriguez</li>
         <li><strong>NIT:</strong> CC 1141116665</li>
         <li><strong>Domicilio:</strong> Calle 4 #7-79, Gigante, Huila</li>
-        <li><strong>Correo electrónico de contacto / PQR:</strong> contacto@gigantya.com</li>
+        <li><strong>Correo electrónico de contacto / PQR:</strong> coderepairtech@gmail.com</li>
         <li><strong>Teléfono:</strong> +57 311 532 0211</li>
         <li><strong>Sitio web:</strong> https://gigantya.com</li>
       </ul>

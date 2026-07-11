@@ -41,7 +41,7 @@ export default function PrivacidadPage() {
         <li><strong>Razón social:</strong> Nicolas Perdomo Rodriguez</li>
         <li><strong>NIT:</strong> CC 1141116665</li>
         <li><strong>Domicilio:</strong> Calle 4 #7-79, Gigante, Huila</li>
-        <li><strong>Correo electrónico:</strong> privacidad@gigantya.com</li>
+        <li><strong>Correo electrónico:</strong> coderepairtech@gmail.com</li>
         <li><strong>Teléfono:</strong> +57 311 532 0211</li>
       </ul>
 
@@ -153,7 +153,7 @@ export default function PrivacidadPage() {
       <h2 id="s9">9. Procedimiento para ejercer tus derechos</h2>
       <p>Para conocer, actualizar, rectificar, suprimir o revocar, puedes:</p>
       <ul>
-        <li><strong>Email:</strong> privacidad@gigantya.com</li>
+        <li><strong>Email:</strong> coderepairtech@gmail.com</li>
         <li><strong>Formulario en la plataforma:</strong> Configuración de cuenta &gt; Privacidad</li>
       </ul>
       <p><strong>Plazos de respuesta (Art. 15 Ley 1581/2012):</strong></p>
@@ -189,7 +189,7 @@ export default function PrivacidadPage() {
       <p>
         GigantYA no está dirigida a menores de 18 años. No recolectamos intencionalmente datos de
         menores. Si un padre/madre/tutor detecta que un menor proporcionó datos, puede
-        contactarnos a privacidad@gigantya.com para proceder a la supresión inmediata.
+        contactarnos a coderepairtech@gmail.com para proceder a la supresión inmediata.
       </p>
 
       <h2 id="s14">14. Modificaciones a esta política</h2>
