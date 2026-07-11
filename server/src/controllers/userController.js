@@ -79,6 +79,7 @@ export async function updateOnboarding(req, res) {
     const ALLOWED_KEYS = [
       'onboarding.dashboard_tour_completed',
       'onboarding.dashboard_tour_dismissed_at',
+      'onboarding.dashboard_help_banner_state',
       'onboarding.tips_dismissed.crear_producto',
       'onboarding.tips_dismissed.abrir_caja',
       'onboarding.tips_dismissed.ver_reportes',

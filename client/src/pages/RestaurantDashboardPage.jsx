@@ -10,6 +10,9 @@ import PaymentTabs from '../components/PaymentTabs';
 import PageBuilder from '../components/PageBuilder';
 import RestaurantShippingTaxModal from '../components/RestaurantShippingTaxModal';
 import OnboardingTip from '../components/help/OnboardingTip';
+import DashboardHelpBanner from '../components/help/DashboardHelpBanner';
+import DashboardTour from '../components/help/DashboardTour';
+import ReactivateHelpMenuItem from '../components/help/ReactivateHelpMenuItem';
 import {
   LayoutDashboard,
   Clock3,
@@ -269,6 +272,11 @@ export default function RestaurantDashboardPage() {
   const [pendingProofsCount, setPendingProofsCount] = useState(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
+  // Tour guiado: se dispara desde el banner o desde el FAB `?`.
+  // Usamos un counter para forzar remontaje del modal cuando se
+  // reabre (así el state interno de DashboardTour resetea a step 0).
+  const [tourKey, setTourKey] = useState(0);
+  const [tourOpen, setTourOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [deletingProductId, setDeletingProductId] = useState(null);
@@ -347,6 +355,29 @@ export default function RestaurantDashboardPage() {
         console.warn('[dashboard] no se pudo marcar ultimo_acceso_dashboard:', err?.response?.data?.error || err.message);
       });
   }, []);
+
+  // Auto-tour la primera vez. Si el estado del banner es 'new' y nunca
+  // se completó el tour, abrimos el modal automáticamente después de
+  // 1.2s (le da tiempo al dueño a ver el header + el banner antes de
+  // que el tour le tape la pantalla).
+  //
+  // La condición se evalúa 1 sola vez por mount del dashboard. Si el
+  // user navega a /pos y vuelve, vuelve a entrar acá — pero para ese
+  // momento el banner ya cambió a 'active' (se setea al clickear
+  // "Iniciar tour" o al cerrar el tour) y no se vuelve a abrir solo.
+  const autoTourFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoTourFiredRef.current) return;
+    const state = authUser?.otros_datos?.onboarding?.dashboard_help_banner_state;
+    const tourDone = !!authUser?.otros_datos?.onboarding?.dashboard_tour_completed;
+    if (state !== 'new' || tourDone) return;
+    autoTourFiredRef.current = true;
+    const t = setTimeout(() => {
+      setTourKey((k) => k + 1);
+      setTourOpen(true);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [authUser]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -665,6 +696,16 @@ export default function RestaurantDashboardPage() {
               <p className="text-[color:var(--text-secondary)] text-sm sm:text-base max-w-2xl">
                 Gestiona tu negocio de manera eficiente desde un solo lugar.
               </p>
+              {/* Item de menú "Activar ayuda de nuevo" — solo se muestra
+                  si el dueño descartó el banner de ayuda en algún momento. */}
+              <div className="mt-2">
+                <ReactivateHelpMenuItem
+                  onActivated={() => {
+                    setTourKey((k) => k + 1);
+                    setTourOpen(true);
+                  }}
+                />
+              </div>
             </div>
 
             <div className="flex flex-col items-stretch gap-4">
@@ -828,6 +869,15 @@ export default function RestaurantDashboardPage() {
           );
         })()}
 
+        {/* Capa 2 del manual contextual: banner persistente con 3 estados.
+            Solo se muestra si el dueño NO descartó la ayuda. */}
+        <DashboardHelpBanner
+          onStartTour={() => {
+            setTourKey((k) => k + 1);
+            setTourOpen(true);
+          }}
+        />
+
         {activeTab === 'orders' ? (
           <OrdersView
             orders={orders}
@@ -886,6 +936,16 @@ export default function RestaurantDashboardPage() {
           </>
         )}
       </div>
+
+      {/* Capa 2 del manual contextual: tour guiado. Se monta solo cuando
+          `tourOpen` es true. El `key={tourKey}` fuerza remontaje cada
+          vez que se reabre, así el step counter arranca en 0. */}
+      {tourOpen && (
+        <DashboardTour
+          key={tourKey}
+          onClose={() => setTourOpen(false)}
+        />
+      )}
 
       <ConfirmationModal
         isOpen={confirmAction.isOpen}
