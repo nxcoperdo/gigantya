@@ -912,7 +912,10 @@ export default function RestaurantDashboardPage() {
             {/* Capa 1 — manual contextual: tips contextuales.
                 Cada tip aparece solo cuando tiene sentido:
                   - crear_producto:    siempre que entra a Gestión
-                  - duplicar_producto: solo si ya hay ≥1 producto
+                  - adiciones_corrientazo: solo si ya hay ≥1 producto
+                    (es el caso de uso clásico: corrientazos y
+                    desayunos usan adiciones obligatorias y opcionales
+                    para que el cliente arme su plato)
                   - pausar_producto:   solo si ya hay ≥1 producto
                 El tip de modificadores_producto lo agregaremos en otro
                 commit: debe vivir adentro del ProductModal (cuando el
@@ -923,32 +926,34 @@ export default function RestaurantDashboardPage() {
                   tipKey="crear_producto"
                   title="¿Cómo creo mi primer producto?"
                   steps={[
-                    'Hacé click en "+ Nuevo producto"',
-                    'Llená nombre, descripción y precio',
-                    'Elegí una categoría y subí una foto',
-                    'Marcá el switch "Disponible" y guardá',
+                    'Haz click en "+ Nuevo producto"',
+                    'Llena nombre, descripción y precio',
+                    'Elige una categoría y sube una foto',
+                    'Marca el switch "Disponible" y guarda',
                   ]}
                 />
                 {products.length > 0 && (
                   <>
                     <OnboardingTip
-                      tipKey="duplicar_producto"
-                      title="¿Necesitás un producto similar?"
+                      tipKey="adiciones_corrientazo"
+                      title="Corrientazos y desayunos: usa adiciones"
                       steps={[
-                        'Hacé click en el ícono de copiar (📋) del producto',
-                        'Se abre el formulario con todo copiado',
-                        'Cambiá nombre, precio o lo que necesites',
-                        'Guardá — el original queda intacto',
+                        'Abre un producto (ej: "Almuerzo corrientazo")',
+                        'En la sección "Adiciones", crea un grupo (ej: "Proteína")',
+                        'Marca el grupo como obligatorio · elige 1 opción',
+                        'Agrega las opciones (ej: "Pollo", "Carne", "Cerdo")',
+                        'Repite con "Acompañamiento" (Arroz, Pasta, Papa)',
+                        'El cliente arma su plato y tú cobras el extra de cada adición',
                       ]}
                     />
                     <OnboardingTip
                       tipKey="pausar_producto"
                       title="Pausar un producto sin eliminarlo"
                       steps={[
-                        'Hacé click en el switch verde/rojo del producto',
+                        'Haz click en el switch verde/rojo del producto',
                         'Pasa a "No disponible" — desaparece del menú del cliente',
                         'Cuando lo vuelvas a activar, aparece de nuevo automáticamente',
-                        'Ideal para fin de jornada o cuando se agota un ingrediente',
+                        'Ideal para fin de jornada o cuando se te agota un ingrediente',
                       ]}
                     />
                   </>
@@ -960,10 +965,10 @@ export default function RestaurantDashboardPage() {
                 tipKey="subir_comprobante"
                 title="¿Cómo subo el comprobante de pago?"
                 steps={[
-                  'Hacé click en "Subir comprobante"',
-                  'Arrastrá la foto del recibo o PDF (drag & drop)',
+                  'Haz click en "Subir comprobante"',
+                  'Arrastra la foto del recibo o PDF (drag & drop)',
                   'O click en el área para elegir el archivo',
-                  'Elegí el mes que corresponde y confirmá',
+                  'Elige el mes que corresponde y confirma',
                 ]}
               />
             )}
@@ -972,9 +977,9 @@ export default function RestaurantDashboardPage() {
                 tipKey="crear_cupon"
                 title="¿Cómo creo un cupón?"
                 steps={[
-                  'Hacé click en "+ Nuevo cupón"',
-                  'Elegí si es porcentaje (%) o monto fijo ($)',
-                  'Definí vigencia y cantidad máxima de usos',
+                  'Haz click en "+ Nuevo cupón"',
+                  'Elige si es porcentaje (%) o monto fijo ($)',
+                  'Define vigencia y cantidad máxima de usos',
                   'El código lo ven los clientes al pedir (ej: "VERANO20")',
                 ]}
               />

@@ -81,13 +81,23 @@ export async function updateOnboarding(req, res) {
       'onboarding.dashboard_tour_dismissed_at',
       'onboarding.dashboard_help_banner_state',
       'onboarding.tips_dismissed.crear_producto',
-      'onboarding.tips_dismissed.duplicar_producto',
+      'onboarding.tips_dismissed.adiciones_corrientazo',
       'onboarding.tips_dismissed.pausar_producto',
       'onboarding.tips_dismissed.subir_comprobante',
       'onboarding.tips_dismissed.crear_cupon',
       'onboarding.tips_dismissed.abrir_caja',
       'onboarding.tips_dismissed.ver_reportes',
       'onboarding.tips_dismissed.tomar_pedido',
+      // Clientes (Fase 13 - Capa 2 para clientes). Prefijo `client_` para
+      // que no se pisen con los flags del dueño. El HelpButton/Banner del
+      // cliente y del dueño se montan condicionalmente según
+      // user.tipo_usuario === 'cliente' | 'restaurante'.
+      'onboarding.client_tour_completed',
+      'onboarding.client_help_banner_state',
+      'onboarding.tips_dismissed.como_buscar',
+      'onboarding.tips_dismissed.badge_abierto_cerrado',
+      'onboarding.tips_dismissed.filtros_nicho',
+      'onboarding.tips_dismissed.minimo_domicilio',
       'ultimo_acceso_dashboard',
     ];
     if (!ALLOWED_KEYS.includes(key)) {

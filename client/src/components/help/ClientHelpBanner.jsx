@@ -1,68 +1,54 @@
 import { useState } from 'react';
-import { X, Sparkles, Play, EyeOff, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Play, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/api';
 
 /**
- * Banner persistente de ayuda en el dashboard del local (Fase 13).
+ * Banner persistente de ayuda para clientes en la HomePage.
+ * Es el equivalente del DashboardHelpBanner del dueño, pero:
+ *   - Lee/escribe el flag `onboarding.client_help_banner_state`
+ *   - Tiene copy orientado a "cómo pedir" (no a "cómo gestionar")
  *
- * 3 estados visuales (persistidos en `onboarding.dashboard_help_banner_state`):
- *
- *   - 'new'        → primera vez, gradiente amarillo/naranja, CTAs fuertes
- *                     "Iniciar tour" + "No, gracias" (pasa a 'active')
- *   - 'active'     → el dueño ya conoce, banner discreto gris con
- *                     "Ver tour" + "Ocultar" (pasa a 'dismissed')
- *   - 'dismissed'  → el dueño optó por ocultar, NO se muestra el banner
- *                     (el FAB `?` sigue disponible para reabrir el tour)
- *
- * La transición es REVERSIBLE: el dueño puede reactivar la ayuda desde
- * el menú de usuario del header (`userService.setOnboardingKey(
- * 'onboarding.dashboard_help_banner_state', 'active')`).
+ * 3 estados (persistidos en `onboarding.client_help_banner_state`):
+ *   - 'new'        → bienvenida fuerte (1ª vez)
+ *   - 'active'     → recordatorio discreto
+ *   - 'dismissed'  → no se muestra, pero el FAB `?` queda disponible
  *
  * Props:
- *   - onStartTour  () => void  — callback que abre el tour (lo monta
- *                                  el padre; este componente solo lo dispara)
+ *   - onStartTour  () => void  — callback que abre el ClientTour
  */
-export default function DashboardHelpBanner({ onStartTour }) {
+export default function ClientHelpBanner({ onStartTour }) {
   const { user, refreshUser } = useAuth();
   const [persisting, setPersisting] = useState(false);
 
-  // Estado leído de otros_datos. Si no existe, default 'new' (primera vez).
-  const state = user?.otros_datos?.onboarding?.dashboard_help_banner_state || 'new';
-
-  // Si el dueño descartó, no se muestra NADA.
+  const state = user?.otros_datos?.onboarding?.client_help_banner_state || 'new';
   if (state === 'dismissed') return null;
 
   const setState = async (newState) => {
     setPersisting(true);
     try {
-      await userService.setOnboardingKey('onboarding.dashboard_help_banner_state', newState);
+      await userService.setOnboardingKey('onboarding.client_help_banner_state', newState);
       if (refreshUser) await refreshUser();
     } catch (err) {
-      console.error('[DashboardHelpBanner] no se pudo persistir estado:', err?.response?.data?.error || err.message);
+      console.error('[ClientHelpBanner] no se pudo persistir estado:', err?.response?.data?.error || err.message);
     } finally {
       setPersisting(false);
     }
   };
 
   const handleStartTour = () => {
-    // Marcamos como 'active' para que la próxima vez se vea el banner
-    // discreto, no el de bienvenida. (El flag 'completed' del tour es
-    // independiente y se setea en DashboardTour.jsx al finalizar.)
     setState('active');
     if (onStartTour) onStartTour();
   };
-
   const handleDismissNew = () => setState('active');
   const handleDismissActive = () => setState('dismissed');
 
-  // ----- Variante "new": bienvenida fuerte -----
   if (state === 'new') {
     return (
       <div
         role="region"
         aria-label="Bienvenida y tour guiado"
-        className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 dark:border-amber-700 p-4 sm:p-5 mb-4 shadow-sm animate-fadeIn motion-reduce:animate-none"
+        className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 mt-4 sm:mt-6 rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 dark:border-amber-700 p-4 sm:p-5 shadow-sm animate-fadeIn motion-reduce:animate-none"
       >
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
@@ -70,10 +56,10 @@ export default function DashboardHelpBanner({ onStartTour }) {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base sm:text-lg font-extrabold text-amber-900 dark:text-amber-100 leading-tight">
-              👋 ¡Bienvenido a tu dashboard!
+              👋 ¡Bienvenido!
             </h2>
             <p className="text-xs sm:text-sm text-amber-900/90 dark:text-amber-100/90 mt-1 leading-relaxed">
-              Te mostramos en <strong>11 pasos</strong> (3 minutos) dónde está cada cosa. Puedes saltarte el tour cuando quieras.
+              Te mostramos en <strong>7 pasos</strong> (2 minutos) cómo buscar un local y hacer tu primer pedido. Puedes saltarte el tour cuando quieras.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
@@ -101,16 +87,15 @@ export default function DashboardHelpBanner({ onStartTour }) {
     );
   }
 
-  // ----- Variante "active": recordatorio discreto -----
   return (
     <div
       role="region"
       aria-label="Ayuda disponible"
-      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-3 sm:p-4 mb-4 flex items-start sm:items-center gap-3 animate-fadeIn motion-reduce:animate-none"
+      className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 mt-4 sm:mt-6 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-3 sm:p-4 flex items-start sm:items-center gap-3 animate-fadeIn motion-reduce:animate-none"
     >
       <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[color:var(--text-muted)] flex-shrink-0" aria-hidden="true" />
       <p className="flex-1 text-xs sm:text-sm text-[color:var(--text-secondary)]">
-        ¿Necesitás ayuda? Hacé el tour guiado o mirá los tips en cada pantalla.
+        ¿Necesitas ayuda? Toca el botón "?" abajo a la derecha para ver el tour guiado.
       </p>
       <div className="flex items-center gap-1 flex-shrink-0">
         <button

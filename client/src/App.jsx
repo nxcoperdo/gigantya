@@ -11,6 +11,7 @@ import Loading from './components/Loading';
 import CookiesBanner from './components/legal/CookiesBanner';
 import LegalGate from './components/legal/LegalGate';
 import HelpButton from './components/help/HelpButton';
+import ClientHelpButton from './components/help/ClientHelpButton';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -217,6 +218,13 @@ export default function App() {
                 usa useAuth() para saber si hay un usuario logueado
                 y leer `user.otros_datos.onboarding.dashboard_tour_completed`. */}
             <HelpButton />
+
+            {/* Botón "?" para CLIENTES. Es el equivalente del HelpButton
+                del dueño, pero:
+                  - Solo se monta si user.tipo_usuario === 'cliente'
+                  - Solo en rutas de cliente (/, /restaurant/*, /cart, etc.)
+                  - Lee/escribe flags `onboarding.client_*` (separados del dueño) */}
+            <ClientHelpButton />
 
             {/* Banner de cookies: aparece en cualquier página si el usuario
                 nunca aceptó/rechazó o si pasaron 12 meses. Es invisible si

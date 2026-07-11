@@ -10,6 +10,9 @@ import { getCategoryIcon } from '../utils/categoryIcons';
 import { canAccessPlan } from '../utils/planFeatures';
 import Loading from '../components/Loading';
 import RecentSearches from '../components/RecentSearches';
+import OnboardingTip from '../components/help/OnboardingTip';
+import ClientHelpBanner from '../components/help/ClientHelpBanner';
+import ClientTour from '../components/help/ClientTour';
 
 // El banner del hero se consume del backend (`homeService.getActiveHomeMedia`).
 // Si no hay banner activo, se usa el fallback estático `/media/banner.mp4`
@@ -60,6 +63,7 @@ const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
   return (
     <Link
       to={`/restaurant/${restaurant.id}`}
+      data-tour={index === 0 ? 'home-card-local' : undefined}
       className="group card-lg hover:shadow-lg-soft cursor-pointer transform transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 animate-slideUp active:scale-95 touch-feedback"
       style={{ animationDelay: `${index * 50}ms` }}
     >
@@ -87,11 +91,14 @@ const RestaurantCard = memo(function RestaurantCard({ restaurant, index }) {
           </div>
         )}
         {/* Badge abierto/cerrado */}
-        <div className={`absolute top-2 sm:top-3 left-2 sm:left-3 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1.5 shadow-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide ${
-          isOpen
-            ? 'bg-emerald-500 text-white ring-1 ring-emerald-600/30'
-            : 'bg-red-500 text-white ring-1 ring-red-600/30'
-        }`}>
+        <div
+          data-tour={index === 0 ? 'home-badge-abierto' : undefined}
+          className={`absolute top-2 sm:top-3 left-2 sm:left-3 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1.5 shadow-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide ${
+            isOpen
+              ? 'bg-emerald-500 text-white ring-1 ring-emerald-600/30'
+              : 'bg-red-500 text-white ring-1 ring-red-600/30'
+          }`}
+        >
           <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isOpen ? 'bg-white animate-pulse' : 'bg-white/70'}`} />
           {isOpen ? 'Abierto' : 'Cerrado'}
         </div>
@@ -342,6 +349,15 @@ export default function HomePage() {
   // muestra el fallback estático `/media/banner.mp4`. Ver admin en
   // /admin/home-media para cambiarlo.
   const [homeMedia, setHomeMedia] = useState(null);
+  // Manual contextual — Capa 2 para clientes. `clientTourKey` se
+  // incrementa para forzar el remontaje del tour cada vez que se
+  // reabre (mismo patrón que RestaurantDashboardPage).
+  const [clientTourOpen, setClientTourOpen] = useState(false);
+  const [clientTourKey, setClientTourKey] = useState(0);
+  // Ref guard: el auto-tour se abre 1 sola vez por mount, no en
+  // cada cambio de filtro o scroll. La misma lógica que en el
+  // dashboard (autoTourFiredRef).
+  const autoClientTourFiredRef = useRef(false);
   useEffect(() => {
     // Redirigir restaurantes al dashboard
     if (isAuthenticated && user?.tipo_usuario === 'restaurante') {
@@ -378,6 +394,30 @@ export default function HomePage() {
         setHeroButtons([]);
       });
   }, [isAuthenticated, user, navigate]);
+
+  // Auto-tour del cliente (Capa 2 del manual contextual — versión cliente).
+  // Se abre la primera vez que el cliente entra a la HomePage, solo si:
+  //   - está logueado
+  //   - es tipo_usuario === 'cliente'
+  //   - el estado del banner es 'new' (primera vez)
+  //   - el tour no se completó todavía
+  // Mismo patrón que el auto-tour del dueño en RestaurantDashboardPage:
+  // useRef guard para que no se reabra si el cliente navega y vuelve.
+  // Delay 1.2s para que vea el banner primero.
+  useEffect(() => {
+    if (autoClientTourFiredRef.current) return;
+    if (!isAuthenticated || !user || user.tipo_usuario !== 'cliente') return;
+    if (loading) return; // esperar a que carguen los datos
+    const bannerState = user?.otros_datos?.onboarding?.client_help_banner_state;
+    const tourDone = !!user?.otros_datos?.onboarding?.client_tour_completed;
+    if (bannerState !== 'new' || tourDone) return;
+    autoClientTourFiredRef.current = true;
+    const t = setTimeout(() => {
+      setClientTourKey((k) => k + 1);
+      setClientTourOpen(true);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [isAuthenticated, user, loading]);
 
   // Cuando cambia la categoría, el modo de vista, el filtro de modalidad
   // o el toggle exclusivo de tipo de negocio, recargamos la lista
@@ -781,6 +821,17 @@ export default function HomePage() {
 
   return (
     <div className="bg-[color:var(--bg-base)]">
+      {/* Manual contextual — Capa 2 para clientes: tour modal.
+          Se monta solo cuando `clientTourOpen` es true. El
+          `key={clientTourKey}` fuerza remontaje cada vez que se
+          reabre, así el step counter arranca en 0. */}
+      {clientTourOpen && (
+        <ClientTour
+          key={clientTourKey}
+          onClose={() => setClientTourOpen(false)}
+        />
+      )}
+
       {/* Hero Section */}
       <section className="text-white py-12 sm:py-16 md:py-28 px-4 sm:px-6 relative overflow-hidden">
         {/* Media Background: video o imagen, viene del CMS admin.
@@ -890,6 +941,7 @@ export default function HomePage() {
                   type="text"
                   placeholder={heroSettings?.buscador_placeholder ?? 'Buscar local, producto o categoría...'}
                   value={searchTerm}
+                  data-tour="home-search"
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
@@ -917,13 +969,26 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Manual contextual — Capa 2 para clientes: banner persistente
+          con 3 estados. Solo se muestra si el usuario es cliente. El
+          banner está entre el hero y la lista de locales para que sea
+          lo primero que vea después del buscador. */}
+      {isAuthenticated && user?.tipo_usuario === 'cliente' && (
+        <ClientHelpBanner
+          onStartTour={() => {
+            setClientTourKey((k) => k + 1);
+            setClientTourOpen(true);
+          }}
+        />
+      )}
+
       {/* Main Content */}
       <section className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 section">
         {/* Toggle: Con domicilios | Solo retiro en local.
             El botón activo recibe `filter-pill-active` (key cambia con el state)
             para que React re-monte solo ese botón y dispare el glow al pasar
             a activo — feedback visual claro de qué filtro quedó prendido. */}
-        <div className="mb-6 sm:mb-8 inline-flex bg-[color:var(--bg-muted)] rounded-full p-1 self-start">
+        <div className="mb-6 sm:mb-8 inline-flex bg-[color:var(--bg-muted)] rounded-full p-1 self-start" data-tour="home-toggle-domicilio">
           <button
             key={`domicilio-${domicilioFilter === 'con_domicilio' ? 'active' : 'inactive'}`}
             type="button"
@@ -966,7 +1031,7 @@ export default function HomePage() {
             - Desktop (≥ sm): flex-wrap natural, los 4 botones caben en una fila. */}
         <div className="mb-6 sm:mb-8 -mx-4 sm:mx-0">
           <div className="px-4 sm:px-0">
-            <div className="inline-flex bg-[color:var(--bg-muted)] rounded-full p-1 gap-1 max-w-full overflow-x-auto scrollbar-thin sm:flex-wrap">
+            <div className="inline-flex bg-[color:var(--bg-muted)] rounded-full p-1 gap-1 max-w-full overflow-x-auto scrollbar-thin sm:flex-wrap" data-tour="home-toggle-nicho">
           <button
             key="tipo-todos"
             type="button"
@@ -1360,7 +1425,7 @@ export default function HomePage() {
 
         {/* Category filter buttons (comparten ambos modos) */}
         {categories.length > 0 && (
-          <div className="mb-6 sm:mb-8 -mx-4 sm:mx-0">
+          <div className="mb-6 sm:mb-8 -mx-4 sm:mx-0" data-tour="home-categorias">
             <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-3 px-4 sm:px-0 sm:flex-wrap scrollbar-thin">
               <button
                 type="button"
@@ -1440,7 +1505,42 @@ export default function HomePage() {
               crossfade con `.filter-fade` y deja un spinner pequeño en
               la esquina para feedback de carga sin tapar contenido. */}
         {viewMode === 'restaurants' && (
-          filteredRestaurants.length === 0 ? (
+          <>
+            {/* Manual contextual — Capa 1 para clientes: tips simples
+                que enseñan a pedir. Aparecen arriba del listado.
+                  - como_buscar:        siempre (es la acción #1)
+                  - badge_abierto:      solo si hay ≥1 local
+                  - filtros_nicho:      solo si hay más de 1 nicho con locales
+                El tip "minimo_domicilio" lo agregaremos en otro commit
+                (debe vivir en RestaurantDetailsPage donde aparece el
+                "Pedido mínimo" del local). */}
+            {isAuthenticated && user?.tipo_usuario === 'cliente' && (
+              <>
+                <OnboardingTip
+                  tipKey="como_buscar"
+                  title="¿Cómo busco un local o un plato?"
+                  steps={[
+                    'Escribe en el buscador de arriba (ej: "pizza", "hamburguesa")',
+                    'La lista se actualiza mientras escribís',
+                    'Toca una categoría de las que aparecen abajo del buscador',
+                    'O usa los filtros para ver solo un tipo de local',
+                  ]}
+                />
+                {filteredRestaurants.length > 0 && (
+                  <OnboardingTip
+                    tipKey="badge_abierto_cerrado"
+                    title="Abierto o cerrado"
+                    steps={[
+                      'El punto verde a la izquierda significa que el local está abierto',
+                      'El rojo significa que está cerrado — no podrás pedir',
+                      'Los locales cerrados aparecen atenuados en la lista',
+                      'Si un local está cerrado, esperá a que abra o elegí otro',
+                    ]}
+                  />
+                )}
+              </>
+            )}
+            {filteredRestaurants.length === 0 ? (
             <div
               key={`empty-rest-${tipoNegocioFilter}-${domicilioFilter}-${selectedCategory || 'all'}-${searchTerm || 'empty'}`}
               className="filter-fade"
@@ -1537,6 +1637,8 @@ export default function HomePage() {
               </div>
             </div>
           )
+          }
+        </>
         )}
 
         {/* Vista: Productos */}
