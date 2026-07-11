@@ -550,10 +550,35 @@ export async function sendWhatsApp({ to, template, languageCode, parameters }) {
  * Los nombres de plantilla deben existir en Meta Business Manager y estar APROBADOS.
  * Las funciones `params` devuelven los valores que reemplazan {{1}}, {{2}}, ... en cada plantilla.
  */
+const FORMA_PAGO_LEGIBLE = {
+  contra_entrega: 'Contra entrega',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  bre_b: 'Bre-B',
+};
+
+function formaPagoLegible(forma) {
+  if (!forma) return 'Contra entrega';
+  return FORMA_PAGO_LEGIBLE[forma] || forma;
+}
+
 const WhatsAppTemplates = {
   newOrder: {
     template: 'order_confirmed',
     params: pedido => [String(pedido.id), `$${Number(pedido.total).toLocaleString('es-CO')}`]
+  },
+  // WhatsApp al RESTAURANTE cuando entra un pedido nuevo.
+  // Plantilla distinta de `newOrder` (que es para el cliente con template
+  // `order_confirmed`). La plantilla `new_order_restaurant` debe crearse
+  // en Meta Business Manager — ver bloque al final de este archivo.
+  newOrderRestaurant: {
+    template: 'new_order_restaurant',
+    params: pedido => [
+      String(pedido.id),
+      String(pedido.cliente_nombre || 'Cliente'),
+      `$${Number(pedido.total).toLocaleString('es-CO')}`,
+      String(formaPagoLegible(pedido.metodo_pago)),
+    ]
   },
   preparing: {
     template: 'order_preparing',
@@ -686,13 +711,22 @@ export async function notifyOrderStatusChange({
 
 /**
  * Notificar nuevo pedido
+ *
+ * Best-effort: cada canal (email/WhatsApp) es independiente. Si uno falla,
+ * se loguea y seguimos con los demás — el pedido YA está creado en BD.
+ *
+ * @param {object} params
+ * @param {object} params.pedido
+ * @param {string} [params.restauranteEmail]
+ * @param {string} [params.restauranteTelefono]   - E.164 o formato local
+ * @param {string} [params.clienteEmail]
  */
-export async function notifyNewOrder({ pedido, restauranteEmail, clienteEmail }) {
+export async function notifyNewOrder({ pedido, restauranteEmail, restauranteTelefono, clienteEmail }) {
   const results = {
     customerEmail: null,
     restaurantEmail: null,
     customerWhatsapp: null,
-    restaurantWhatsapp: null
+    restaurantWhatsapp: null,
   };
 
   // Email al cliente
@@ -713,8 +747,86 @@ export async function notifyNewOrder({ pedido, restauranteEmail, clienteEmail })
     });
   }
 
+  // WhatsApp al restaurante. Si no tiene teléfono cargado, simplemente se
+  // salta este canal — el restaurante sigue recibiendo la notificación
+  // in-app y el email.
+  if (restauranteTelefono) {
+    results.restaurantWhatsapp = await sendOrderWhatsApp({
+      to: restauranteTelefono,
+      type: 'newOrderRestaurant',
+      pedido,
+    }).catch((err) => {
+      console.error('[notifyNewOrder] Error WhatsApp restaurante:', err);
+      return null;
+    });
+  }
+
   return results;
 }
+
+/* ============================================================
+ * PLANTILLAS DE META BUSINESS MANAGER — WhatsApp Cloud API
+ * ============================================================
+ *
+ * Hay que crear 8 plantillas aprobadas en Meta Business Manager
+ * (https://business.facebook.com/wa/manage/message-templates/):
+ *
+ *   1. order_confirmed      → cliente: pedido confirmado
+ *   2. order_preparing      → cliente: en preparación
+ *   3. order_ready          → cliente: listo
+ *   4. order_delivered      → cliente: entregado
+ *   5. payment_approved     → cliente: pago aprobado
+ *   6. payment_rejected     → cliente: pago rechazado
+ *   7. order_cancelled      → restaurante: pedido cancelado
+ *   8. new_order_restaurant → restaurante: NUEVO pedido recibido (esta)
+ *
+ * Categoría: TRANSACTIONAL (necesario porque la cuenta es de empresa).
+ * Idioma: español (es).
+ *
+ * ----------------------------------------------------------------
+ * 8) new_order_restaurant  (4 variables: {{1}} {{2}} {{3}} {{4}})
+ * ----------------------------------------------------------------
+ *
+ * Nombre:          new_order_restaurant
+ * Categoría:       Transaccional
+ * Idioma:          es
+ *
+ * Header (opcional, recomendado):
+ *   🔔 Nuevo pedido recibido
+ *
+ * Body (OBLIGATORIO — copiar literal, los {{N}} los completa Meta):
+ *
+ *   Hola {{1}}, acabas de recibir un nuevo pedido en tu local.
+ *
+ *   Pedido: #{{2}}
+ *   Cliente: {{3}}
+ *   Total: {{4}}
+ *
+ *   Ingresa a GigantYA para aceptar y preparar el pedido.
+ *
+ * Footer (opcional):
+ *   GigantYA — Panel de pedidos
+ *
+ * Buttons (opcional, recomendado, 1 botón tipo URL):
+ *   Acción: Ver pedido
+ *   Tipo:   URL
+ *   URL:    https://gigantya.com/dashboard/pedidos/{{1}}
+ *   Texto:  Ver pedido
+ *
+ * ----------------------------------------------------------------
+ * Mapeo de variables (lo que envía el backend en `params`):
+ *
+ *   {{1}} = pedido.id                 (ej: "4711")
+ *   {{2}} = pedido.cliente_nombre     (ej: "Carlos Pérez")
+ *   {{3}} = total formateado es-CO    (ej: "$45.900")
+ *   {{4}} = forma de pago legible     (ej: "Nequi" / "Contra entrega")
+ *
+ * ----------------------------------------------------------------
+ * Si la plantilla todavía no está aprobada en Meta, el envío falla
+ * silenciosamente (best-effort) y el log muestra:
+ *   [NotificationService] WhatsApp no enviado (...) error 132001: Template not found
+ * El restaurante igual recibe la notificación in-app y el email.
+ * ============================================================ */
 
 // ====================================================
 // EXPORTACIÓN DEFAULT

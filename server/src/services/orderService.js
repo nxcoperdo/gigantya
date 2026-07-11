@@ -422,7 +422,7 @@ export async function notificarNuevoPedido(pedidoId) {
     });
 
     const restauranteUsuario = await RestaurantModel.getRestaurantUser(pedido.restaurante_id);
-    if (restauranteUsuario?.email) {
+    if (restauranteUsuario?.email || restauranteUsuario?.telefono) {
       // Necesitamos el email del cliente que pidió.
       const cliente = await queryDirect(
         'SELECT email FROM usuarios WHERE id = ? LIMIT 1',
@@ -431,8 +431,9 @@ export async function notificarNuevoPedido(pedidoId) {
       notificationService.notifyNewOrder({
         pedido,
         restauranteEmail: restauranteUsuario.email,
+        restauranteTelefono: restauranteUsuario.telefono,
         clienteEmail: cliente[0]?.email || null,
-      }).catch((err) => console.error('Error enviando email de nuevo pedido:', err));
+      }).catch((err) => console.error('Error enviando notificaciones de nuevo pedido:', err));
     }
   } catch (err) {
     console.error('Error notificando nuevo pedido:', err);
