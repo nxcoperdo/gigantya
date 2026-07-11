@@ -200,9 +200,12 @@ export async function getAllProducts(filtros = {}) {
   // Si filtros.tipo_negocio no llega, no se aplica ningún filtro por nicho
   // y los cuatro tipos de locales aparecen en el feed.
 
-  // Mismo orden que la lista de restaurantes: premium → profesional → basico.
-  // Dentro de cada plan, los productos más recientes primero.
-  sql += ' ORDER BY FIELD(r.plan, "premium", "profesional", "basico"), p.creado_en DESC';
+  // Mismo orden que la lista de restaurantes (de mayor a menor precio):
+  // golden_plus → premium → profesional → basico → free. El Free va al
+  // final explícitamente porque sin esta entrada MySQL le asigna
+  // `FIELD() = 0` y lo pone al principio (mismo bug que en
+  // Restaurant.js). Dentro de cada plan, los productos más recientes primero.
+  sql += ' ORDER BY FIELD(r.plan, "golden_plus", "premium", "profesional", "basico", "free"), p.creado_en DESC';
 
   try {
     return await query(sql, params);

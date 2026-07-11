@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { couponService, adminService } from '../services/api';
+import { canAccessPlan } from '../utils/planFeatures';
 import {
   Ticket, Plus, Pencil, Trash2, AlertCircle,
   Calendar, Percent, DollarSign, Copy, Globe, Store, Lock,
@@ -507,7 +508,12 @@ export default function CouponsView({ mode = 'restaurant', restaurant, refreshDa
   const USAGES_PAGE_SIZE = 50;
   const [usagesTotalLoaded, setUsagesTotalLoaded] = useState(0); // total en esta página
 
-  const isBasicPlan = !isAdmin && restaurant?.plan === 'basico';
+  // El plan Free y el Básico NO tienen cupones. Usamos canAccessPlan
+  // (mismo helper que el middleware del backend) para que la UI muestre
+  // el upsell cuando el local no puede crear cupones. Antes era
+  // `restaurant?.plan === 'basico'`, que dejaba al Free pasar y le
+  // mostraba la pantalla completa de cupones vacía.
+  const isBasicPlan = !isAdmin && !canAccessPlan(restaurant?.plan, 'cupones');
 
   const loadCoupons = async () => {
     try {

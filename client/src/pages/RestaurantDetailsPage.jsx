@@ -79,7 +79,7 @@ export default function RestaurantDetailsPage() {
   useEffect(() => {
     if (!galleryModal.isOpen || !galleryModal.productoId) return;
     const plan = restaurante?.plan;
-    if (plan !== 'profesional' && plan !== 'premium') return;
+    if (!canAccessPlan(plan, 'multiples_fotos')) return;
     let cancelled = false;
     productService.getGallery(galleryModal.productoId)
       .then((res) => {

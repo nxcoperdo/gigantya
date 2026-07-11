@@ -279,7 +279,13 @@ export async function getRestaurants(filtros = {}) {
   // Si no llega tipo_negocio, no se agrega ningún filtro por nicho y los
   // cuatro tipos de locales aparecen en el resultado (visibilidad compartida).
 
-  sql += ' GROUP BY r.id ORDER BY FIELD(plan, "premium", "profesional", "basico"), creado_en DESC';
+  // Orden de planes en la home pública (de mayor a menor precio).
+  // Decisión: los locales con plan más caro aparecen primero. El Free
+  // va explícitamente al final porque sin esta entrada MySQL le asigna
+  // `FIELD() = 0` y en orden ASC lo pone al PRINCIPIO (era el bug
+  // original). Si en el futuro agregamos un plan nuevo, agregarlo en
+  // la posición que corresponda según su precio.
+  sql += ' GROUP BY r.id ORDER BY FIELD(plan, "golden_plus", "premium", "profesional", "basico", "free"), creado_en DESC';
 
   try {
     return await query(sql, params);
