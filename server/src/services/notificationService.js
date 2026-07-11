@@ -305,6 +305,40 @@ const EmailTemplates = {
     </div>
   `,
 
+  // Restaurante: pedido cancelado por el cliente
+  orderCancelledByClient: (pedido, motivo) => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">❌ Pedido Cancelado por el Cliente</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 16px; color: #333;">Hola equipo de <strong>${escapeHtml(pedido.restaurante_nombre || 'tu local')}</strong>,</p>
+        <p style="font-size: 16px; color: #555;">El cliente ha cancelado el pedido <strong>#${pedido.id}</strong>. No hace falta prepararlo.</p>
+
+        <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <p><strong>Cliente:</strong> ${escapeHtml(pedido.cliente_nombre || 'No disponible')}</p>
+          <p><strong>Teléfono:</strong> ${escapeHtml(pedido.cliente_telefono || 'No disponible')}</p>
+          <p><strong>Total:</strong> $${Number(pedido.total || 0).toLocaleString('es-CO')}</p>
+          <p><strong>Método de pago:</strong> ${escapeHtml(pedido.metodo_pago || 'No especificado')}</p>
+          <p><strong>Motivo de cancelación:</strong> <em>${escapeHtml(motivo || 'No especificado')}</em></p>
+        </div>
+
+        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+          <p style="margin: 0; font-size: 14px;"><strong>⚠️ Acción recomendada:</strong></p>
+          <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+            ${pedido.metodo_pago && pedido.metodo_pago !== 'contra_entrega'
+              ? 'El cliente había pagado por transferencia. Contactalo para coordinar la devolución del dinero.'
+              : 'El pago era contra entrega, no hace falta devolver dinero.'}
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+          <p style="font-size: 14px; color: #999;">GigantYA</p>
+        </div>
+      </div>
+    </div>
+  `,
+
   // Cliente: Pago aprobado
   paymentApproved: (pedido) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -441,6 +475,7 @@ function getSubjectForTemplate(template, pedido) {
     newOrderRestaurant: `🔔 Nuevo Pedido #${pedido.id} - GigantYA`,
     paymentApproved: `✅ Pago aprobado - Pedido #${pedido.id}`,
     paymentRejected: `⚠️ Pago rechazado - Pedido #${pedido.id}`,
+    orderCancelledByClient: `❌ Pedido #${pedido.id} cancelado por el cliente - GigantYA`,
     weeklyDigest: '💡 3 tips rápidos para tu local - GigantYA',
   };
   return subjects[template] || 'Notificación de GigantYA';
@@ -539,6 +574,14 @@ const WhatsAppTemplates = {
   paymentRejected: {
     template: 'payment_rejected',
     params: pedido => [String(pedido.id), pedido.motivo || 'Contacta al local']
+  },
+  cancelled: {
+    template: 'order_cancelled',
+    params: pedido => [
+      String(pedido.id),
+      String(pedido.cliente_nombre || 'Cliente'),
+      String(pedido.motivo || 'Sin motivo especificado')
+    ]
   }
 };
 

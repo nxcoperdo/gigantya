@@ -556,19 +556,63 @@ export async function cancelOrder(req, res) {
       });
     }
 
+    // Clientes solo pueden cancelar pedidos que aún no entraron a cocina.
+    // Estados permitidos: Pendiente, Comprobante Enviado, Pago Confirmado, Pago Rechazado.
+    // (restaurante y admin siguen pudiendo cancelar cualquier estado != Entregado, igual que antes).
+    const CLIENT_CANCELLABLE_STATES = [
+      OrderModel.ORDER_STATES.PENDIENTE,
+      OrderModel.ORDER_STATES.COMPROBANTE_ENVIADO,
+      OrderModel.ORDER_STATES.PAGO_CONFIRMADO,
+      OrderModel.ORDER_STATES.PAGO_RECHAZADO,
+    ];
+    if (
+      req.user.tipo_usuario === 'cliente' &&
+      !CLIENT_CANCELLABLE_STATES.includes(pedido.estado)
+    ) {
+      return res.status(400).json({
+        error: 'No se puede cancelar un pedido que ya entró en preparación',
+        detalles: `El pedido está en estado "${pedido.estado}". Solo puedes cancelarlo si está Pendiente, Comprobante Enviado, Pago Confirmado o Pago Rechazado.`,
+      });
+    }
+
     await OrderModel.cancelOrder(id, motivo);
 
-    // Notificar al restaurante que el pedido fue cancelado
+    // Notificar al restaurante que el pedido fue cancelado.
+    // 1) in-app (tabla notificaciones) — best-effort.
+    // 2) email al restaurante — best-effort.
+    // 3) WhatsApp al dueño del restaurante (su teléfono) — best-effort.
     try {
-      const pedido = await OrderModel.getOrderById(id);
-      const restauranteData = await RestaurantModel.getRestaurantById(pedido.restaurante_id);
-      if (restauranteData && restauranteData.usuario_id) {
+      const pedidoCancelado = await OrderModel.getOrderById(id);
+      const duenoRestaurante = await RestaurantModel.getRestaurantUser(pedidoCancelado.restaurante_id);
+
+      // 1) in-app
+      if (duenoRestaurante && duenoRestaurante.id) {
         await NotificationModel.createNotification({
-          usuario_id: restauranteData.usuario_id,
+          usuario_id: duenoRestaurante.id,
           tipo: 'pedido',
-          titulo: 'Pedido Cancelado',
-          mensaje: `El pedido #${id} ha sido cancelado por el cliente`,
-          data: { pedido_id: id }
+          titulo: 'Pedido Cancelado por el cliente',
+          mensaje: `El pedido #${id} fue cancelado por el cliente. Motivo: "${motivo}"`,
+          data: { pedido_id: id, motivo }
+        });
+      }
+
+      // 2) email al restaurante
+      if (duenoRestaurante && duenoRestaurante.email) {
+        await notificationService.sendOrderNotification({
+          to: duenoRestaurante.email,
+          template: 'orderCancelledByClient',
+          pedido: pedidoCancelado,
+          motivo
+        });
+      }
+
+      // 3) WhatsApp al dueño del restaurante
+      if (duenoRestaurante && duenoRestaurante.telefono) {
+        await notificationService.sendOrderWhatsApp({
+          to: duenoRestaurante.telefono,
+          type: 'cancelled',
+          pedido: pedidoCancelado,
+          motivo
         });
       }
     } catch (notifError) {

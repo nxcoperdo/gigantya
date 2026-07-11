@@ -178,10 +178,11 @@ export default function MerchantAgreementPage() {
             <tr><th>Plan</th><th>Precio mensual</th><th>IVA (19%)</th><th>Total mensual</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>Free</strong></td><td>$0</td><td>N/A</td><td>$0</td></tr>
+            <tr><td><strong>Free</strong></td><td>$0 COP</td><td>N/A</td><td>$0 COP</td></tr>
             <tr><td><strong>Básico</strong></td><td>$30.000 COP</td><td>+$5.700</td><td>$35.700 COP</td></tr>
             <tr><td><strong>Profesional</strong></td><td>$50.000 COP</td><td>+$9.500</td><td>$59.500 COP</td></tr>
             <tr><td><strong>Premium</strong></td><td>$80.000 COP</td><td>+$15.200</td><td>$95.200 COP</td></tr>
+            <tr><td><strong>Golden Plus</strong></td><td>$150.000 COP</td><td>+$28.500</td><td>$178.500 COP</td></tr>
           </tbody>
         </table>
         <p>El plan Free permite al Restaurante publicar su local y recibir pedidos, con funcionalidades limitadas según el plan.</p>

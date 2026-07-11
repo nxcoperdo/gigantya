@@ -120,9 +120,26 @@ export async function createProduct(req, res) {
     }
 
     if (isNaN(precio) || precio <= 0) {
-      return res.status(400).json({ 
-        error: 'El precio debe ser un número positivo' 
+      return res.status(400).json({
+        error: 'El precio debe ser un número positivo'
       });
+    }
+
+    // Guard de plan: validar que el restaurante no haya llegado al límite
+    // de productos de su plan. Hoy solo el Free tiene límite (10); los
+    // planes pagos no tienen `max_productos` y este check es no-op.
+    const maxProductos = getPlanLimit(restaurante.plan, 'max_productos');
+    if (maxProductos !== null) {
+      const totalActivos = await ProductModel.countActiveProductsByRestaurant(restaurante.id);
+      if (totalActivos >= maxProductos) {
+        return res.status(403).json({
+          error: `Tu plan (${restaurante.plan}) permite hasta ${maxProductos} productos en el menú. Llegaste al límite.`,
+          code: 'PLAN_LIMIT_REACHED',
+          currentPlan: restaurante.plan,
+          limit: maxProductos,
+          current: totalActivos,
+        });
+      }
     }
 
     // Crear producto
@@ -184,9 +201,10 @@ export async function updateProduct(req, res) {
 
     // Validar que sea el dueño y el plan permita destacar el producto
     if (updateData.destacado === 1 || updateData.destacado === true) {
-      if (restaurante.plan === 'basico') {
+      if (!canAccessPlan(restaurante.plan, 'productos_destacados')) {
         return res.status(403).json({
-          error: 'La función de destacar productos solo está disponible para planes Profesional y Premium'
+          error: 'La función de destacar productos solo está disponible para planes Profesional, Premium y Golden Plus',
+          code: 'FEATURE_NOT_IN_PLAN',
         });
       }
     }

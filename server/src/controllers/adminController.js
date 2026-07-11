@@ -537,8 +537,8 @@ export async function getAdvancedAnalytics(req, res) {
  *
  * Body esperado:
  *   {
- *     plan: 'basico' | 'profesional' | 'premium',
- *     fecha_vencimiento?: 'YYYY-MM-DD HH:MM:SS'   // requerido si plan !== 'basico'
+ *     plan: 'free' | 'basico' | 'profesional' | 'premium' | 'golden_plus',
+ *     fecha_vencimiento?: 'YYYY-MM-DD HH:MM:SS'   // requerido si plan es de pago (no free/basico)
  *     monto_pagado?: number,
  *     metodo_pago?: string,
  *     notas?: string
@@ -546,7 +546,13 @@ export async function getAdvancedAnalytics(req, res) {
  *
  * Efectos:
  *   - Cierra la suscripción activa previa (si existe).
- *   - Crea un nuevo registro en `suscripciones` con estado='activa'.
+ *   - Si el plan es de pago: crea un nuevo registro en `suscripciones` con
+ *     estado='activa'.
+ *   - Si el plan es 'basico': crea una suscripción legacy con fecha de
+ *     vencimiento ya pasada (mantiene compatibilidad con histórico).
+ *   - Si el plan es 'free': NO crea fila en `suscripciones` (no es un
+ *     pago a registrar). Solo actualiza `restaurantes.plan` y deja
+ *     `fecha_vencimiento_plan = NULL`.
  *   - Actualiza `restaurantes.plan` y `restaurantes.fecha_vencimiento_plan`.
  *   - Devuelve el historial de planes.
  */
@@ -576,10 +582,16 @@ export async function updateRestaurantPlan(req, res) {
       return res.status(404).json({ error: 'Local no encontrado' });
     }
 
+    // Plan Free: sin fecha de vencimiento, sin fila en suscripciones.
+    // Plan Básico: sin fecha de vencimiento, fila legacy con fecha vencida.
+    // Plan de pago: requiere fecha_vencimiento futura.
+    const esSinVencimiento = plan === 'free' || plan === 'basico';
+    const fechaVencParaRestaurante = esSinVencimiento ? null : fecha_vencimiento;
+
     // Datos a actualizar en el restaurante
     const restauranteUpdateData = {
       plan,
-      fecha_vencimiento_plan: plan === 'basico' ? null : fecha_vencimiento,
+      fecha_vencimiento_plan: fechaVencParaRestaurante,
     };
 
     // Si baja de Golden Plus o Premium a otro plan, eliminar el banner
@@ -587,8 +599,16 @@ export async function updateRestaurantPlan(req, res) {
       restauranteUpdateData.banner_url = null;
     }
 
-    // Plan basico = sin suscripción (no se necesita fecha de vencimiento)
-    if (plan === 'basico') {
+    if (plan === 'free') {
+      // Free: solo actualizar el restaurante, sin crear suscripción.
+      // El Free no es un "pago" a registrar, es un estado administrativo
+      // que asigna el admin manualmente. El histórico de planes queda
+      // sin esta entrada — decisión de diseño: el Free no contamina el
+      // historial de pagos.
+      await RestaurantModel.updateRestaurant(id, restauranteUpdateData);
+    } else if (plan === 'basico') {
+      // Básico: comportamiento legacy. Crea fila con fecha_vencimiento
+      // ya pasada (es un plan eterno pero igual registramos el cambio).
       await SubscriptionModel.createSubscription({
         restaurante_id: id,
         plan,
@@ -634,7 +654,7 @@ export async function updateRestaurantPlan(req, res) {
       antes: { plan: restaurante.plan },
       despues: {
         plan,
-        fecha_vencimiento: plan === 'basico' ? null : fecha_vencimiento,
+        fecha_vencimiento: fechaVencParaRestaurante,
         monto_pagado,
       },
     });
@@ -643,7 +663,7 @@ export async function updateRestaurantPlan(req, res) {
     res.json({
       mensaje: 'Plan de suscripción actualizado exitosamente',
       plan,
-      fecha_vencimiento_plan: plan === 'basico' ? null : fecha_vencimiento,
+      fecha_vencimiento_plan: fechaVencParaRestaurante,
       historial,
     });
   } catch (error) {

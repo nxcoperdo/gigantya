@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, TrendingUp, Package, Star, Eye, RefreshCcw } from 'lucide-react';
-import api from '../services/api';
+import { Clock, CheckCircle, TrendingUp, Package, Star, Eye, RefreshCcw, Ban } from 'lucide-react';
+import api, { orderService } from '../services/api';
 import Loading from '../components/Loading';
 import RatingModal from '../components/RatingModal';
 import ThankYouModal from '../components/ThankYouModal';
 import OrderDetailsModal from '../components/OrderDetailsModal';
+import CancelOrderModal from '../components/CancelOrderModal';
 import { ratingService } from '../services/api';
 import { formatDate, formatTime, formatDateTime } from '../utils/dateHelper';
+
+// Estados en los que el cliente todavía puede cancelar su pedido desde
+// Mis Pedidos. Una vez que el local pasa el pedido a Preparando/Listo/
+// Entregado, la cancelación ya no es posible por esta vía (el local
+// tendría que gestionarla manualmente desde su dashboard).
+const CANCELLABLE_STATES = [
+  'Pendiente',
+  'Comprobante Enviado',
+  'Pago Confirmado',
+  'Pago Rechazado',
+];
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState([]);
@@ -18,6 +30,7 @@ export default function OrdersHistoryPage() {
   const [thankYouOpen, setThankYouOpen] = useState(false);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
   const [isOrderDetailsModalOpen, setIsOrderDetailsModalOpen] = useState(false);
+  const [cancelModal, setCancelModal] = useState({ isOpen: false, order: null });
 
   useEffect(() => {
     fetchOrders();
@@ -30,6 +43,15 @@ export default function OrdersHistoryPage() {
   const handleViewOrderDetails = (order) => {
     setSelectedOrderForDetails(order);
     setIsOrderDetailsModalOpen(true);
+  };
+
+  const handleCancelOrder = async (motivo) => {
+    // Tira excepción si el backend rechaza (motivo corto, estado no
+    // cancelable, etc). El modal la captura y muestra el error.
+    await orderService.cancelOrder(cancelModal.order.id, { motivo });
+    // Refrescamos la lista para que el pedido aparezca con el nuevo
+    // estado "Cancelado" y el motivo que dejó el cliente.
+    await fetchOrders({ showSpinner: false });
   };
 
   const submitRating = async ({ rating, comment }) => {
@@ -87,6 +109,8 @@ export default function OrdersHistoryPage() {
         return <Package style={{ color: 'var(--accent-purple-text)' }} size={24} />;
       case 'Entregado':
         return <CheckCircle style={{ color: 'var(--success-text)' }} size={24} />;
+      case 'Cancelado':
+        return <Ban style={{ color: 'var(--danger-text, #dc2626)' }} size={24} />;
       default:
         return <Clock size={24} />;
     }
@@ -102,6 +126,8 @@ export default function OrdersHistoryPage() {
         return { backgroundColor: 'var(--accent-purple-bg)', borderColor: 'var(--border-subtle)', color: 'var(--accent-purple-text)' };
       case 'Entregado':
         return { backgroundColor: 'var(--success-bg)', borderColor: 'var(--success-border)', color: 'var(--success-text)' };
+      case 'Cancelado':
+        return { backgroundColor: 'var(--danger-bg, #fef2f2)', borderColor: 'var(--danger-border, #fecaca)', color: 'var(--danger-text, #dc2626)' };
       default:
         return { backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-default)', color: 'var(--text-secondary)' };
     }
@@ -151,7 +177,7 @@ export default function OrdersHistoryPage() {
           >
             Todos ({orders.length})
           </button>
-          {['Pendiente', 'Preparando', 'Listo', 'Entregado'].map(status => {
+          {['Pendiente', 'Preparando', 'Listo', 'Entregado', 'Cancelado'].map(status => {
             const count = orders.filter(o => o.estado === status).length;
             return (
               <button
@@ -235,6 +261,17 @@ export default function OrdersHistoryPage() {
                   </>
                 )}
 
+                {order.estado === 'Cancelado' && order.motivo_cancelacion && (
+                  <>
+                    <div className="divider" />
+                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-3 rounded-lg">
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        <strong>Motivo de cancelación:</strong> {order.motivo_cancelacion}
+                      </p>
+                    </div>
+                  </>
+                )}
+
                 <div className="mt-4 pt-4 border-t border-[color:var(--border-default)] flex justify-between items-center gap-3 flex-wrap">
                   <p className="text-sm text-[color:var(--text-muted)]">
                     Última actualización: {formatDateTime(order.actualizado_en)}
@@ -249,6 +286,17 @@ export default function OrdersHistoryPage() {
                       <Eye size={16} />
                       Detalles
                     </button>
+
+                    {CANCELLABLE_STATES.includes(order.estado) && (
+                      <button
+                        onClick={() => setCancelModal({ isOpen: true, order })}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all duration-300 active:scale-95 border border-red-200 dark:border-red-900"
+                        title="Cancelar este pedido"
+                      >
+                        <Ban size={16} aria-hidden="true" />
+                        Cancelar pedido
+                      </button>
+                    )}
 
                     {order.estado === 'Entregado' && (
                       <button
@@ -293,6 +341,12 @@ export default function OrdersHistoryPage() {
         isOpen={isOrderDetailsModalOpen}
         onClose={() => setIsOrderDetailsModalOpen(false)}
         order={selectedOrderForDetails}
+      />
+      <CancelOrderModal
+        isOpen={cancelModal.isOpen}
+        onClose={() => setCancelModal({ isOpen: false, order: null })}
+        order={cancelModal.order}
+        onConfirm={handleCancelOrder}
       />
     </div>
   );

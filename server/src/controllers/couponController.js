@@ -1,5 +1,6 @@
 import * as CouponModel from '../models/Coupon.js';
 import * as RestaurantModel from '../models/Restaurant.js';
+import { canAccessPlan } from '../utils/planFeatures.js';
 
 // =============================================================
 // Helpers internos
@@ -72,10 +73,12 @@ export async function createCoupon(req, res) {
     }
 
     // Doble check del plan (el middleware ya lo hace, pero por si
-    // alguien llama al controller desde otra ruta).
-    if (restaurante.plan === 'basico') {
+    // alguien llama al controller desde otra ruta). Usamos canAccessPlan
+    // para que tanto el plan Básico como el Free queden bloqueados.
+    if (!canAccessPlan(restaurante.plan, 'cupones')) {
       return res.status(403).json({
-        error: 'La creación de cupones solo está disponible para los planes Profesional y Premium'
+        error: 'La creación de cupones solo está disponible para los planes Profesional, Premium y Golden Plus',
+        code: 'FEATURE_NOT_IN_PLAN',
       });
     }
 

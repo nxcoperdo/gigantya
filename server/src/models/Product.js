@@ -363,6 +363,22 @@ export async function countProductImages(producto_id) {
   return row?.total || 0;
 }
 
+/**
+ * Cuenta los productos ACTIVOS de un restaurante.
+ * Se usa para validar el límite `max_productos` del plan Free (10 productos).
+ * Solo contamos los activos porque los inactivos (soft-delete via estado)
+ * ya no ocupan cupo en el menú.
+ */
+export async function countActiveProductsByRestaurant(restaurante_id) {
+  const sql = `
+    SELECT COUNT(*) AS total
+    FROM productos
+    WHERE restaurante_id = ? AND estado = 'activo'
+  `;
+  const row = await queryOne(sql, [restaurante_id]);
+  return row?.total || 0;
+}
+
 export default {
   createCategory,
   createProduct,
@@ -378,5 +394,6 @@ export default {
   getProductImages,
   deleteProductImage,
   countProductImages,
+  countActiveProductsByRestaurant,
 };
 

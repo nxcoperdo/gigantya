@@ -8,11 +8,28 @@
  *   Es el plan que desbloquea el POS completo (Fases 1-8). Premium sigue
  *   existiendo (locales que NO quieren POS); Golden Plus = Premium + POS.
  *   Precio $150.000/mes (por debajo de Premium — el POS es el diferenciador).
+ * Plan Free:
+ *   Entrada gratuita con limitaciones. No tiene cupones, banner, destacados,
+ *   ni POS. Límite duro de 10 productos en el menú. fecha_vencimiento_plan
+ *   queda NULL (no vence). Lo asigna el admin manualmente — no hay
+ *   auto-registro en plan Free.
  */
 
-export const PLANES = ['basico', 'profesional', 'premium', 'golden_plus'];
+export const PLANES = ['free', 'basico', 'profesional', 'premium', 'golden_plus'];
 
 export const PLAN_FEATURES = {
+  free: {
+    cupones: false,
+    productos_destacados: false,
+    multiples_fotos: false,
+    banner_home: false,
+    estadisticas: false,
+    reportes: false,
+    promociones: false,
+    etiqueta_destacado: false,
+    redes_sociales: false,
+    pos: false,
+  },
   basico: {
     cupones: false,
     productos_destacados: false,
@@ -64,6 +81,7 @@ export const PLAN_FEATURES = {
 };
 
 export const PLAN_LIMITS = {
+  free: { fotos_por_producto: 1, max_productos: 10 },
   basico: { fotos_por_producto: 1 },
   profesional: { fotos_por_producto: 5 },
   premium: { fotos_por_producto: 5 },
@@ -71,28 +89,35 @@ export const PLAN_LIMITS = {
 };
 
 export const PLAN_PRICES = {
-  basico: 70000,
-  profesional: 120000,
-  premium: 200000,
+  free: 0,
+  basico: 30000,
+  profesional: 50000,
+  premium: 80000,
   golden_plus: 150000,
 };
 
 export const PLAN_INFO = {
+  free: {
+    nombre: 'Plan Free',
+    precio: 0,
+    color: 'slate',
+    emoji: '🆓',
+  },
   basico: {
     nombre: 'Plan Básico',
-    precio: 70000,
+    precio: 30000,
     color: 'amber',
     emoji: '🥉',
   },
   profesional: {
     nombre: 'Plan Profesional',
-    precio: 120000,
+    precio: 50000,
     color: 'gray',
     emoji: '🥈',
   },
   premium: {
     nombre: 'Plan Premium',
-    precio: 200000,
+    precio: 80000,
     color: 'yellow',
     emoji: '🥇',
   },
@@ -126,10 +151,11 @@ export function getPlanLimit(plan, limitKey) {
 
 /**
  * ¿La suscripción está vencida?
- * Un restaurante con `plan = basico` y sin fecha de vencimiento nunca vence.
+ * Un restaurante con `plan = basico` o `plan = free` y sin fecha de
+ * vencimiento nunca vence.
  */
 export function isPlanExpired(restaurante) {
   if (!restaurante?.fecha_vencimiento_plan) return false;
-  if (restaurante.plan === 'basico') return false;
+  if (restaurante.plan === 'basico' || restaurante.plan === 'free') return false;
   return new Date(restaurante.fecha_vencimiento_plan) < new Date();
 }

@@ -390,10 +390,11 @@ function MerchantText() {
       <h2>6. Modelo de suscripción</h2>
       <p><strong>NO se cobra comisión por transacción.</strong> Solo suscripción mensual fija:</p>
       <ul>
-        <li>Free: $0</li>
+        <li>Free: $0 (sin IVA)</li>
         <li>Básico: $30.000 + $5.700 IVA = $35.700</li>
         <li>Profesional: $50.000 + $9.500 IVA = $59.500</li>
         <li>Premium: $80.000 + $15.200 IVA = $95.200</li>
+        <li>Golden Plus: $150.000 + $28.500 IVA = $178.500</li>
       </ul>
       <p><strong>Si el pago falla:</strong> 1er intento (5 días hábiles), 2do intento (pausado), 3er intento (baja). La suscripción NO es reembolsable salvo decisión de GigantYA.</p>
       <h2>7. Cláusula de indemnidad</h2>

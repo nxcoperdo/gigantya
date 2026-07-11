@@ -848,6 +848,7 @@ export async function getOrdersByUser(usuario_id, limit) {
       p.id, p.usuario_id, p.restaurante_id, p.total, p.estado, p.notas,
       p.direccion_entrega, p.telefono_contacto, p.creado_en, p.actualizado_en,
       p.costo_envio, p.barrio_id, p.sector_id,
+      p.metodo_pago, p.motivo_cancelacion,
       r.nombre as restaurante_nombre,
       b.nombre as barrio_nombre,
       s.nombre as sector_nombre,

@@ -10,9 +10,18 @@
  * Si agregás un plan nuevo al backend, agregalo también acá.
  */
 
-export const PLANES = ['basico', 'profesional', 'premium', 'golden_plus'];
+export const PLANES = ['free', 'basico', 'profesional', 'premium', 'golden_plus'];
 
 export const PLAN_FEATURES = {
+  free: {
+    cupones: false,
+    productos_destacados: false,
+    banner_home: false,
+    multiples_fotos: false,
+    estadisticas: false,
+    redes_sociales: false,
+    pos: false,
+  },
   basico: {
     cupones: false,
     productos_destacados: false,
@@ -52,10 +61,11 @@ export const PLAN_FEATURES = {
 };
 
 export const PLAN_INFO = {
-  basico:      { nombre: 'Plan Básico',       precio: 70000,  color: 'amber',  emoji: '🥉' },
-  profesional: { nombre: 'Plan Profesional',  precio: 120000, color: 'gray',   emoji: '🥈' },
-  premium:     { nombre: 'Plan Premium',      precio: 200000, color: 'yellow', emoji: '🥇' },
-  golden_plus: { nombre: 'Plan Golden Plus',  precio: 150000, color: 'amber',  emoji: '👑' },
+  free:        { nombre: 'Plan Free',         precio: 0,       color: 'slate',  emoji: '🆓' },
+  basico:      { nombre: 'Plan Básico',       precio: 30000,   color: 'amber',  emoji: '🥉' },
+  profesional: { nombre: 'Plan Profesional',  precio: 50000,   color: 'gray',   emoji: '🥈' },
+  premium:     { nombre: 'Plan Premium',      precio: 80000,   color: 'yellow', emoji: '🥇' },
+  golden_plus: { nombre: 'Plan Golden Plus',  precio: 150000,  color: 'amber',  emoji: '👑' },
 };
 
 /**
@@ -65,3 +75,26 @@ export const PLAN_INFO = {
 export function canAccessPlan(plan, feature) {
   return Boolean(PLAN_FEATURES[plan]?.[feature]);
 }
+
+/**
+ * Límite numérico del plan para una métrica concreta.
+ * Devuelve `null` si no hay límite definido (ej: planes pagos sin tope
+ * de productos).
+ */
+export function getPlanLimit(plan, limitKey) {
+  const limits = PLAN_LIMITS?.[plan];
+  if (!limits) return null;
+  return limits[limitKey] ?? null;
+}
+
+/**
+ * Límites numéricos por plan. Hoy solo Free tiene `max_productos: 10`;
+ * los planes pagos no tienen tope de productos y devuelven `null`.
+ */
+export const PLAN_LIMITS = {
+  free:        { max_productos: 10, fotos_por_producto: 1 },
+  basico:      { fotos_por_producto: 1 },
+  profesional: { fotos_por_producto: 5 },
+  premium:     { fotos_por_producto: 5 },
+  golden_plus: { fotos_por_producto: 5 },
+};

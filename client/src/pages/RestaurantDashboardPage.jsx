@@ -13,6 +13,7 @@ import OnboardingTip from '../components/help/OnboardingTip';
 import DashboardHelpBanner from '../components/help/DashboardHelpBanner';
 import DashboardTour from '../components/help/DashboardTour';
 import ReactivateHelpMenuItem from '../components/help/ReactivateHelpMenuItem';
+import { getPlanLimit } from '../utils/planFeatures';
 import {
   LayoutDashboard,
   Clock3,
@@ -1241,15 +1242,38 @@ function ManagementView({ products, productsLoading, stats, togglingProductId, h
               <span className="font-semibold text-success">{stats.activeProducts}</span> activos de {' '}
               <span className="font-semibold">{products.length}</span> totales
             </p>
-            <button
-              type="button"
-              onClick={() => openProductModal()}
-              data-tour="dashboard-new-product"
-              className="btn btn-primary btn-small inline-flex items-center gap-1.5 min-h-[40px]"
-            >
-              <Plus size={14} />
-              <span className="hidden xs:inline">Nuevo</span>
-            </button>
+            {(() => {
+              // Guard de plan Free: si el local está en Free y llegó al
+              // límite de productos, deshabilitamos el botón y mostramos
+              // un mensaje discreto (sin CTA, sin pop-up, sin link — el
+              // Free simplemente vive con su límite y se entera al
+              // intentar usarlo). El backend ya valida y rechaza con 403
+              // si el dueño intenta por API igual.
+              const planActual = restaurant?.plan;
+              const maxProductos = getPlanLimit(planActual, 'max_productos');
+              const alLimite = maxProductos !== null && products.length >= maxProductos;
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openProductModal()}
+                    disabled={alLimite}
+                    data-tour="dashboard-new-product"
+                    title={alLimite ? `Máximo ${maxProductos} productos en tu plan` : undefined}
+                    aria-disabled={alLimite || undefined}
+                    className="btn btn-primary btn-small inline-flex items-center gap-1.5 min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={14} />
+                    <span className="hidden xs:inline">Nuevo</span>
+                  </button>
+                  {alLimite && (
+                    <p className="text-xs text-[color:var(--text-muted)]">
+                      Máximo {maxProductos} productos en tu plan. Para agregar más, contacta al administrador.
+                    </p>
+                  )}
+                </>
+              );
+            })()}
             <Package className="text-primary" size={20} />
           </div>
         </div>
@@ -1554,10 +1578,10 @@ function StatsView({ statsData, restaurant, handleExport, exporting, exportError
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
                   style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
                 >
-                  ⭐ Actualizar a Premium · $200.000/mes
+                  ⭐ Actualizar a Premium · $80.000/mes
                 </button>
                 <span className="text-xs text-amber-800 font-medium">
-                  Menos de $7.000 al día · 17 métricas exclusivas
+                  Menos de $3.000 al día · 17 métricas exclusivas
                 </span>
               </div>
             </div>
@@ -2600,7 +2624,7 @@ function PremiumLockedFeature({ title, description, planActual = 'profesional' }
           ⭐ Actualizar a Premium
         </button>
         <span className="text-xs text-[color:var(--text-muted)]">
-          Desde $200.000/mes · menos de $7.000 al día
+          Desde $80.000/mes · menos de $3.000 al día
         </span>
       </div>
     </section>
