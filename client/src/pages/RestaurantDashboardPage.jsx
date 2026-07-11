@@ -391,7 +391,7 @@ export default function RestaurantDashboardPage() {
         setProfile(usuario);
         setRestaurant(usuario?.restaurante || null);
 
-        if (usuario?.restaurante?.plan && usuario.restaurante.plan !== 'basico') {
+        if (canAccessPlan(usuario?.restaurante?.plan, 'estadisticas')) {
           try {
             const statsRes = await restaurantService.getStats();
             setStatsData(statsRes.data?.estadisticas || null);
@@ -1025,8 +1025,9 @@ export default function RestaurantDashboardPage() {
           onClose={() => setTourOpen(false)}
           onActivateTab={(tabId) => {
             if (tabId === 'stats' || tabId === 'builder') {
-              // Stats/Builder solo existen en planes != básico
-              if (restaurant?.plan && restaurant.plan !== 'basico') {
+              // Stats/Builder solo existen en planes con esas features
+              // (Profesional+ para stats, Profesional+ para builder).
+              if (canAccessPlan(restaurant?.plan, tabId === 'stats' ? 'estadisticas' : 'page_builder')) {
                 setActiveTab(tabId);
               }
             } else {
