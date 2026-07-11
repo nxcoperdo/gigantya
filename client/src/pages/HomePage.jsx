@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Utensils, X, Store, ShoppingBag, ShoppingBasket, Clock, Truck, Zap, UtensilsCrossed, ChevronUp, ArrowRight, Croissant, MessageCircle, Phone, ExternalLink, Coffee, ChevronRight, Send } from 'lucide-react';
 import { restaurantService, preferenceService, categoryService, productService, homeService } from '../services/api';
@@ -318,6 +318,16 @@ export default function HomePage() {
   // populares + un "+X más" que expande in-line. En las otras vistas el
   // catálogo es chico y se muestra completo (sin botón de colapso).
   const [categoriasExpanded, setCategoriasExpanded] = useState(false);
+  // Ref al scroller del carrusel de banners destacados. Se usa para
+  // detectar scroll/touch del usuario y pausar la animación CSS del
+  // marquee (en desktop). En móvil la animación ya está desactivada
+  // por CSS — el scroll-snap toma el control.
+  const featuredScrollerRef = useRef(null);
+  // Pausa del marquee cuando el usuario interactúa con él. En desktop
+  // mantiene la animación corriendo hasta que el usuario hace hover,
+  // scroll horizontal o lo toca. Tras 1.5s sin interacción, reanuda.
+  const [isFeaturedPaused, setIsFeaturedPaused] = useState(false);
+  const featuredResumeTimerRef = useRef(null);
   // Banner del hero: viene de GET /api/home/media. Si es null, se
   // muestra el fallback estático `/media/banner.mp4`. Ver admin en
   // /admin/home-media para cambiarlo.
@@ -598,6 +608,33 @@ export default function HomePage() {
     } catch (e) {
       console.error('Error clearing history:', e);
     }
+  }, []);
+
+  // Pausa la animación del marquee de banners destacados cuando el
+  // usuario interactúa con él. Se programa un timer para reanudar
+  // 1.5s después de la última interacción, así no queda estático
+  // para siempre. En móvil la animación ya está desactivada por CSS,
+  // pero el ref igual marca `.is-paused` por si el media query
+  // cambia (rotación, resize, etc.).
+  const pauseFeaturedMarquee = useCallback(() => {
+    setIsFeaturedPaused(true);
+    if (featuredResumeTimerRef.current) {
+      clearTimeout(featuredResumeTimerRef.current);
+    }
+    featuredResumeTimerRef.current = setTimeout(() => {
+      setIsFeaturedPaused(false);
+      featuredResumeTimerRef.current = null;
+    }, 1500);
+  }, []);
+
+  // Cleanup del timer al desmontar.
+  useEffect(() => {
+    return () => {
+      if (featuredResumeTimerRef.current) {
+        clearTimeout(featuredResumeTimerRef.current);
+        featuredResumeTimerRef.current = null;
+      }
+    };
   }, []);
 
   if (loading) return <Loading />;
@@ -917,9 +954,29 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Featured Banners Marquee */}
+        {/* Featured Banners Marquee
+            - Wrapper con `marquee-scroller` (overflow-x + scroll-snap): el
+              dedo puede arrastrarlo horizontalmente en móvil sin que la
+              animación CSS pelee. En desktop el drag también funciona
+              (trackpad, shift+rueda, etc.).
+            - La animación `animate-marquee` se PAUSA apenas el usuario
+              interactúa (toque, scroll, hover) y se reanuda 1.5s
+              después de la última interacción, vía `.is-paused`.
+            - `touch-action: pan-x` (en CSS) deja que el scroll vertical
+              de la página siga funcionando mientras arrastras el
+              carrusel horizontalmente. */}
         {featuredBanners.length > 0 && (
-          <div className="mb-12 sm:mb-16 md:mb-24 overflow-hidden relative pause-marquee">
+          <div
+            ref={featuredScrollerRef}
+            className={`mb-12 sm:mb-16 md:mb-24 relative pause-marquee marquee-scroller ${isFeaturedPaused ? 'is-paused' : ''}`}
+            onTouchStart={pauseFeaturedMarquee}
+            onPointerDown={pauseFeaturedMarquee}
+            onWheel={(e) => {
+              // En desktop, si la rueda es horizontal (trackpad), pausa.
+              if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) pauseFeaturedMarquee();
+            }}
+            onScroll={() => pauseFeaturedMarquee()}
+          >
             <div className="flex gap-4 sm:gap-6 animate-marquee w-max">
               {/* First set of banners */}
               {featuredBanners.map((res) => (
