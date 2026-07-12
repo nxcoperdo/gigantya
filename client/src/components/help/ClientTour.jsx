@@ -72,7 +72,7 @@ const STEPS = [
 ];
 
 export default function ClientTour({ onClose }) {
-  const { refreshUser } = useAuth();
+  const { refreshUser, setUserFromResponse } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
   const [targetFound, setTargetFound] = useState(true);
@@ -133,12 +133,18 @@ export default function ClientTour({ onClose }) {
     if (completedRef.current) return;
     completedRef.current = true;
     try {
-      await userService.setOnboardingKey('onboarding.client_tour_completed', true);
-      if (refreshUser) await refreshUser();
+      // Sincronizamos con el `usuario` que devuelve el PUT (incluye
+      // `otros_datos.onboarding.client_tour_completed = true`).
+      const res = await userService.setOnboardingKey('onboarding.client_tour_completed', true);
+      if (res?.usuario && setUserFromResponse) {
+        setUserFromResponse(res.usuario);
+      } else if (refreshUser) {
+        await refreshUser();
+      }
     } catch (err) {
       console.error('[ClientTour] no se pudo persistir completed:', err?.response?.data?.error || err.message);
     }
-  }, [onClose, refreshUser]);
+  }, [onClose, refreshUser, setUserFromResponse]);
 
   const next = () => {
     if (stepIndex < STEPS.length - 1) setStepIndex(stepIndex + 1);

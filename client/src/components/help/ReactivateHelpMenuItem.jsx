@@ -18,7 +18,7 @@ import { userService } from '../../services/api';
  *   - Tras el click, hace refreshUser y el banner vuelve solo.
  */
 export default function ReactivateHelpMenuItem({ className = '', onActivated }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setUserFromResponse } = useAuth();
   const [persisting, setPersisting] = useState(false);
 
   const state = user?.otros_datos?.onboarding?.dashboard_help_banner_state;
@@ -27,8 +27,17 @@ export default function ReactivateHelpMenuItem({ className = '', onActivated }) 
   const handleReactivate = async () => {
     setPersisting(true);
     try {
-      await userService.setOnboardingKey('onboarding.dashboard_help_banner_state', 'active');
-      if (refreshUser) await refreshUser();
+      // Sincronizamos con el `usuario` que devuelve el PUT (trae el
+      // `otros_datos` actualizado), no con un round-trip a /profile.
+      // Esto evita que el item de menú se siga mostrando después de
+      // reactivarlo, si React remonta el componente antes de que el
+      // refresh llegue.
+      const res = await userService.setOnboardingKey('onboarding.dashboard_help_banner_state', 'active');
+      if (res?.usuario && setUserFromResponse) {
+        setUserFromResponse(res.usuario);
+      } else if (refreshUser) {
+        await refreshUser();
+      }
       if (onActivated) onActivated();
     } catch (err) {
       console.error('[ReactivateHelpMenuItem] falló:', err?.response?.data?.error || err.message);

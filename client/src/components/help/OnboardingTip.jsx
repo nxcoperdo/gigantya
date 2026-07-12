@@ -33,7 +33,7 @@ import { userService } from '../../services/api';
  *     es de baja criticidad; la próxima visita lo re-sincroniza)
  */
 export default function OnboardingTip({ tipKey, title, steps = [], action }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setUserFromResponse } = useAuth();
 
   // `visible` representa el estado de ESTE mount. Si el dueño ya marcó
   // "No volver a mostrar" en otra sesión, leemos `user.otros_datos`
@@ -51,8 +51,20 @@ export default function OnboardingTip({ tipKey, title, steps = [], action }) {
 
     setPersisting(true);
     try {
-      await userService.setOnboardingKey(`onboarding.tips_dismissed.${tipKey}`, true);
-      if (refreshUser) await refreshUser();
+      // El PUT devuelve `{ mensaje, usuario }` con el `otros_datos`
+      // ya actualizado. Lo usamos para sincronizar el state local en
+      // el mismo tick — así si React remonta este componente (cambio
+      // de tab, parent re-render), el `initiallyDismissed` del próximo
+      // mount lee el flag persistido y NO vuelve a mostrar el tip.
+      //
+      // Si por algún motivo el server no devolviera `usuario`, caemos
+      // al `refreshUser()` viejo como fallback.
+      const res = await userService.setOnboardingKey(`onboarding.tips_dismissed.${tipKey}`, true);
+      if (res?.usuario && setUserFromResponse) {
+        setUserFromResponse(res.usuario);
+      } else if (refreshUser) {
+        await refreshUser();
+      }
     } catch (err) {
       console.error('[OnboardingTip] no se pudo persistir dismissed:', err?.response?.data?.error || err.message);
       // Si falla, igual dejamos el tip cerrado (mejor UX que dejarlo

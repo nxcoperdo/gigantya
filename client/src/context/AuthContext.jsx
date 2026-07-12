@@ -102,6 +102,25 @@ export function AuthProvider({ children }) {
     }
   };
 
+  /**
+   * Actualiza el `user` en el state y localStorage a partir de un
+   * `usuario` que ya tenemos en mano (ej. lo devolvió el server en
+   * la respuesta de un PUT).
+   *
+   * Es la alternativa preferida a `refreshUser()` cuando el endpoint
+   * ya nos devolvió el usuario actualizado: evita un round-trip extra
+   * a /profile y no depende de la red. Mantener el state sincronizado
+   * en el mismo tick del PUT es crítico para features de UI que
+   * dependen de leer `user.otros_datos.onboarding.*` en el siguiente
+   * render (ej. tips del manual contextual que reaparecen si el flag
+   * se pierde al remontar).
+   */
+  const setUserFromResponse = (usuario) => {
+    if (!usuario) return;
+    localStorage.setItem('user', JSON.stringify(usuario));
+    setUser((prev) => ({ ...prev, ...usuario }));
+  };
+
   const value = {
     user,
     token,
@@ -113,6 +132,7 @@ export function AuthProvider({ children }) {
     logout,
     clearLocalSession,
     refreshUser,
+    setUserFromResponse,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

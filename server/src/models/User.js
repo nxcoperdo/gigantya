@@ -126,9 +126,15 @@ export async function getUserById(id) {
   //   - dueño: la columna es NULL; el id del local vive en `restaurantes.usuario_id`.
   // El LEFT JOIN a `restaurantes` siempre es 1 fila a lo sumo (hay UNIQUE
   // sobre `usuario_id` o, en su defecto, usamos LIMIT 1 por seguridad).
+  // `otros_datos` se incluye en el SELECT para que el cliente pueda
+  // sincronizar el manual contextual (tips dismissed, tour completed,
+  // banner state) sin tener que hacer un round-trip extra a un endpoint
+  // dedicado. Sin esto, el `refreshUser()` del AuthContext sobreescribía
+  // el `user.otros_datos` con `undefined` después de cada PUT, y los
+  // tips reaparecían en cada remontaje del componente.
   const sql = `
     SELECT u.id, u.nombre, u.email, u.telefono, u.tipo_usuario, u.estado,
-           u.documento_identidad, u.creado_en,
+           u.documento_identidad, u.creado_en, u.otros_datos,
            COALESCE(u.restaurante_id, r.id) AS restaurante_id
       FROM usuarios u
       LEFT JOIN restaurantes r ON r.usuario_id = u.id

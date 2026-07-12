@@ -107,7 +107,7 @@ const STEPS = [
 ];
 
 export default function DashboardTour({ onClose, onActivateTab }) {
-  const { refreshUser } = useAuth();
+  const { refreshUser, setUserFromResponse } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
   const [targetFound, setTargetFound] = useState(true);
@@ -187,12 +187,21 @@ export default function DashboardTour({ onClose, onActivateTab }) {
     if (completedRef.current) return;
     completedRef.current = true;
     try {
-      await userService.setOnboardingKey('onboarding.dashboard_tour_completed', true);
-      if (refreshUser) await refreshUser();
+      // Sincronizamos con el `usuario` que devuelve el PUT (incluye
+      // `otros_datos.onboarding.dashboard_tour_completed = true`),
+      // no con un round-trip a /profile. Esto evita que el auto-tour
+      // se vuelva a disparar si React remonta el padre antes de que
+      // llegue el refresh.
+      const res = await userService.setOnboardingKey('onboarding.dashboard_tour_completed', true);
+      if (res?.usuario && setUserFromResponse) {
+        setUserFromResponse(res.usuario);
+      } else if (refreshUser) {
+        await refreshUser();
+      }
     } catch (err) {
       console.error('[DashboardTour] no se pudo persistir completed:', err?.response?.data?.error || err.message);
     }
-  }, [onClose, refreshUser]);
+  }, [onClose, refreshUser, setUserFromResponse]);
 
   const next = () => {
     if (stepIndex < STEPS.length - 1) setStepIndex(stepIndex + 1);

@@ -18,7 +18,7 @@ import { userService } from '../../services/api';
  *   - onStartTour  () => void  — callback que abre el ClientTour
  */
 export default function ClientHelpBanner({ onStartTour }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setUserFromResponse } = useAuth();
   const [persisting, setPersisting] = useState(false);
 
   const state = user?.otros_datos?.onboarding?.client_help_banner_state || 'new';
@@ -27,8 +27,16 @@ export default function ClientHelpBanner({ onStartTour }) {
   const setState = async (newState) => {
     setPersisting(true);
     try {
-      await userService.setOnboardingKey('onboarding.client_help_banner_state', newState);
-      if (refreshUser) await refreshUser();
+      // Sincronizamos con el `usuario` que devuelve el PUT (trae el
+      // `otros_datos` actualizado), no con un round-trip a /profile.
+      // Esto evita que el banner reaparezca si React remonta el
+      // componente antes de que el refresh llegue.
+      const res = await userService.setOnboardingKey('onboarding.client_help_banner_state', newState);
+      if (res?.usuario && setUserFromResponse) {
+        setUserFromResponse(res.usuario);
+      } else if (refreshUser) {
+        await refreshUser();
+      }
     } catch (err) {
       console.error('[ClientHelpBanner] no se pudo persistir estado:', err?.response?.data?.error || err.message);
     } finally {
