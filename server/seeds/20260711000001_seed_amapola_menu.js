@@ -212,6 +212,39 @@ export async function seed(knex) {
 
   const R = restaurante.id;
 
+  // Detectar el nicho del restaurante para asignar correctamente el
+  // `tipo_negocio` de las categorías que vamos a crear/reusar. El UNIQUE
+  // de la tabla es (tipo_negocio, nombre), así que si el restaurante es
+  // comida rápida las categorías van con tipo_negocio='comida_rapida'
+  // y reusan las globales (Hamburguesas, Salchipapas, Bebidas, etc.).
+  // El orden de prioridad es comida_rapida > mercado > restaurante,
+  // porque un local no suele ser mercado y comida rápida al mismo tiempo.
+  let tipoNegocio = 'restaurante';
+  if (restaurante.es_comida_rapida) {
+    tipoNegocio = 'comida_rapida';
+  } else if (restaurante.es_mercado_abarrotes) {
+    tipoNegocio = 'mercado';
+  }
+  console.log(
+    `[seed_amapola] Restaurante id=${R}, plan='${restaurante.plan}', ` +
+    `es_comida_rapida=${restaurante.es_comida_rapida || 0}, ` +
+    `es_mercado_abarrotes=${restaurante.es_mercado_abarrotes || 0}, ` +
+    `es_restaurante=${restaurante.es_restaurante || 0} → tipo_negocio='${tipoNegocio}'`
+  );
+
+  // Si el restaurante NO tiene ningún flag de nicho puesto, es un caso
+  // anómalo (el admin debería haber marcado el nicho). No fallamos
+  // (es un seed, no un script crítico), pero dejamos WARNING visible
+  // para que el usuario lo arregle desde el panel admin.
+  if (!restaurante.es_comida_rapida && !restaurante.es_mercado_abarrotes && !restaurante.es_restaurante) {
+    console.warn(
+      `[seed_amapola] El restaurante ${R} no tiene NINGÚN flag de nicho ` +
+      `(es_comida_rapida, es_mercado_abarrotes, es_restaurante). Las categorías ` +
+      `se crearán con tipo_negocio='${tipoNegocio}' por default. Marcá el nicho ` +
+      `correspondiente desde el panel admin.`
+    );
+  }
+
   if (restaurante.nombre !== 'AMAPOLA') {
     console.warn(
       `[seed_amapola] Restaurante del usuario 17 se llama "${restaurante.nombre}", se esperaba AMAPOLA. Continuando de todas formas.`,
@@ -242,19 +275,40 @@ export async function seed(knex) {
   }
 
   // -----------------------------------------------------------------
-  // c) Insertar categorías (idempotente por restaurante_id + nombre)
+  // c) Insertar categorías (idempotente por tipo_negocio + nombre)
+  //
+  //    ⚠️ El UNIQUE de la tabla es (tipo_negocio, nombre), NO
+  //    (restaurante_id, nombre). El seed debe:
+  //    1. Buscar la categoría por (tipo_negocio, nombre) case-insensitive
+  //       usando el nicho detectado del restaurante.
+  //    2. Si existe, REUTILIZAR su id (sea global con restaurante_id=NULL
+  //       o propia del restaurante con restaurante_id=R).
+  //    3. Si NO existe, crearla con tipo_negocio=<nicho del restaurante>
+  //       y restaurante_id=R.
+  //
+  //    Beneficio: Amapola (comida_rapida) reusa las categorías globales
+  //    del catálogo de comida_rapida (Hamburguesas, Salchipapas, Bebidas,
+  //    etc.) sin chocar con el UNIQUE.
   // -----------------------------------------------------------------
   const categoriaIdByKey = {};
   let catInsertadas = 0;
   let catExistentes = 0;
 
   for (const cat of CATEGORIAS) {
+    // Búsqueda case-insensitive con collation utf8mb4_unicode_ci (default).
+    // MySQL ya es case-insensitive por default, pero usamos LOWER() para
+    // ser explícitos y robustos.
     const existing = await knex('categorias')
-      .where({ restaurante_id: R, nombre: cat.nombre })
+      .where({ tipo_negocio: tipoNegocio })
+      .whereRaw('LOWER(nombre) = ?', [cat.nombre.toLowerCase()])
       .first();
     if (existing) {
       categoriaIdByKey[cat.key] = existing.id;
       catExistentes += 1;
+      console.log(
+        `[seed_amapola] Categoría ya existente (reusada, id=${existing.id}, ` +
+        `restaurante_id=${existing.restaurante_id ?? 'NULL'}): ${cat.nombre}`
+      );
       continue;
     }
     const [insertedId] = await knex('categorias').insert({
@@ -262,7 +316,7 @@ export async function seed(knex) {
       nombre: cat.nombre,
       descripcion: cat.descripcion,
       orden: cat.orden,
-      tipo_negocio: 'restaurante',
+      tipo_negocio: tipoNegocio,
     });
     categoriaIdByKey[cat.key] = insertedId;
     catInsertadas += 1;
