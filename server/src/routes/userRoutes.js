@@ -27,5 +27,16 @@ router.put('/profile', verifyToken, userController.updateProfile);
  */
 router.put('/me/onboarding', verifyToken, userController.updateOnboarding);
 
+/**
+ * @route   GET /api/users/me/onboarding
+ * @desc    Leer el objeto `otros_datos.onboarding` del usuario logueado.
+ *          Útil para sincronizar el manual contextual (tips dismissed,
+ *          tour completed, banner state) sin tener que hacer un PUT
+ *          previo. Devuelve `{ onboarding: {...} }` (objeto vacío si
+ *          nunca se seteó nada).
+ * @access  Private
+ */
+router.get('/me/onboarding', verifyToken, userController.getOnboarding);
+
 export default router;
 

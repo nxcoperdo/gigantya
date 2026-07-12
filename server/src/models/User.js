@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { query, queryOne } from '../config/database.js';
+import { query, queryOne, getConnection } from '../config/database.js';
 
 /**
  * Crear nuevo usuario
@@ -215,15 +215,24 @@ export async function getUserProfile(id) {
 
 /**
  * Setea un valor en `usuarios.otros_datos` siguiendo un path con puntos
- * (`"onboarding.tips_dismissed.crear_producto"`). Usa `JSON_SET` de MySQL,
- * que crea el path si no existe. Si `otros_datos` es `NULL` lo inicializa
- * a un objeto vacío con `COALESCE`.
+ * (`"onboarding.tips_dismissed.crear_producto"`). Crea los niveles
+ * intermedios si no existen.
+ *
+ * Implementación: 1 SELECT + 1 UPDATE dentro de una transacción con
+ * `SELECT ... FOR UPDATE` para serializar requests concurrentes del
+ * mismo usuario. Mergeamos en JS y guardamos el string JSON completo.
+ *
+ * Por qué NO usamos `JSON_SET(COALESCE(otros_datos, JSON_OBJECT()), ?, ?)`:
+ *   En MySQL 9.x (verificado en 9.7.0), `JSON_SET` sobre un
+ *   `JSON_OBJECT()` inline no crea el path nuevo — la query ejecuta
+ *   sin error pero persiste `{}`. La columna queda vacía y el cliente
+ *   cree que persistió pero el flag nunca se guarda. Reproducido en
+ *   la BD de producción.
  *
  * Devuelve `true` si la fila fue afectada, `false` si no se encontró.
  *
- * NOTA: el path que llega a MySQL debe llevar comillas en cada nivel
- * (`$.onboarding.tips_dismissed.crear_producto`). El caller solo manda
- * la versión con puntos — la transformación ocurre acá.
+ * El path que llega ya está validado (alfanumérico + puntos) en el
+ * controller; acá lo partimos en `keys` para hacer el merge en JS.
  */
 export async function setOtrosDatosPath(userId, dotPath, value) {
   // Defensa: no permitir paths que no sean alfanuméricos con puntos.
@@ -232,16 +241,60 @@ export async function setOtrosDatosPath(userId, dotPath, value) {
   if (!/^[a-zA-Z0-9_.]+$/.test(dotPath)) {
     throw new Error(`Path inválido: "${dotPath}"`);
   }
-  const jsonPath = '$.' + dotPath;
-  const valueJson = JSON.stringify(value);
 
-  const sql = `
-    UPDATE usuarios
-    SET otros_datos = JSON_SET(COALESCE(otros_datos, JSON_OBJECT()), ?, ?)
-    WHERE id = ?
-  `;
-  const [result] = await query(sql, [jsonPath, valueJson, userId]);
-  return result.affectedRows > 0;
+  const conn = await getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // FOR UPDATE: si dos requests pegan al mismo user al mismo tiempo
+    // (ej. el dueño cierra 2 tips simultáneamente), el segundo espera
+    // a que el primero commitee. Sin esto, el segundo leería el JSON
+    // viejo y sobreescribiría el cambio del primero.
+    const [rows] = await conn.query(
+      'SELECT otros_datos FROM usuarios WHERE id = ? FOR UPDATE',
+      [userId]
+    );
+    if (rows.length === 0) {
+      await conn.rollback();
+      return false;
+    }
+
+    // Merge en JS: creamos los niveles intermedios si no existen y
+    // pisamos el último. JSON.parse puede tirar si la columna tiene
+    // basura; en ese caso arrancamos de {} para no romper la feature.
+    let current = {};
+    if (rows[0].otros_datos) {
+      if (typeof rows[0].otros_datos === 'string') {
+        try { current = JSON.parse(rows[0].otros_datos); } catch { current = {}; }
+      } else {
+        current = rows[0].otros_datos;
+      }
+    }
+
+    const keys = dotPath.split('.');
+    let cursor = current;
+    for (let i = 0; i < keys.length - 1; i++) {
+      const k = keys[i];
+      if (typeof cursor[k] !== 'object' || cursor[k] === null || Array.isArray(cursor[k])) {
+        cursor[k] = {};
+      }
+      cursor = cursor[k];
+    }
+    cursor[keys[keys.length - 1]] = value;
+
+    await conn.query(
+      'UPDATE usuarios SET otros_datos = ? WHERE id = ?',
+      [JSON.stringify(current), userId]
+    );
+
+    await conn.commit();
+    return true;
+  } catch (err) {
+    try { await conn.rollback(); } catch { /* ignore */ }
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 /**

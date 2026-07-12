@@ -113,9 +113,44 @@ export async function updateOnboarding(req, res) {
   }
 }
 
+/**
+ * Devuelve el objeto `usuarios.otros_datos.onboarding` del usuario logueado.
+ *
+ * Útil para que el cliente pueda sincronizar el estado del manual contextual
+ * (tips dismissed, tour completed, banner state) sin tener que hacer un PUT
+ * y luego un GET /users/me. También evita el 404 que aparecía en logs
+ * cuando algo (DevTools retry, service worker) hacía GET a
+ * `/api/users/me/onboarding` — antes solo existía PUT.
+ *
+ * Devuelve `{ onboarding: {...} }`. Si el user nunca seteó nada, devuelve
+ * `{}` (no null), para que el front pueda hacer `state = res.onboarding.x || default`
+ * sin chequeos extras.
+ */
+export async function getOnboarding(req, res) {
+  try {
+    const usuario = await UserModel.getUserById(req.user.id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    let onboarding = {};
+    if (usuario.otros_datos) {
+      const parsed = typeof usuario.otros_datos === 'string'
+        ? JSON.parse(usuario.otros_datos)
+        : usuario.otros_datos;
+      onboarding = parsed?.onboarding || {};
+    }
+
+    res.json({ onboarding });
+  } catch (error) {
+    res.status(500).json({ error: 'Error leyendo onboarding', detalles: error.message });
+  }
+}
+
 export default {
   getProfile,
   updateProfile,
   updateOnboarding,
+  getOnboarding,
 };
 
