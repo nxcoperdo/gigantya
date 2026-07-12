@@ -118,7 +118,7 @@ export default function DashboardHelpBanner({ onStartTour }) {
     >
       <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[color:var(--text-muted)] flex-shrink-0" aria-hidden="true" />
       <p className="flex-1 text-xs sm:text-sm text-[color:var(--text-secondary)]">
-        ¿Necesitás ayuda? Hacé el tour guiado o mirá los tips en cada pantalla.
+        ¿Necesitas ayuda? Haz el tour guiado o mira los tips en cada pantalla.
       </p>
       <div className="flex items-center gap-1 flex-shrink-0">
         <button
