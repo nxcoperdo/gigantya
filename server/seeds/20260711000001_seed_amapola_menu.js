@@ -66,107 +66,112 @@ const CATEGORIAS = [
  * `precio` es DECIMAL(10,2) y guarda el valor REAL en pesos, todos los
  * precios de este array van multiplicados por 1000. Ej: $15k → 15000.00.
  * NO usar separador de miles ni símbolo "$" — es un número plano.
+ *
+ * `descripcion`: texto que se muestra en la página del producto y en la
+ * carta del cliente. Si el producto es autodescriptivo (ej: "Botella
+ * Agua", "Cerveza Águila") o no aporta nada (ej: las adiciones vendidas
+ * como productos sueltos), se setea a `null` y queda vacío en la UI.
  */
 const PRODUCTOS = [
   // COSTILLAS BBQ Y ALITAS
-  { categoria_key: 'costillas',  nombre: 'Costillas BBQ',            precio: 24000.00 },
-  { categoria_key: 'costillas',  nombre: 'Alas BBQ o Miel Mostaza',  precio: 22000.00 },
+  { categoria_key: 'costillas',  nombre: 'Costillas BBQ',            precio: 24000.00, descripcion: 'Costillas de cerdo bañadas en bbq sweet, acompañadas de papa francesa.' },
+  { categoria_key: 'costillas',  nombre: 'Alas BBQ o Miel Mostaza',  precio: 22000.00, descripcion: 'Alitas de pollo bañadas en bbq sweet, acompañadas de papa francesa.' },
 
   // MAZORCADAS
-  { categoria_key: 'mazorcadas', nombre: 'Mazorcada',                precio: 24000.00 },
-  { categoria_key: 'mazorcadas', nombre: 'Desgranado',               precio: 26000.00 },
+  { categoria_key: 'mazorcadas', nombre: 'Mazorcada',                precio: 24000.00, descripcion: 'Maíz tierno, carne desmechada, pollo desmechado, chorizo, queso, crema de leche, leche, salsa de maíz.' },
+  { categoria_key: 'mazorcadas', nombre: 'Desgranado',               precio: 26000.00, descripcion: 'Maíz tierno, carne de res, pechuga, tocineta, chorizo, papa francesa, lechuga, salsa de maíz, salsa de la casa.' },
 
   // PERROS
-  { categoria_key: 'perros',     nombre: 'Perro Clásico',            precio: 13000.00 },
-  { categoria_key: 'perros',     nombre: 'Perro Criollo',            precio: 16000.00 },
-  { categoria_key: 'perros',     nombre: 'Perro Mexicano',           precio: 18000.00 },
+  { categoria_key: 'perros',     nombre: 'Perro Clásico',            precio: 13000.00, descripcion: 'Pan brioche, salchicha americana, queso fundido, ripio, salsas.' },
+  { categoria_key: 'perros',     nombre: 'Perro Criollo',            precio: 16000.00, descripcion: 'Pan brioche, salchicha americana, queso fundido, carne desmechada, hogao, maíz tierno, ripio, salsas.' },
+  { categoria_key: 'perros',     nombre: 'Perro Mexicano',           precio: 18000.00, descripcion: 'Pan brioche, salchicha americana, queso fundido, carne molida, jalapeños, nachos, ripio, salsas.' },
 
   // ENTRADAS
-  { categoria_key: 'entradas',   nombre: 'Papas Americanas',         precio: 8000.00  },
-  { categoria_key: 'entradas',   nombre: 'Aros de Cebolla',          precio: 8000.00  },
-  { categoria_key: 'entradas',   nombre: 'Dedos de Queso',           precio: 9000.00  },
+  { categoria_key: 'entradas',   nombre: 'Papas Americanas',         precio: 8000.00,  descripcion: 'Papa francesa, tocineta, queso cheddar.' },
+  { categoria_key: 'entradas',   nombre: 'Aros de Cebolla',          precio: 8000.00,  descripcion: '4 unidades de aritos de cebolla, con salsa queso cheddar.' },
+  { categoria_key: 'entradas',   nombre: 'Dedos de Queso',           precio: 9000.00,  descripcion: '4 unidades de dedos de queso apanados acompañados con miel mostaza.' },
 
   // MENÚ INFANTIL
-  { categoria_key: 'infantil',   nombre: 'Burger Junior',            precio: 13000.00 },
-  { categoria_key: 'infantil',   nombre: 'Nuggets',                  precio: 13000.00 },
+  { categoria_key: 'infantil',   nombre: 'Burger Junior',            precio: 13000.00, descripcion: 'Pan brioche, carne, queso, papa francesa.' },
+  { categoria_key: 'infantil',   nombre: 'Nuggets',                  precio: 13000.00, descripcion: 'Nuggets acompañados de papa francesa.' },
 
   // PICADA
-  { categoria_key: 'picada',     nombre: 'Picada Cremosa x2',        precio: 44000.00 },
-  { categoria_key: 'picada',     nombre: 'Butifarra (5 und)',        precio: 15000.00 },
+  { categoria_key: 'picada',     nombre: 'Picada Cremosa x2',        precio: 44000.00, descripcion: 'Carne de res, carne de cerdo, pollo, chorizo, papa francesa, papa amarilla, plátano, salsa cremosa.' },
+  { categoria_key: 'picada',     nombre: 'Butifarra (5 und)',        precio: 15000.00, descripcion: '5 unidades de butifarra acompañadas de papa criolla y guacamole.' },
 
   // PLANCHA
-  { categoria_key: 'plancha',    nombre: 'Churrasco',                precio: 34000.00 },
-  { categoria_key: 'plancha',    nombre: 'Pechuga Asada',            precio: 26000.00 },
-  { categoria_key: 'plancha',    nombre: 'Pechuga Gratinada',        precio: 30000.00 },
-  { categoria_key: 'plancha',    nombre: 'Pechuga Hawaiana',         precio: 32000.00 },
+  { categoria_key: 'plancha',    nombre: 'Churrasco',                precio: 34000.00, descripcion: 'Lomo ancho, chimichurri, ensalada, papa francesa, guacamole.' },
+  { categoria_key: 'plancha',    nombre: 'Pechuga Asada',            precio: 26000.00, descripcion: 'Pechuga asada, acompañada de papa francesa, ensalada, guacamole.' },
+  { categoria_key: 'plancha',    nombre: 'Pechuga Gratinada',         precio: 30000.00, descripcion: 'Pechuga gratinada, acompañada de papa francesa, ensalada, guacamole.' },
+  { categoria_key: 'plancha',    nombre: 'Pechuga Hawaiana',         precio: 32000.00, descripcion: 'Pechuga asada, con queso fundido, piña melada, acompañada de papa francesa, ensalada, guacamole.' },
 
-  // ADICIONES (vendibles como productos sueltos)
-  { categoria_key: 'adiciones',  nombre: 'Porción de Papa',          precio: 5000.00  },
-  { categoria_key: 'adiciones',  nombre: 'Carne Burguer',            precio: 6000.00  },
-  { categoria_key: 'adiciones',  nombre: 'Huevo',                    precio: 1500.00  },
-  { categoria_key: 'adiciones',  nombre: 'Tocineta',                 precio: 2000.00  },
-  { categoria_key: 'adiciones',  nombre: 'Chorizo',                  precio: 5000.00  },
-  { categoria_key: 'adiciones',  nombre: 'Jalapeño',                 precio: 2000.00  },
-  { categoria_key: 'adiciones',  nombre: 'Salsa de la Casa',         precio: 2000.00  },
+  // ADICIONES (vendibles como productos sueltos — descripción opcional)
+  { categoria_key: 'adiciones',  nombre: 'Porción de Papa',          precio: 5000.00,  descripcion: null },
+  { categoria_key: 'adiciones',  nombre: 'Carne Burguer',            precio: 6000.00,  descripcion: null },
+  { categoria_key: 'adiciones',  nombre: 'Huevo',                    precio: 1500.00,  descripcion: null },
+  { categoria_key: 'adiciones',  nombre: 'Tocineta',                 precio: 2000.00,  descripcion: null },
+  { categoria_key: 'adiciones',  nombre: 'Chorizo',                  precio: 5000.00,  descripcion: null },
+  { categoria_key: 'adiciones',  nombre: 'Jalapeño',                 precio: 2000.00,  descripcion: null },
+  { categoria_key: 'adiciones',  nombre: 'Salsa de la Casa',         precio: 2000.00,  descripcion: null },
 
-  // BEBIDAS
-  { categoria_key: 'bebidas',    nombre: 'Botella Agua',             precio: 4000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Bretaña',                  precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Limonada Coco',            precio: 13000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Limonada Cerezada',        precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Limonada Tradicional',     precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Limonada Hierbabuena',     precio: 7000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Coca-Cola 1.5L',           precio: 10000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Gaseosa Personal',         precio: 4500.00  },
-  { categoria_key: 'bebidas',    nombre: 'Hit Caja Litro',           precio: 10000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Hit Personal',             precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Soda Maracuyá',            precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Soda Frutos Rojos',        precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Soda Cereza',              precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Cerveza Águila',           precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Cerveza Club',             precio: 6000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Cerveza Corona',           precio: 9000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Maracuyá P',          precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Maracuyá 1L',         precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Maracuyá 2L',         precio: 14000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Cholupa P',           precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Cholupa 1L',          precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Cholupa 2L',          precio: 14000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Limonada P',          precio: 5000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Limonada 1L',         precio: 8000.00  },
-  { categoria_key: 'bebidas',    nombre: 'Jugo Limonada 2L',         precio: 14000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Mojito Clásico',           precio: 18000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Mojito Maracuyá',          precio: 20000.00 },
-  { categoria_key: 'bebidas',    nombre: 'Tequila Sunrise',          precio: 17000.00 },
+  // BEBIDAS (sin descripción: nombres autodescriptivos)
+  { categoria_key: 'bebidas',    nombre: 'Botella Agua',             precio: 4000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Bretaña',                  precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Limonada Coco',            precio: 13000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Limonada Cerezada',        precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Limonada Tradicional',     precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Limonada Hierbabuena',     precio: 7000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Coca-Cola 1.5L',           precio: 10000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Gaseosa Personal',         precio: 4500.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Hit Caja Litro',           precio: 10000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Hit Personal',             precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Soda Maracuyá',            precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Soda Frutos Rojos',        precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Soda Cereza',              precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Cerveza Águila',           precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Cerveza Club',             precio: 6000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Cerveza Corona',           precio: 9000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Maracuyá P',          precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Maracuyá 1L',         precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Maracuyá 2L',         precio: 14000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Cholupa P',           precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Cholupa 1L',          precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Cholupa 2L',          precio: 14000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Limonada P',          precio: 5000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Limonada 1L',         precio: 8000.00,  descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Jugo Limonada 2L',         precio: 14000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Mojito Clásico',           precio: 18000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Mojito Maracuyá',          precio: 20000.00, descripcion: null },
+  { categoria_key: 'bebidas',    nombre: 'Tequila Sunrise',          precio: 17000.00, descripcion: null },
 
   // HAMBURGUESAS (todas reciben luego un grupo "Adiciones" con 7 items)
-  { categoria_key: 'hamburguesas', nombre: 'Clásica',               precio: 15500.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Texas',                precio: 17500.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Brooklyn',             precio: 19000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Mexicana',             precio: 19000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Montana',              precio: 21000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Kentucky',             precio: 19500.00 },
-  { categoria_key: 'hamburguesas', nombre: 'New York',             precio: 20000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Buti Hot',             precio: 20000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Crispy Crunch',        precio: 20000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Pork BBQ (NEW)',       precio: 20000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Emperatriz',           precio: 21500.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Crispy Pollo Ranch',   precio: 22000.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Doble Suprema',        precio: 23500.00 },
-  { categoria_key: 'hamburguesas', nombre: 'Trilogía',             precio: 23000.00 },
+  { categoria_key: 'hamburguesas', nombre: 'Clásica',               precio: 15500.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, cebolla caramelizada, vegetales, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Texas',                precio: 17500.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, chorizo, huevo frito, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Brooklyn',             precio: 19000.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, aros de cebolla, guacamole, queso cheddar, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Mexicana',             precio: 19000.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, jalapeños, guacamole, nachos, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Montana',              precio: 21000.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, tocineta, pollo desmechado, maíz, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Kentucky',             precio: 19500.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, tocineta, piña, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'New York',             precio: 20000.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, tocineta, carne desmechada, hogao, cebolla crispy, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Buti Hot',             precio: 20000.00, descripcion: 'Pan brioche, 150 gr de carne, queso doble crema, doble butifarra, guacamole, ripio, lechuga, salsas.' },
+  { categoria_key: 'hamburguesas', nombre: 'Crispy Crunch',        precio: 20000.00, descripcion: 'Pan brioche, 150 gr de carne, tocineta apanada, queso fundido, madurito melado, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Pork BBQ (NEW)',       precio: 20000.00, descripcion: 'Pan brioche, 150 gr de carne, queso, cerdo en bbq, tocineta, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Emperatriz',           precio: 21500.00, descripcion: 'Pan brioche, 150 gr de carne, queso, tocineta en reducción de bbq de bocadillo, queso apanado, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Crispy Pollo Ranch',   precio: 22000.00, descripcion: 'Pan brioche, pechuga de pollo apanada, chorizo campesino, miel mostaza, cebolla caramelizada, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Doble Suprema',        precio: 23500.00, descripcion: 'Pan brioche, 150 gr de carne, pechuga asada, queso, tocineta, cebolla caramelizada, tomate, lechuga, salsa de la casa.' },
+  { categoria_key: 'hamburguesas', nombre: 'Trilogía',             precio: 23000.00, descripcion: 'Tres hamburguesas mini acompañadas de carne desmechada, guacamole, nachos, pollo desmechado, papa francesa, salsa de la casa.' },
 
   // SALCHIPAPAS (X1 / X2 modelados como productos separados)
-  { categoria_key: 'salchipapas',  nombre: 'Clásica',             precio: 14000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'De la Casa X1',       precio: 21500.00 },
-  { categoria_key: 'salchipapas',  nombre: 'De la Casa X2',       precio: 39000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Mexicana X1',         precio: 21500.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Mexicana X2',         precio: 39000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Ranchera X1',         precio: 24000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Ranchera X2',         precio: 44000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Chicharrón X1',       precio: 23000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Chicharrón X2',       precio: 42000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Carnívora X1',        precio: 23000.00 },
-  { categoria_key: 'salchipapas',  nombre: 'Carnívora X2',        precio: 40000.00 },
+  { categoria_key: 'salchipapas',  nombre: 'Clásica',             precio: 14000.00, descripcion: 'Papa francesa, salchicha americana, queso doble crema, ripio, salsas.' },
+  { categoria_key: 'salchipapas',  nombre: 'De la Casa X1',       precio: 21500.00, descripcion: 'Papa francesa, salchicha americana, carne desmechada, hogao, madurito melado, guacamole, salsas.' },
+  { categoria_key: 'salchipapas',  nombre: 'De la Casa X2',       precio: 39000.00, descripcion: 'Papa francesa, salchicha americana, carne desmechada, hogao, madurito melado, guacamole, salsas. (Porción doble.)' },
+  { categoria_key: 'salchipapas',  nombre: 'Mexicana X1',         precio: 21500.00, descripcion: 'Papa francesa, salchicha americana, carne molida picosa, nachos, jalapeños, guacamole.' },
+  { categoria_key: 'salchipapas',  nombre: 'Mexicana X2',         precio: 39000.00, descripcion: 'Papa francesa, salchicha americana, carne molida picosa, nachos, jalapeños, guacamole. (Porción doble.)' },
+  { categoria_key: 'salchipapas',  nombre: 'Ranchera X1',         precio: 24000.00, descripcion: 'Papa francesa, salchicha americana, tocineta, chorizo, costilla en salsa bbq sweet, salsa de la casa.' },
+  { categoria_key: 'salchipapas',  nombre: 'Ranchera X2',         precio: 44000.00, descripcion: 'Papa francesa, salchicha americana, tocineta, chorizo, costilla en salsa bbq sweet, salsa de la casa. (Porción doble.)' },
+  { categoria_key: 'salchipapas',  nombre: 'Chicharrón X1',       precio: 23000.00, descripcion: 'Papa francesa, salchicha americana, pollo desmechado, chicharrón, guacamole, salsa de la casa.' },
+  { categoria_key: 'salchipapas',  nombre: 'Chicharrón X2',       precio: 42000.00, descripcion: 'Papa francesa, salchicha americana, pollo desmechado, chicharrón, guacamole, salsa de la casa. (Porción doble.)' },
+  { categoria_key: 'salchipapas',  nombre: 'Carnívora X1',        precio: 23000.00, descripcion: 'Papa francesa, salchicha americana, butifarra, carne hamburguesa, guacamole, salsa de la casa.' },
+  { categoria_key: 'salchipapas',  nombre: 'Carnívora X2',        precio: 40000.00, descripcion: 'Papa francesa, salchicha americana, butifarra, carne hamburguesa, guacamole, salsa de la casa. (Porción doble.)' },
 ];
 
 /**
@@ -252,27 +257,14 @@ export async function seed(knex) {
   }
 
   // -----------------------------------------------------------------
-  // b) Check plan Free (límite de 10 productos activos)
+  // b) Check plan Free (límite de 10 productos activos).
+  //
+  //    OJO: este check se hace AL FINAL del seed, después del loop de
+  //    productos (sección h). Si lo dejara acá arriba, bloquearía
+  //    corridas idempotentes (la segunda vez que se corre, ya hay 78
+  //    productos y tiraría error aunque no se fuera a insertar nada
+  //    nuevo, solo a actualizar descripciones).
   // -----------------------------------------------------------------
-  if (restaurante.plan === 'free') {
-    const [{ total }] = await knex('productos')
-      .where({ restaurante_id: R, estado: 'activo' })
-      .count({ total: '*' });
-    const yaTiene = Number(total) || 0;
-    const aInsertar = PRODUCTOS.length;
-    if (yaTiene + aInsertar > 10) {
-      throw new Error(
-        `[seed_amapola] El restaurante del usuario 17 es plan Free. ` +
-        `Ya tiene ${yaTiene} productos activos y este seed intentaría ` +
-        `insertar ${aInsertar} más (total ${yaTiene + aInsertar}), lo que ` +
-        `supera el límite de 10 del plan Free. Cambiá a un plan pago o ` +
-        `eliminá productos antes de correr este seed.`,
-      );
-    }
-    console.log(
-      `[seed_amapola] Plan Free: ${yaTiene} productos preexistentes, ${aInsertar} a insertar = ${yaTiene + aInsertar} (límite 10). OK.`,
-    );
-  }
 
   // -----------------------------------------------------------------
   // c) Insertar categorías (idempotente por tipo_negocio + nombre)
@@ -344,14 +336,28 @@ export async function seed(knex) {
     if (existing) {
       productoIdByName[prod.nombre] = existing.id;
       prodExistentes += 1;
-      console.log(`[seed_amapola] Producto ya existente, skip: ${prod.nombre}`);
+      // Idempotencia de descripciones: si el producto ya existe pero su
+      // descripción en BD es NULL y nosotros tenemos una para ofrecer,
+      // la actualizamos. Si ya tenía descripción (ej: el dueño la editó
+      // a mano desde el panel), NO la pisamos — respetamos la edición
+      // manual. Si ambos son NULL, no tocamos nada.
+      if (existing.descripcion == null && prod.descripcion != null) {
+        await knex('productos')
+          .where({ id: existing.id })
+          .update({ descripcion: prod.descripcion });
+        console.log(
+          `[seed_amapola] Producto existente, descripción actualizada: ${prod.nombre}`
+        );
+      } else {
+        console.log(`[seed_amapola] Producto ya existente, skip: ${prod.nombre}`);
+      }
       continue;
     }
     const [insertedId] = await knex('productos').insert({
       restaurante_id: R,
       categoria_id: categoriaId,
       nombre: prod.nombre,
-      descripcion: null,
+      descripcion: prod.descripcion ?? null,
       precio: prod.precio,
       imagen_url: null,
       disponible: true,
@@ -428,6 +434,32 @@ export async function seed(knex) {
       });
       adicionesCreadas += 1;
     }
+  }
+
+  // -----------------------------------------------------------------
+  // h) Check plan Free (límite de 10 productos activos).
+  //
+  //    Se hace al FINAL del seed (no al principio) para no bloquear
+  //    corridas idempotentes: si el restaurante es Free y ya tiene 78
+  //    productos, el seed en su segunda corrida NO inserta nada nuevo
+  //    (idempotencia), solo actualiza descripciones. El check al final
+  //    permite eso. Si quedara >10, tira error.
+  // -----------------------------------------------------------------
+  if (restaurante.plan === 'free') {
+    const [{ total }] = await knex('productos')
+      .where({ restaurante_id: R, estado: 'activo' })
+      .count({ total: '*' });
+    const totalFinal = Number(total) || 0;
+    if (totalFinal > 10) {
+      throw new Error(
+        `[seed_amapola] El restaurante del usuario 17 es plan Free pero ` +
+        `tiene ${totalFinal} productos activos. El límite es 10. ` +
+        `Cambiá a un plan pago o eliminá productos antes de correr este seed.`,
+      );
+    }
+    console.log(
+      `[seed_amapola] Plan Free OK: ${totalFinal} productos activos (límite 10).`,
+    );
   }
 
   // -----------------------------------------------------------------
