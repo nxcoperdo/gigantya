@@ -166,6 +166,14 @@ const Header = memo(function Header() {
       <header
         className="sticky top-0 z-50 safe-top border-b border-[color:var(--border-subtle)] backdrop-blur-md"
         style={{
+          // CSS var pública: la consumen MobileMenuNav, MobileCartBar y
+          // cualquier sticky-nav hijo para posicionarse justo debajo del
+          // header sin hardcodear. 60px mobile / 72px desktop (md:py-4).
+          // En iOS con notch el header es ~30px más alto por safe-area,
+          // pero el `safe-top` agrega padding INTERNO, no afecta la altura
+          // "anunciada" hacia abajo. Si en testing se ve solapado,
+          // cambiar a 'calc(60px + env(safe-area-inset-top))'.
+          '--header-height': '60px',
           backgroundColor: 'color-mix(in srgb, var(--bg-elevated) 85%, transparent)',
           WebkitBackdropFilter: 'blur(12px) saturate(180%)',
           boxShadow: '0 1px 0 rgba(0, 0, 0, 0.02), 0 4px 12px -2px rgba(0, 0, 0, 0.06)',

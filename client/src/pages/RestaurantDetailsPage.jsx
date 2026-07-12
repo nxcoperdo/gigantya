@@ -14,6 +14,9 @@ import api, { productService } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { ratingService } from '../services/api';
 import { formatDate } from '../utils/dateHelper';
+import MobileMenuNav from '../components/MobileMenuNav';
+import ScrollToTopButton from '../components/ScrollToTopButton';
+import MobileCartBar from '../components/MobileCartBar';
 
 export default function RestaurantDetailsPage() {
   const { id } = useParams();
@@ -35,7 +38,10 @@ export default function RestaurantDetailsPage() {
   const [customizing, setCustomizing] = useState(null);
   // IDs de productos cuya descripción está expandida en móvil
   const [expandedDescs, setExpandedDescs] = useState(new Set());
-  const { addToCart } = useCart();
+  // Estado de la query del buscador (la pasa MobileMenuNav hacia el padre
+  // para decidir si renderizar la lista agrupada o la plana de resultados).
+  const [searchQuery, setSearchQuery] = useState('');
+  const { addToCart, cart } = useCart();
 
   const toggleDescExpanded = (productoId) => {
     setExpandedDescs((prev) => {
@@ -51,6 +57,30 @@ export default function RestaurantDetailsPage() {
     fetchProductos();
     fetchRatings();
   }, [id]);
+
+  // Hidratar `cantidades` desde el carrito persistido en CartContext.
+  // Bug pre-existente: si el usuario agregaba productos, iba a /cart y
+  // volvía a /restaurant/:id, `cantidades[id]` quedaba en 0 aunque el
+  // carrito tuviera N unidades de ese producto. El counter +/- de las
+  // cards se veía desincronizado del mini-banner inferior.
+  // Esta sincronización ocurre en mount + cada vez que el cart cambia
+  // (ej: el usuario vuelve de /cart). El `|| {}` previene que se ejecute
+  // antes de que CartContext se hidrate desde localStorage.
+  useEffect(() => {
+    if (!cart || cart.length === 0) return;
+    setCantidades((prev) => {
+      const next = { ...prev };
+      for (const item of cart) {
+        // `item.id` viene del spread de `...producto` en addToCart
+        // (CartContext L141). Cada línea del carrito tiene el id del
+        // producto original.
+        if (item?.id == null) continue;
+        next[item.id] = (next[item.id] || 0) + (Number(item.cantidad) || 0);
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
 
   const fetchRatings = async () => {
     try {
@@ -406,6 +436,17 @@ export default function RestaurantDetailsPage() {
 
        {/* Menu Section */}
        <div className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
+         {/* Sticky-nav mobile-only: pills de categorías + scrollspy +
+             buscador. Se posiciona debajo del Header usando la CSS var
+             --header-height. Es md:hidden, en desktop no se renderiza. */}
+         {sortedCategories.length > 0 && (
+           <MobileMenuNav
+             categories={sortedCategories.map(([id, cat]) => ({ id, nombre: cat.nombre }))}
+             productos={productos}
+             onSearchChange={setSearchQuery}
+           />
+         )}
+
          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-6 sm:mb-8 px-2" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>Menú</h2>
 
          {!isRestaurantOpenNow && (
@@ -448,87 +489,68 @@ export default function RestaurantDetailsPage() {
          )}
 
          {sortedCategories.length > 0 ? (
-           <div className="space-y-8 sm:space-y-10 md:space-y-12">
-             {sortedCategories.map(([catId, catData]) => (
-               <div key={catId} className="space-y-4 sm:space-y-6 px-2">
-                 <div className="flex items-center gap-3 sm:gap-4">
-                   <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--text-primary)]">{catData.nombre}</h3>
-                   <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
+           (() => {
+             // Si hay query activa del buscador, mostramos lista plana
+             // de resultados. El padre (MobileMenuNav) nos pasa la query
+             // vía onSearchChange → setSearchQuery.
+             const trimmedQuery = searchQuery.trim().toLowerCase();
+             const hasQuery = trimmedQuery.length > 0;
+
+             if (hasQuery) {
+               const matches = productos.filter(
+                 (p) =>
+                   (p.nombre || '').toLowerCase().includes(trimmedQuery) ||
+                   (p.descripcion || '').toLowerCase().includes(trimmedQuery)
+               );
+               if (matches.length === 0) {
+                 return (
+                   <div className="text-center py-10 sm:py-12 px-4">
+                     <p className="text-[color:var(--text-muted)] text-sm sm:text-base md:text-lg">
+                       Sin resultados para «{searchQuery}»
+                     </p>
+                     <p className="text-xs text-[color:var(--text-muted)] mt-2">
+                       Probá con otra palabra o revisá la ortografía.
+                     </p>
+                   </div>
+                 );
+               }
+               return (
+                 <div className="space-y-3 sm:space-y-6 px-2">
+                   <p className="text-xs sm:text-sm text-[color:var(--text-muted)]">
+                     {matches.length} {matches.length === 1 ? 'resultado' : 'resultados'} para «{searchQuery}»
+                   </p>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 sm:gap-6">
+                     {matches.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades))}
+                   </div>
                  </div>
+               );
+             }
 
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                   {catData.productos.map((producto, idx) => (
-                     <div key={producto.id} className="card group hover:shadow-lg animate-scaleIn" style={{ borderRadius: 'var(--border-radius)', animationDelay: `${idx * 50}ms` }}>
-                       <button
-                         type="button"
-                         onClick={() => openProductGallery(producto)}
-                         disabled={!producto.imagen_url}
-                         aria-label={`Ver fotos de ${producto.nombre}`}
-                         className="relative mb-3 sm:mb-4 overflow-hidden rounded-lg bg-[color:var(--bg-subtle)] block w-full text-left group/img disabled:cursor-default"
-                       >
-                         {producto.imagen_url ? (
-                           <img
-                             src={getImageUrl(producto.imagen_url)}
-                             alt={producto.nombre}
-                             className={`w-full h-40 sm:h-48 object-cover group-hover/img:scale-105 transition-transform duration-300 ${!isRestaurantOpenNow ? 'grayscale opacity-60' : ''}`}
-                             loading="lazy"
-                           />
-                         ) : (
-                           <div className="w-full h-40 sm:h-48 flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent text-3xl sm:text-4xl">
-                             🍽️
-                           </div>
-                         )}
-                         {producto.imagen_url && (
-                           <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
-                             <Maximize2 className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" size={28} />
-                           </div>
-                         )}
-                         {!isRestaurantOpenNow && (
-                           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                             <span className="badge badge-error">Local cerrado</span>
-                           </div>
-                         )}
-                         {isRestaurantOpenNow && !producto.disponible && (
-                           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                             <span className="badge badge-error">No disponible</span>
-                           </div>
-                         )}
-                       </button>
-
-                       <div className="px-1">
-                         <h3 className="text-base sm:text-lg md:text-xl font-bold text-[color:var(--text-primary)] mb-1.5 sm:mb-2 line-clamp-2 min-h-[44px]">
-                           {producto.nombre}
-                         </h3>
-                         <DescripcionProducto
-                           texto={producto.descripcion}
-                           expandido={expandedDescs.has(producto.id)}
-                           onToggle={() => toggleDescExpanded(producto.id)}
-                         />
-
-                         <div className="flex justify-between items-end mb-3">
-                           <p className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>
-                             {formatCurrency(producto.precio)}
-                           </p>
-                         </div>
-
-                         <button
-                           onClick={() => handleAddToCart(producto)}
-                           disabled={!producto.disponible || !isRestaurantOpenNow}
-                           className="btn w-full mt-2 sm:mt-4 disabled:opacity-50 text-white min-h-[44px] active:scale-95 touch-feedback"
-                           style={{ backgroundColor: 'var(--color-primary)', borderRadius: 'calc(var(--border-radius) / 2)' }}
-                         >
-                           <>
-                             <Plus size={16} className="inline mr-1.5 sm:mr-2" />
-                             {isRestaurantOpenNow ? (ofreceDomicilio ? 'Agregar' : 'Agregar · retira en local') : 'No disponible'}
-                           </>
-                         </button>
-                       </div>
+             return (
+               <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                 {sortedCategories.map(([catId, catData]) => (
+                   <div
+                     key={catId}
+                     id={`cat-${catId}`}
+                     data-cat-section={catId}
+                     // scroll-margin-top compensa el header (60px) + sticky-nav
+                     // (≈56px) + 8px de respiro para que el scrollIntoView
+                     // de la pill no tape el título de la categoría.
+                     className="space-y-4 sm:space-y-6 px-2 scroll-margin-top-header"
+                   >
+                     <div className="flex items-center gap-3 sm:gap-4">
+                       <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--text-primary)]">{catData.nombre}</h3>
+                       <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
                      </div>
-                   ))}
-                 </div>
+
+                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 sm:gap-6">
+                       {catData.productos.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades))}
+                     </div>
+                   </div>
+                 ))}
                </div>
-             ))}
-           </div>
+             );
+           })()
          ) : (
            <div className="text-center py-10 sm:py-12 px-4">
              <p className="text-[color:var(--text-muted)] text-sm sm:text-base md:text-lg">No hay productos disponibles en el menú</p>
@@ -632,7 +654,25 @@ export default function RestaurantDetailsPage() {
              </div>
            </div>
          )}
+
+         {/* FABs mobile-only: "Volver arriba" + mini-banner del carrito.
+             Son md:hidden, en desktop no se renderean. El mini-banner
+             también agrega padding-bottom (pb-24) al final del menú
+             cuando el carrito tiene items, para que el contenido no
+             quede tapado. */}
+         <ScrollToTopButton />
+         {cart.length > 0 && (
+           // Padding extra al final del contenido para que el último
+           // producto no quede debajo del banner inferior (que mide
+           // ~56-72px de alto). Solo se aplica cuando hay items, sino
+           // queda un padding huérfano.
+           <div className="md:hidden h-20" aria-hidden="true" />
+         )}
        </div>
+
+       {/* Mini-banner del carrito — se monta fuera del contenedor scrolleable
+           porque es fixed. */}
+       <MobileCartBar />
      </div>
    );
 }
@@ -679,3 +719,164 @@ function DescripcionProducto({ texto, expandido, onToggle }) {
     </div>
   );
 }
+
+/**
+ * Card de producto con layout adaptativo:
+ *   - **Mobile** (default): horizontal — imagen 80x80 a la izquierda,
+ *     nombre + descripción + precio + botón "+" compacto a la derecha.
+ *     ~130-150px de alto (vs ~400px del layout vertical viejo).
+ *   - **Desktop** (sm:): vuelve al grid de 2-3 columnas con la card
+ *     vertical original (imagen 160-192px arriba, contenido abajo, botón
+ *     "Agregar" full-width).
+ *
+ * Refactorizada como función fuera del componente padre para evitar
+ * duplicar el JSX entre el render agrupado (categorías) y la lista plana
+ * (resultados del buscador).
+ *
+ * Decisiones de UI mobile:
+ *   - Descripción con `line-clamp-2` + botón "Ver más" existente
+ *     (DescripcionProducto, L662). Sacrifica 20-30px de altura por
+ *     legibilidad — eliminar la feature sería una regresión.
+ *   - Botón "+" se vuelve circular compacto en mobile (full-width en sm+).
+ *   - Si el counter `cantidades[id] > 0`, el botón muestra un counter
+ *     `+/N/+` (estado futuro si querés sumar/restar sin abrir modal).
+ *   - Imagen oculta si `!imagen_url` (no mostramos el 🍽️ de 160px en
+ *     mobile porque en 80x80 queda horrible).
+ */
+function renderProductCard(
+  producto,
+  idx,
+  isRestaurantOpenNow,
+  ofreceDomicilio,
+  handleAddToCart,
+  openProductGallery,
+  expandedDescs,
+  toggleDescExpanded,
+  cantidades
+) {
+  // Stagger suave solo en los primeros 6 productos del primer viewport
+  // visible. El resto entra instantáneamente. Antes era idx*50ms sin
+  // tope, lo que en un menú de 78 productos retrasaba la última card
+  // 3.9s. El `prefers-reduced-motion` global mata todo si el usuario
+  // lo activó.
+  const animationDelay = idx < 6 ? `${idx * 30}ms` : '0ms';
+  const hasImage = Boolean(producto.imagen_url);
+  const currentQty = cantidades[producto.id] || 0;
+
+  return (
+    <div
+      key={producto.id}
+      className={[
+        'card group hover:shadow-lg animate-scaleIn',
+        // Mobile: horizontal con gap interno. sm+: vertical original.
+        'flex flex-row gap-3 p-2',
+        'sm:flex-col sm:gap-0 sm:p-1',
+      ].join(' ')}
+      style={{ borderRadius: 'var(--border-radius)', animationDelay }}
+    >
+      {/* Imagen / placeholder */}
+      <button
+        type="button"
+        onClick={() => openProductGallery(producto)}
+        disabled={!hasImage}
+        aria-label={hasImage ? `Ver fotos de ${producto.nombre}` : `${producto.nombre} (sin foto)`}
+        className={[
+          'relative overflow-hidden rounded-lg bg-[color:var(--bg-subtle)]',
+          'flex-shrink-0',
+          'w-20 h-20',                                                 // mobile: 80x80
+          'sm:w-full sm:h-40 md:h-48 sm:mb-4',                         // sm+: full width arriba
+          'text-left group/img disabled:cursor-default',
+        ].join(' ')}
+      >
+        {hasImage ? (
+          <img
+            src={getImageUrl(producto.imagen_url)}
+            alt={producto.nombre}
+            className={`w-full h-full sm:h-40 md:h-48 object-cover group-hover/img:scale-105 transition-transform duration-300 ${!isRestaurantOpenNow ? 'grayscale opacity-60' : ''}`}
+            loading="lazy"
+          />
+        ) : (
+          // En mobile (80x80) mostramos solo un punto centrado. En sm+
+          // (full width) mostramos el emoji grande + gradiente.
+          <div className="w-full h-full sm:h-40 md:h-48 flex items-center justify-center bg-gradient-to-br from-primaryLight to-accent text-2xl sm:text-3xl md:text-4xl">
+            🍽️
+          </div>
+        )}
+        {hasImage && (
+          <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
+            <Maximize2 className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" size={28} />
+          </div>
+        )}
+        {!isRestaurantOpenNow && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+            <span className="badge badge-error">Local cerrado</span>
+          </div>
+        )}
+        {isRestaurantOpenNow && !producto.disponible && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+            <span className="badge badge-error">No disponible</span>
+          </div>
+        )}
+      </button>
+
+      {/* Contenido: nombre, descripción, precio, botón */}
+      <div className="flex-1 min-w-0 sm:w-full sm:px-1 flex flex-col">
+        <h3 className="text-sm sm:text-base md:text-xl font-bold text-[color:var(--text-primary)] mb-1 sm:mb-2 line-clamp-1 sm:line-clamp-2">
+          {producto.nombre}
+        </h3>
+        <DescripcionProducto
+          texto={producto.descripcion}
+          expandido={expandedDescs.has(producto.id)}
+          onToggle={() => toggleDescExpanded(producto.id)}
+        />
+
+        <div className="mt-auto sm:mt-0 flex items-center justify-between gap-2 mb-1 sm:mb-3 sm:block">
+          <p
+            className="text-base sm:text-lg md:text-2xl font-bold whitespace-nowrap"
+            style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}
+          >
+            {formatCurrency(producto.precio)}
+          </p>
+        </div>
+
+        <button
+          onClick={() => handleAddToCart(producto)}
+          disabled={!producto.disponible || !isRestaurantOpenNow}
+          aria-label={`Agregar ${producto.nombre} al carrito`}
+          className={[
+            'text-white disabled:opacity-50 active:scale-95 touch-feedback',
+            'min-h-[44px] flex items-center justify-center gap-1.5',
+            'sm:mt-4 sm:w-full',
+            // Mobile: botón circular compacto con solo el ícono + .
+            'w-10 h-10 rounded-full p-0 self-end',
+            // sm+: full-width con texto "Agregar".
+            'sm:w-full sm:py-3 sm:rounded-md',
+          ].join(' ')}
+          style={{
+            backgroundColor: 'var(--color-primary)',
+            // En mobile el border-radius es circular (rounded-full), en
+            // sm+ es calc(var(--border-radius) / 2).
+            borderRadius: undefined,
+          }}
+        >
+          {currentQty > 0 ? (
+            // Si ya hay unidades agregadas, mostramos el counter inline.
+            <span className="text-sm font-bold tabular-nums" aria-hidden="false">
+              {currentQty}
+            </span>
+          ) : (
+            <>
+              <Plus size={16} aria-hidden="true" className="sm:mr-1.5" />
+              <span className="hidden sm:inline text-sm font-semibold">
+                {isRestaurantOpenNow
+                  ? (ofreceDomicilio ? 'Agregar' : 'Agregar · retira en local')
+                  : 'No disponible'}
+              </span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+

@@ -912,6 +912,21 @@ label {
 .stagger-children > *:nth-child(8) { animation-delay: 280ms; }
 .stagger-children > *:nth-child(n+9) { animation-delay: 320ms; }
 
+/* Slide-up reutilizable: la usa MobileCartBar para entrar desde abajo.
+   Reusa el @keyframes slideUp ya definido arriba (mismo timing/curve
+   que .stagger-children para consistencia visual). */
+.animate-slideUp {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Compensación de scroll para sticky-navs posicionados debajo del
+   Header. Usado por MobileMenuNav para que el scrollIntoView de las
+   pills no tape el título de cada categoría bajo la nav pegada.
+   60px del header + 8px de respiro = 68px. */
+.scroll-margin-top-header {
+  scroll-margin-top: calc(var(--header-height, 60px) + 8px);
+}
+
 /* Safe area insets for mobile devices */
 .safe-top {
   padding-top: env(safe-area-inset-top);
