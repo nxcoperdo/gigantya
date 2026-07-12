@@ -80,7 +80,7 @@ const STEPS = [
   {
     target: '[data-tour="dashboard-tab-pagos"]',
     title: '💰 Pestaña Pagos',
-    description: 'Sube los comprobantes de pago de tu suscripción mensual (PSE, transferencia, Nequi). También ves el historial completo de pagos anteriores. Si el plan vence, tu local pasa automáticamente a Básico hasta que renueves — algunas funciones se desactivan.',
+    description: 'Acá tenés dos cosas: la sub-pestaña "Validación de Comprobantes" donde aprobás o rechazás los comprobantes que te mandan los clientes, y "Configuración de Pagos" donde escribís tu número de Nequi, Daviplata o BRE-B para que el cliente los vea al pedir y pueda transferirte directo.',
     side: 'bottom',
     activateTab: 'payments',
   },
