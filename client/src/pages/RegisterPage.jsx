@@ -396,7 +396,24 @@ export default function RegisterPage() {
           {/* Aceptaciones legales: el gate real está en <LegalGate /> (App.jsx),
               que se activa con el AuthContext apenas el usuario queda logueado
               y muestra un modal bloqueante con scroll-to-bottom. No se duplica
-              acá para evitar dos lugares de aceptación inconsistentes. */}
+              acá para evitar dos lugares de aceptación inconsistentes.
+
+              Igual dejamos visibles los links a los 2 documentos para que el
+              usuario pueda leerlos ANTES de registrarse (defensa legal: que
+              haya tenido oportunidad real de informarse), y un texto chico
+              debajo del botón submit avisando que se pedirán las aceptaciones
+              apenas termine el registro. Es la cobertura legal del flujo. */}
+          <p className="text-xs text-[color:var(--text-muted)] leading-relaxed mt-2">
+            Al crear tu cuenta se te pedirán los{' '}
+            <Link to="/terminos" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline hover:text-indigo-800">
+              Términos y Condiciones
+            </Link>{' '}
+            y la{' '}
+            <Link to="/privacidad" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline hover:text-indigo-800">
+              Política de Privacidad
+            </Link>
+            . Puedes leerlos ahora haciendo click.
+          </p>
 
           <button
             type="submit"
@@ -405,6 +422,11 @@ export default function RegisterPage() {
           >
             {loading ? 'Registrando...' : 'Registrarse'}
           </button>
+          <p className="text-[11px] text-[color:var(--text-muted)] text-center mt-3 leading-relaxed">
+            Al hacer click en "Registrarse" aceptás que te mostremos nuestros
+            documentos legales y los registremos como evidencia (Ley 527/1999,
+            Ley 1581/2012).
+          </p>
         </form>
 
         <div className="mt-5 sm:mt-6 text-center text-sm text-[color:var(--text-secondary)]">
