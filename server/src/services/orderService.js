@@ -428,10 +428,19 @@ export async function notificarNuevoPedido(pedidoId) {
         'SELECT email FROM usuarios WHERE id = ? LIMIT 1',
         [pedido.usuario_id]
       );
+
+      // Fuente del teléfono para WhatsApp al local: priorizamos
+      // `restaurantes.telefono` (el número comercial del local, que el
+      // dueño actualiza desde su dashboard) sobre `usuarios.telefono`
+      // (el teléfono personal del dueño). Si el local no tiene
+      // teléfono cargado, fallback al del dueño.
+      const telefonoLocal =
+        restauranteData.telefono || restauranteUsuario.telefono || null;
+
       notificationService.notifyNewOrder({
         pedido,
         restauranteEmail: restauranteUsuario.email,
-        restauranteTelefono: restauranteUsuario.telefono,
+        restauranteTelefono: telefonoLocal,
         clienteEmail: cliente[0]?.email || null,
       }).catch((err) => console.error('Error enviando notificaciones de nuevo pedido:', err));
     }
