@@ -695,14 +695,28 @@ export async function notifyOrderStatusChange({
     });
   }
 
-  // WhatsApp opcional para estados críticos
-  if (pedido.cliente_telefono && ['Entregado', 'Pago Rechazado'].includes(nuevoEstado)) {
-    const whatsappType = nuevoEstado === 'Entregado' ? 'delivered' : 'paymentRejected';
+  // WhatsApp al cliente: se manda en los 5 estados críticos del flujo
+  // de pedido + pago. El email sigue mandándose para todos los estados
+  // (incluido Pendiente → Email de nuevo pedido).
+  //
+  // El mapping por estado es declarativo: agregar un estado nuevo es 1
+  // línea. Las claves deben coincidir con las plantillas aprobadas en
+  // Meta Business Manager (order_preparing, order_ready, order_delivered,
+  // payment_approved, payment_rejected).
+  const whatsappByState = {
+    'Preparando': 'preparing',
+    'Listo': 'ready',
+    'Entregado': 'delivered',
+    'Pago Confirmado': 'paymentApproved',
+    'Pago Rechazado': 'paymentRejected',
+  };
+  const whatsappType = whatsappByState[nuevoEstado];
+  if (pedido.cliente_telefono && whatsappType) {
     results.whatsapp = await sendOrderWhatsApp({
       to: pedido.cliente_telefono,
       type: whatsappType,
       pedido,
-      motivo
+      motivo,
     });
   }
 
