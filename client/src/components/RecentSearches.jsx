@@ -17,7 +17,7 @@ const RecentSearches = ({ searches, onSelect, onClear }) => {
 
   return (
     <div
-      className="absolute top-full left-0 w-full mt-1.5 bg-[color:var(--bg-elevated)] shadow-2xl rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50"
+      className="absolute top-full left-0 w-full mt-2 bg-[color:var(--bg-elevated)] shadow-2xl ring-1 ring-black/5 rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50"
       role="listbox"
       aria-label="Búsquedas recientes"
     >
@@ -44,7 +44,7 @@ const RecentSearches = ({ searches, onSelect, onClear }) => {
         )}
       </header>
 
-      <ul className="max-h-[60dvh] sm:max-h-[420px] overflow-y-auto overscroll-contain py-1">
+      <ul className="max-h-[70dvh] sm:max-h-[460px] overflow-y-auto overscroll-contain py-1">
         {searches.map((term, idx) => (
           <li key={`${term}-${idx}`} role="presentation">
             <button

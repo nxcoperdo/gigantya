@@ -1029,9 +1029,14 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Bloque 3: Buscador (input) */}
+          {/* Bloque 3: Buscador (input)
+              `relative z-40` crea el contexto de stacking para que el
+              dropdown (que va a z-50) flote por encima de la siguiente
+              `<section>` con sus filter-pills. Sin esto, el dropdown
+              queda visualmente "tapado" por el bloque de filtros que
+              está justo debajo en mobile. */}
           {(!heroSettings || Number(heroSettings.mostrar_buscador ?? 1) === 1) && (
-            <div className="max-w-3xl mx-auto animate-slideUp relative" style={{ animationDelay: '120ms' }}>
+            <div className="max-w-3xl mx-auto animate-slideUp relative z-40" style={{ animationDelay: '120ms' }}>
               <div className="relative flex items-center bg-white rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5 transition-shadow duration-200 focus-within:shadow-primary/20 focus-within:ring-2 focus-within:ring-primary/30">
                 <Search className="text-primary absolute left-4 sm:left-5" size={20} />
                 <input

@@ -18,7 +18,10 @@ const SUGGEST_MIN_CHARS = 2;
 // que pueda scrollear internamente sin chocar con el scroll de la home
 // y sin quedar tapado por la barra del browser. `overscroll-contain`
 // evita el "scroll chaining" (que siga scrolleando la home por debajo).
-const DROPDOWN_MAX_H = 'max-h-[60dvh] sm:max-h-[420px]';
+// 70dvh en lugar de 60dvh para que en mobile se sienta más generoso
+// (típicamente ~430-500px en un phone, suficiente para 2-3 items
+// visibles sin scrollear, lo que ayuda al usuario a "ver que hay más").
+const DROPDOWN_MAX_H = 'max-h-[70dvh] sm:max-h-[460px]';
 
 // =============================================================
 // Utilidades de seguridad / render
@@ -353,7 +356,7 @@ export default function SearchAutocomplete({
   if (trimmed.length < SUGGEST_MIN_CHARS) {
     return (
       <div
-        className={`absolute top-full left-0 w-full mt-1.5 bg-[color:var(--bg-elevated)] shadow-2xl rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50`}
+        className={`absolute top-full left-0 w-full mt-2 bg-[color:var(--bg-elevated)] shadow-2xl ring-1 ring-black/5 rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50`}
         role="status"
       >
         <div className="px-4 py-3.5 flex items-center gap-3 text-sm text-[color:var(--text-muted)]">
@@ -375,7 +378,7 @@ export default function SearchAutocomplete({
 
   return (
     <div
-      className={`absolute top-full left-0 w-full mt-1.5 bg-[color:var(--bg-elevated)] shadow-2xl rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50`}
+      className={`absolute top-full left-0 w-full mt-2 bg-[color:var(--bg-elevated)] shadow-2xl ring-1 ring-black/5 rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50`}
       role="listbox"
       aria-label="Sugerencias de búsqueda"
       aria-busy={loading || undefined}
