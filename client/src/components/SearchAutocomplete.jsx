@@ -356,7 +356,7 @@ export default function SearchAutocomplete({
   if (trimmed.length < SUGGEST_MIN_CHARS) {
     return (
       <div
-        className={`absolute top-full left-0 w-full mt-2 bg-[color:var(--bg-elevated)] shadow-2xl ring-1 ring-black/5 rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50`}
+        className={`absolute top-full left-0 w-full mt-2.5 bg-white dark:bg-[color:var(--bg-elevated)] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45)] ring-1 ring-black/10 rounded-2xl border border-[color:var(--border-default)] overflow-hidden motion-safe:animate-slideDown z-50`}
         role="status"
       >
         <div className="px-4 py-3.5 flex items-center gap-3 text-sm text-[color:var(--text-muted)]">
@@ -378,7 +378,7 @@ export default function SearchAutocomplete({
 
   return (
     <div
-      className={`absolute top-full left-0 w-full mt-2 bg-[color:var(--bg-elevated)] shadow-2xl ring-1 ring-black/5 rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50`}
+      className={`absolute top-full left-0 w-full mt-2.5 bg-white dark:bg-[color:var(--bg-elevated)] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45)] ring-1 ring-black/10 rounded-2xl border border-[color:var(--border-default)] overflow-hidden motion-safe:animate-slideDown z-50`}
       role="listbox"
       aria-label="Sugerencias de búsqueda"
       aria-busy={loading || undefined}

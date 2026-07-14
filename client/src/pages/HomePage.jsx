@@ -930,7 +930,7 @@ export default function HomePage() {
       )}
 
       {/* Hero Section */}
-      <section className="text-white py-12 sm:py-16 md:py-28 px-4 sm:px-6 relative overflow-hidden">
+      <section className="text-white py-12 sm:py-16 md:py-28 px-4 sm:px-6 relative z-30 overflow-visible sm:overflow-hidden">
         {/* Media Background: video o imagen, viene del CMS admin.
             Si no hay banner activo, fallback a /media/banner.mp4 (mismo asset
             que se mostraba antes de la Fase 12). El `key` fuerza re-mount
@@ -1030,13 +1030,11 @@ export default function HomePage() {
           )}
 
           {/* Bloque 3: Buscador (input)
-              `relative z-40` crea el contexto de stacking para que el
-              dropdown (que va a z-50) flote por encima de la siguiente
-              `<section>` con sus filter-pills. Sin esto, el dropdown
-              queda visualmente "tapado" por el bloque de filtros que
-              está justo debajo en mobile. */}
+              El hero ya tiene `relative z-30`, así que el dropdown (z-50)
+              queda garantizado por encima del `<section>` siguiente del
+              Main Content (z-10) que contiene los filter-pills. */}
           {(!heroSettings || Number(heroSettings.mostrar_buscador ?? 1) === 1) && (
-            <div className="max-w-3xl mx-auto animate-slideUp relative z-40" style={{ animationDelay: '120ms' }}>
+            <div className="max-w-3xl mx-auto animate-slideUp relative z-10" style={{ animationDelay: '120ms' }}>
               <div className="relative flex items-center bg-white rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5 transition-shadow duration-200 focus-within:shadow-primary/20 focus-within:ring-2 focus-within:ring-primary/30">
                 <Search className="text-primary absolute left-4 sm:left-5" size={20} />
                 <input
@@ -1102,7 +1100,11 @@ export default function HomePage() {
       )}
 
       {/* Main Content */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 section">
+      {/* z-10 explícito: este `<section>` (con los filter-pills de
+          "Con domicilios / Solo retiro en local") SIEMPRE debe quedar
+          por debajo del dropdown del buscador. Sin esto, el `bg-base`
+          del wrapper podría tapar el dropdown. */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 section relative z-10">
         {/* Toggle: Con domicilios | Solo retiro en local.
             El botón activo recibe `filter-pill-active` (key cambia con el state)
             para que React re-monte solo ese botón y dispare el glow al pasar
