@@ -253,7 +253,24 @@ export const preferenceService = {
   removeFavorite: (data) => api.delete('/preferences/favorites', { data }),
   getFavorites: (tipo) => api.get(`/preferences/favorites/${tipo}`),
   getSearchHistory: () => api.get('/preferences/search-history'),
+  // POST /preferences/search-history — guarda un término confirmado por el
+  // usuario en su historial. Requiere auth (verifyToken en backend). El
+  // caller debe chequear isAuthenticated antes de llamar; si el token está
+  // expirado y devuelve 401, el interceptor global redirige a /login.
+  // Para evitar eso en la home pública, el caller captura el 401 con
+  // console.warn (ver HomePage.handleSaveSearch).
+  addSearchTerm: (termino) => api.post('/preferences/search-history', { termino }).then((r) => r.data),
   clearSearchHistory: () => api.delete('/preferences/search-history'),
+};
+
+// ========== BÚSQUEDA (autocomplete del home del cliente) ==========
+
+// Service dedicado, separado de restaurantService/productService. El
+// endpoint /api/search devuelve sugerencias de ambas fuentes en una sola
+// respuesta (GET), optimizado para el dropdown de la barra de búsqueda.
+export const searchService = {
+  suggest: ({ q, tipo_negocio, limit = 5 } = {}) =>
+    api.get('/search', { params: { q, tipo_negocio, limit } }).then((r) => r.data),
 };
 
 // ========== CALIFICACIONES ==========

@@ -59,6 +59,12 @@
   --accent-blue-bg: #dbeafe;
   --accent-blue-text: #1e40af;
 
+  /* Highlight de match en el autocomplete (SearchAutocomplete).
+     Amarillo cálido con buen contraste sobre el bg-elevated tanto en
+     light como dark mode. */
+  --mark-bg: #fef3c7;
+  --mark-text: #78350f;
+
   /* Track del scrollbar (modo claro) */
   --scrollbar-track: #f1f1f1;
 
@@ -114,6 +120,11 @@
   --accent-purple-text: #d8b4fe;
   --accent-blue-bg: rgba(59, 130, 246, 0.20);
   --accent-blue-text: #93c5fd;
+
+  /* Highlight de match en dark mode: amarillo más suave para no
+     deslumbrar, con texto oscuro encima para mantener contraste 4.5:1. */
+  --mark-bg: rgba(252, 211, 77, 0.28);
+  --mark-text: #fde68a;
 
   /* Track del scrollbar (modo oscuro) */
   --scrollbar-track: #1f232a;

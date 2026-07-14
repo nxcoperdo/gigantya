@@ -1,35 +1,69 @@
-import React, { useState } from 'react';
 import { History, X } from 'lucide-react';
 
+// Dropdown de "Búsquedas recientes" que se muestra cuando el input está
+// vacío. Estilo sincronizado con `SearchAutocomplete.jsx` (mismo shape de
+// contenedor, mismo border-radius, mismo patrón de header sticky) para
+// que no haya jump visual cuando se intercambian.
+//
+// Decisiones de diseño (ui-ux-pro-max, jul 2026):
+//   - Touch targets ≥ 44px (py-3 en cada item).
+//   - Header con icono + label + botón "Borrar todo" como acción secundaria
+//     claramente diferenciada.
+//   - Hover state sutil con bg-muted/60 (no full opacity, no layout shift).
+//   - Border separator con el token del sistema (no hex hardcodeado).
+//   - `motion-safe:animate-slideDown` para respetar prefers-reduced-motion.
 const RecentSearches = ({ searches, onSelect, onClear }) => {
-  if (searches.length === 0) return null;
+  if (!searches || searches.length === 0) return null;
 
   return (
-    <div className="absolute top-full left-0 w-full bg-[color:var(--bg-elevated)] shadow-2xl rounded-b-xl border-t border-[color:var(--border-subtle)] overflow-hidden animate-slideDown z-50">
-      <div className="p-2 bg-[color:var(--bg-subtle)] flex justify-between items-center border-b border-[color:var(--border-subtle)]">
-        <div className="flex items-center gap-2 text-xs font-bold text-[color:var(--text-muted)] ml-2">
-          <History size={14} />
+    <div
+      className="absolute top-full left-0 w-full mt-1.5 bg-[color:var(--bg-elevated)] shadow-2xl rounded-xl border border-[color:var(--border-subtle)] overflow-hidden motion-safe:animate-slideDown z-50"
+      role="listbox"
+      aria-label="Búsquedas recientes"
+    >
+      {/* Header sticky: queda fijo cuando hay muchos términos y el usuario
+          scrollea. Mismo patrón visual que los headers de sección del
+          SearchAutocomplete para que la familia sea coherente. */}
+      <header className="sticky top-0 z-[1] px-4 py-2.5 bg-[color:var(--bg-elevated)]/95 backdrop-blur-sm border-b border-[color:var(--border-subtle)] flex justify-between items-center">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-[color:var(--text-muted)] flex items-center gap-1.5">
+          <History size={11} aria-hidden="true" />
           Búsquedas recientes
-        </div>
-        <button
-          onClick={onClear}
-          className="text-[10px] font-medium text-primary hover:text-primary-dark transition-colors flex items-center gap-1 px-2"
-        >
-          <X size={12} /> Borrar todo
-        </button>
-      </div>
-      <div className="py-2">
-        {searches.map((term, idx) => (
+          <span className="ml-1.5 text-[color:var(--text-muted)] font-medium normal-case tracking-normal">
+            {searches.length}
+          </span>
+        </h3>
+        {onClear && (
           <button
-            key={idx}
-            onClick={() => onSelect(term)}
-            className="w-full px-4 py-2.5 text-left text-sm text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)] transition-colors flex items-center gap-3 group"
+            type="button"
+            onClick={onClear}
+            className="text-xs font-medium text-primary hover:text-primary-dark motion-safe:transition-colors motion-safe:duration-150 flex items-center gap-1 px-2 py-1 -mr-2 rounded-md hover:bg-[color:var(--bg-muted)] min-h-[32px]"
           >
-            <div className="w-1.5 h-1.5 bg-gray-300 rounded-full group-hover:bg-primary transition-colors" />
-            {term}
+            <X size={12} aria-hidden="true" />
+            Borrar todo
           </button>
+        )}
+      </header>
+
+      <ul className="max-h-[60dvh] sm:max-h-[420px] overflow-y-auto overscroll-contain py-1">
+        {searches.map((term, idx) => (
+          <li key={`${term}-${idx}`} role="presentation">
+            <button
+              type="button"
+              role="option"
+              onClick={() => onSelect?.(term)}
+              className="w-[calc(100%-0.5rem)] mx-1 px-3 sm:px-4 py-3 text-left text-sm text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)]/60 active:bg-[color:var(--bg-muted)] motion-safe:transition-colors motion-safe:duration-150 flex items-center gap-3 rounded-lg group min-h-[48px]"
+            >
+              <span
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-[color:var(--bg-muted)] group-hover:bg-[color:var(--bg-elevated)] motion-safe:transition-colors flex-shrink-0"
+                aria-hidden="true"
+              >
+                <History size={14} className="text-[color:var(--text-muted)] group-hover:text-primary" />
+              </span>
+              <span className="flex-1 truncate font-medium">{term}</span>
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 };

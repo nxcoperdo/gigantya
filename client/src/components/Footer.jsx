@@ -81,18 +81,6 @@ export default function Footer() {
                   Dashboard
                 </a>
               </li>
-              <li>
-                <a href="#" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
-                  <span className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  Tarifas
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-primary transition-colors font-light inline-flex items-center gap-1.5 group">
-                  <span className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  Documentación
-                </a>
-              </li>
             </ul>
           </div>
 

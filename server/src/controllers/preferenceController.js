@@ -71,10 +71,51 @@ export async function clearSearchHistory(req, res) {
   }
 }
 
+/**
+ * POST /api/preferences/search-history
+ * Body: { termino: string }
+ *
+ * Persiste un término en el historial del usuario autenticado con dedup
+ * case-insensitive. La UNIQUE KEY sobre `(usuario_id, LOWER(termino))` +
+ * `ON DUPLICATE KEY UPDATE creado_en = NOW()` (en `SearchHistory.upsertSearch`)
+ * garantiza atomicidad: dos requests concurrentes con el mismo término
+ * terminan en una sola fila con el `creado_en` más reciente.
+ *
+ * Validación:
+ *   - termino debe ser string, trim no vacío, length <= 100. Si no → 400.
+ *
+ * Defensa XSS: el backend solo almacena el string. La defensa vive en el
+ * frontend, que debe escapar el texto antes de renderizarlo (React escapa
+ * por default; el autocomplete marca el match con `<mark>` sobre el texto
+ * ya escapado, ver SearchAutocomplete.jsx).
+ */
+export async function addSearchTerm(req, res) {
+  try {
+    const { termino } = req.body || {};
+    if (typeof termino !== 'string') {
+      return res.status(400).json({ error: 'El campo "termino" es requerido y debe ser texto' });
+    }
+    const trimmed = termino.trim();
+    if (trimmed.length === 0) {
+      return res.status(400).json({ error: 'El término no puede estar vacío' });
+    }
+    if (trimmed.length > 100) {
+      return res.status(400).json({ error: 'El término no puede superar 100 caracteres' });
+    }
+
+    await SearchHistoryModel.upsertSearch(req.user.id, trimmed);
+    res.status(201).json({ mensaje: 'Búsqueda guardada', termino: trimmed });
+  } catch (error) {
+    console.error('Error guardando término de búsqueda:', error);
+    res.status(500).json({ message: 'Error guardando término de búsqueda', error: error.message });
+  }
+}
+
 export default {
   addFavorite,
   removeFavorite,
   getFavorites,
   getSearchHistory,
-  clearSearchHistory
+  clearSearchHistory,
+  addSearchTerm,
 };

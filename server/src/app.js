@@ -49,6 +49,10 @@ import ratingRoutes from './routes/ratingRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
+// Búsqueda global para el autocomplete de la home del cliente
+// (sugerencias de restaurantes + productos en una sola respuesta).
+// Endpoint público, sin `verifyToken`.
+import searchRoutes from './routes/searchRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
@@ -228,6 +232,7 @@ app.use('/api/preferences', preferenceRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/categorias', categoryRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/search', searchRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exports', exportRoutes);

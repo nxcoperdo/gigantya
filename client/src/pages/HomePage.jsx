@@ -9,7 +9,7 @@ import { isRestaurantOpen } from '../utils/scheduleHelper';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import { canAccessPlan } from '../utils/planFeatures';
 import Loading from '../components/Loading';
-import RecentSearches from '../components/RecentSearches';
+import SearchAutocomplete, { useSearchAutocomplete } from '../components/SearchAutocomplete';
 import OnboardingTip from '../components/help/OnboardingTip';
 import ClientHelpBanner from '../components/help/ClientHelpBanner';
 import ClientTour from '../components/help/ClientTour';
@@ -612,11 +612,6 @@ export default function HomePage() {
     setSearchTerm(term);
   }, []);
 
-  const handleSelectSearch = useCallback((term) => {
-    setSearchTerm(term);
-    setIsSearchFocused(false);
-  }, []);
-
   const handleSelectCategory = useCallback((nombre) => {
     // Si se selecciona la misma categoría activa, la limpiamos (volver a "Todos")
     setSelectedCategory(prev => (prev === nombre ? null : nombre));
@@ -659,6 +654,108 @@ export default function HomePage() {
       console.error('Error clearing history:', e);
     }
   }, []);
+
+  // ============================================================
+  // Autocompletado de la barra de búsqueda
+  // ============================================================
+  //
+  // El state del dropdown (loading, error, results, selectedIndex, fetch con
+  // debounce) vive en el hook `useSearchAutocomplete`. Aquí solo lo consumimos
+  // y le pasamos el resultado al componente presentacional `<SearchAutocomplete>`.
+  // El `composeKeyDown` se monta en el `<input>` del buscador para que las
+  // flechas ↑/↓ y Escape muevan el highlight del dropdown.
+  const closeAutocomplete = useCallback(() => {
+    setIsSearchFocused(false);
+  }, []);
+
+  // Handler que se invoca cuando el usuario elige un resultado del
+  // dropdown (con teclado Enter+highlight, o click). El componente
+  // `SearchAutocomplete` ya hace `navigate` + `onClose` por su cuenta;
+  // acá solo guardamos el término y refrescamos el state local del
+  // historial para feedback inmediato.
+  const handleSelectResult = useCallback(
+    (_item) => {
+      const term = searchTerm.trim();
+      if (term.length > 0) handleSaveSearch(term);
+    },
+    [searchTerm], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const {
+    loading: suggestLoading,
+    error: suggestError,
+    results: suggestResults,
+    selectedIndex: suggestSelectedIndex,
+    setSelectedIndex: setSuggestSelectedIndex,
+    flatItems: suggestFlatItems,
+    composeKeyDown: composeSearchKeyDown,
+  } = useSearchAutocomplete({
+    searchTerm,
+    isOpen: isSearchFocused,
+    tipoNegocioFilter,
+    limit: 5,
+    onSelect: handleSelectResult,
+    onClose: closeAutocomplete,
+  });
+
+  // Click en un término del historial de "Búsquedas recientes". Llena el input
+  // y dispara el guardado (porque el usuario está confirmando esa búsqueda).
+  const handleSelectRecent = useCallback(
+    (term) => {
+      setSearchTerm(term);
+      setIsSearchFocused(false);
+      handleSaveSearch(term);
+    },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // Submit del término actual (Enter sin highlight en el dropdown, o click en
+  // un término del historial). Cierra el dropdown y guarda el término.
+  // La búsqueda en sí ya está aplicada en cliente (filteredRestaurants /
+  // filteredProductos) — el input controlado dispara el filtro en cada
+  // onChange, así que con solo setear searchTerm alcanza.
+  const handleSubmitTerm = useCallback(
+    (e) => {
+      if (e.key !== 'Enter') return;
+      const term = searchTerm.trim();
+      if (term.length === 0) return;
+      setIsSearchFocused(false);
+      handleSaveSearch(term);
+    },
+    [searchTerm], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // Persiste un término en el historial del usuario autenticado. Si el
+  // visitante es anónimo, no se llama al backend. Capturamos 401
+  // silenciosamente para que el interceptor global de axios NO redirija
+  // a /login desde la home pública (ver `api.js:30-42`). Después
+  // refrescamos el state local del historial para que el dropdown
+  // muestre el término al toque.
+  const handleSaveSearch = useCallback(
+    async (termino) => {
+      if (!isAuthenticated) return;
+      if (!termino || termino.length === 0) return;
+      try {
+        await preferenceService.addSearchTerm(termino);
+        // Refrescar el historial en memoria para feedback inmediato.
+        loadSearchHistory();
+      } catch (err) {
+        // 401 = token expirado. NO dejamos que el interceptor global
+        // redirija — la home es pública y romperíamos la UX del visitante.
+        if (err?.response?.status === 401) {
+          console.warn('No se pudo guardar la búsqueda: sesión expirada.');
+        } else {
+          console.warn('No se pudo guardar la búsqueda:', err);
+        }
+      }
+    },
+    [isAuthenticated], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // Handler combinado para el `<input>`. `composeSearchKeyDown` se ocupa de
+  // las flechas, Escape y Enter-con-highlight; `handleSubmitTerm` corre
+  // después (solo si nosotros no hicimos preventDefault) para Enter-sin-highlight.
+  const onInputKeyDown = composeSearchKeyDown(handleSubmitTerm);
 
   // Lógica del carrusel de banners destacados.
   // El track se mueve aplicando `transform: translateX(offset)` desde
@@ -945,15 +1042,32 @@ export default function HomePage() {
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                  onKeyDown={onInputKeyDown}
                   className="flex-1 pl-12 sm:pl-14 pr-4 sm:pr-6 py-4 sm:py-4.5 outline-none text-gray-800 text-base sm:text-lg placeholder:text-gray-400 min-h-[52px] touch-action-manipulation"
                   aria-label="Buscar locales"
+                  aria-autocomplete="list"
+                  aria-expanded={isSearchFocused}
                 />
               </div>
+              {/* Dropdown del autocomplete: maneja los 3 estados (vacío →
+                  RecentSearches, < 2 chars → hint, ≥ 2 chars → sugerencias).
+                  El state vive en el hook `useSearchAutocomplete` arriba. */}
               {isSearchFocused && (
-                <RecentSearches
-                  searches={searchTerms}
-                  onSelect={handleSelectSearch}
-                  onClear={clearHistory}
+                <SearchAutocomplete
+                  searchTerm={searchTerm}
+                  isOpen={isSearchFocused}
+                  recentSearches={searchTerms}
+                  onSelectRecent={handleSelectRecent}
+                  onClearHistory={clearHistory}
+                  onSelectResult={handleSelectResult}
+                  onClose={closeAutocomplete}
+                  limit={5}
+                  loading={suggestLoading}
+                  error={suggestError}
+                  results={suggestResults}
+                  selectedIndex={suggestSelectedIndex}
+                  setSelectedIndex={setSuggestSelectedIndex}
+                  flatItems={suggestFlatItems}
                 />
               )}
 
