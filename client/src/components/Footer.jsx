@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
+import { Facebook, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -22,14 +22,14 @@ export default function Footer() {
             </p>
             {/* Social Media */}
             <div className="flex gap-2">
-              <a href="#" aria-label="Facebook" className="text-[color:var(--text-muted)] hover:text-primary hover:bg-[color:var(--bg-base)] transition-all p-2.5 rounded-lg">
+              <a
+                href="https://web.facebook.com/gigantya/?_rdc=1&_rdr#"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="text-[color:var(--text-muted)] hover:text-primary hover:bg-[color:var(--bg-base)] transition-all p-2.5 rounded-lg"
+              >
                 <Facebook size={18} />
-              </a>
-              <a href="#" aria-label="Instagram" className="text-[color:var(--text-muted)] hover:text-primary hover:bg-[color:var(--bg-base)] transition-all p-2.5 rounded-lg">
-                <Instagram size={18} />
-              </a>
-              <a href="#" aria-label="Twitter" className="text-[color:var(--text-muted)] hover:text-primary hover:bg-[color:var(--bg-base)] transition-all p-2.5 rounded-lg">
-                <Twitter size={18} />
               </a>
             </div>
           </div>
