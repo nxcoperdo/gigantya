@@ -210,8 +210,26 @@ export const adminService = {
   // por /media/<archivo>.
   listHomeMedia: () => api.get('/admin/home-media'),
   // `formData` debe ser FormData con field 'file' (multer.single) y
-  // opcionalmente un field 'nombre'.
-  uploadHomeMedia: (formData) => api.post('/admin/home-media', formData),
+  // opcionalmente un field 'nombre'. `onUploadProgress(percent, loaded, total)`
+  // es opcional: si viene, recibe el porcentaje (0-100, entero) más los
+  // bytes loaded/total. Útil para mostrar una barra de progreso en
+  // archivos grandes (banners de video de 5-20MB).
+  uploadHomeMedia: (formData, onUploadProgress) =>
+    api.post('/admin/home-media', formData, onUploadProgress ? {
+      onUploadProgress: (e) => {
+        if (typeof onUploadProgress === 'function') {
+          if (e.total) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onUploadProgress(percent, e.loaded, e.total);
+          } else {
+            // Sin `total` (raro: chunked sin Content-Length). Reportamos
+            // -1 como percent y dejamos que el caller sepa que está en
+            // modo "indeterminado".
+            onUploadProgress(-1, e.loaded || 0, 0);
+          }
+        }
+      },
+    } : undefined),
   // PUT usa el nombre del ARCHIVO (no el id) porque los items pueden
   // tener id=null si nunca se activaron. El backend hace upsert.
   activateHomeMedia: (archivo) => api.put(`/admin/home-media/${encodeURIComponent(archivo)}/activate`),

@@ -31,6 +31,20 @@ export default function HomeMediaPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  // Progreso de upload en % (0-100). Mientras `uploading` es true, esta
+  // barra se renderiza en lugar del botón. `null` = sin upload en curso.
+  // El backend responde recién cuando termina, así que después del 100%
+  // viene el await de `fetchList` — durante ese intervalo mostramos
+  // "Procesando…" para que el usuario no piense que se colgó.
+  const [uploadProgress, setUploadProgress] = useState(null);
+  // Bytes subidos vs total (formateados con formatBytes para mostrar
+  // "3.2 MB / 12.4 MB"). Mantenemos estos valores para feedback preciso
+  // (la barra sola no es suficiente para archivos grandes).
+  const [uploadBytes, setUploadBytes] = useState({ loaded: 0, total: 0 });
+  // Nombre del archivo actualmente subiendose — para mostrarlo en la
+  // cabecera de la barra de progreso y que el admin sepa qué está
+  // subiendo sin tener que abrir el file picker.
+  const [uploadName, setUploadName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [actionArchivo, setActionArchivo] = useState(null);
@@ -74,16 +88,27 @@ export default function HomeMediaPage() {
     try {
       setUploading(true);
       setError('');
+      setUploadProgress(0);
+      setUploadBytes({ loaded: 0, total: file.size });
+      setUploadName(nombre || file.name);
       const fd = new FormData();
       fd.append('file', file);
       if (nombre) fd.append('nombre', nombre);
-      await adminService.uploadHomeMedia(fd);
+      await adminService.uploadHomeMedia(fd, (percent, loaded, total) => {
+        setUploadProgress(percent);
+        if (typeof loaded === 'number') {
+          setUploadBytes({ loaded, total: total || file.size });
+        }
+      });
       showSuccess(`Banner "${nombre || file.name}" subido correctamente`);
       await fetchList();
     } catch (e) {
       showError(e.response?.data?.error || 'Error subiendo banner');
     } finally {
       setUploading(false);
+      setUploadProgress(null);
+      setUploadBytes({ loaded: 0, total: 0 });
+      setUploadName('');
     }
   };
 
@@ -145,10 +170,14 @@ export default function HomeMediaPage() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px] justify-center"
           >
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {uploading ? 'Subiendo…' : 'Subir nuevo'}
+            {uploading
+              ? (uploadProgress !== null && uploadProgress < 100
+                  ? `Subiendo… ${uploadProgress}%`
+                  : 'Procesando…')
+              : 'Subir nuevo'}
           </button>
           <input
             ref={fileInputRef}
@@ -159,6 +188,66 @@ export default function HomeMediaPage() {
             aria-label="Subir archivo de banner"
           />
         </div>
+
+        {/* Barra de progreso de upload.
+            Solo se muestra mientras `uploading` es true. Aparece debajo
+            del header y se "ancla" arriba del banner activo. Es full-width
+            con `max-w-3xl` para alinearse con el buscador del home.
+            Mientras `uploadProgress` es null (indeterminado), la barra
+            usa `animate-pulse` en lugar de un porcentaje. */}
+        {uploading && (
+          <div
+            className="mb-6 p-3 sm:p-4 rounded-xl border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] shadow-sm"
+            role="status"
+            aria-live="polite"
+            aria-label={`Subiendo ${uploadName}. ${uploadProgress !== null && uploadProgress >= 0 ? `${uploadProgress}% completado.` : 'Progreso indeterminado.'}`}
+          >
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {uploadBytes.total > 0 && uploadBytes.total < 5 * 1024 * 1024
+                  ? <ImageIcon size={16} className="text-[color:var(--text-muted)] flex-shrink-0" aria-hidden="true" />
+                  : <VideoIcon size={16} className="text-[color:var(--text-muted)] flex-shrink-0" aria-hidden="true" />}
+                <span className="text-sm font-medium text-[color:var(--text-primary)] truncate" title={uploadName}>
+                  {uploadName}
+                </span>
+              </div>
+              <span className="text-sm font-bold text-primary tabular-nums flex-shrink-0">
+                {uploadProgress !== null && uploadProgress >= 0
+                  ? `${uploadProgress}%`
+                  : '…'}
+              </span>
+            </div>
+            {/* Track de la barra: gris claro, altura 8px, rounded-full.
+                `role="progressbar"` + `aria-valuenow/min/max` para
+                lectores de pantalla (WAI-ARIA). */}
+            <div
+              className="h-2 w-full rounded-full bg-[color:var(--bg-muted)] overflow-hidden"
+              role="progressbar"
+              aria-valuenow={uploadProgress !== null && uploadProgress >= 0 ? uploadProgress : undefined}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              {uploadProgress !== null && uploadProgress >= 0 ? (
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light motion-safe:transition-[width] motion-safe:duration-200 motion-reduce:transition-none"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              ) : (
+                // Modo indeterminado: la barra "viaja" de izquierda a
+                // derecha indefinidamente con CSS animation (no JS).
+                <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-primary-light motion-safe:animate-pulse" />
+              )}
+            </div>
+            {/* Bytes: "3.2 MB / 12.4 MB" debajo de la barra, en tamaño
+                xs, color muted. Se ocultan si no tenemos bytes
+                confiables (modo indeterminado). */}
+            {uploadBytes.total > 0 && (
+              <p className="text-[11px] text-[color:var(--text-muted)] mt-1.5 tabular-nums">
+                {formatBytes(uploadBytes.loaded)} / {formatBytes(uploadBytes.total)}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Banner activo actualmente */}
         <div className={`mb-6 p-4 rounded-xl border ${
@@ -359,4 +448,25 @@ function BannerCard({ item, isActive, isLoading, onActivate, onDelete }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Formatea bytes en una unidad legible. Usado para mostrar el progreso
+ * de upload ("3.2 MB / 12.4 MB") en la barra de progreso.
+ *   formatBytes(0)        → "0 B"
+ *   formatBytes(1024)     → "1.0 KB"
+ *   formatBytes(1234567)  → "1.2 MB"
+ *   formatBytes(5e9)      → "4.7 GB"
+ */
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i += 1;
+  }
+  return `${value.toFixed(1)} ${units[i]}`;
 }
