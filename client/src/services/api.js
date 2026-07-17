@@ -32,7 +32,7 @@ api.interceptors.response.use(
       // o cuando navega en rutas públicas. Solo redirigir a /login si
       // realmente está navegando en una ruta autenticada.
       const path = window.location.pathname || '';
-      const publicAuthPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+      const publicAuthPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/auth/google/callback'];
       if (!publicAuthPaths.some(p => path.startsWith(p))) {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');

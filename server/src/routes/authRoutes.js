@@ -26,6 +26,23 @@ router.post('/login', authController.login);
 router.post('/google', authController.googleLogin);
 
 /**
+ * @route   GET /api/auth/google/start
+ * @desc    Paso 1 del login con Google por redirect (Authorization Code
+ *          flow). Usado cuando la app corre como PWA instalada, donde el
+ *          botón normal de GIS no puede ver las cuentas ya logueadas.
+ * @access  Public
+ */
+router.get('/google/start', authController.googleOAuthStart);
+
+/**
+ * @route   GET /api/auth/google/callback
+ * @desc    Paso 2: Google vuelve acá con el code. Lo canjea, resuelve el
+ *          usuario y redirige al frontend con el JWT en el fragment.
+ * @access  Public
+ */
+router.get('/google/callback', authController.googleOAuthCallback);
+
+/**
  * @route   GET /api/auth/me
  * @desc    Obtener perfil del usuario autenticado
  * @access  Private

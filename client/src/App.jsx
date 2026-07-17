@@ -22,6 +22,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const GoogleOAuthCallbackPage = lazy(() => import('./pages/GoogleOAuthCallbackPage'));
 const RestaurantDetailsPage = lazy(() => import('./pages/RestaurantDetailsPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
@@ -72,6 +73,7 @@ export default function App() {
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
 
                   {/* Rutas Cliente */}
                   <Route

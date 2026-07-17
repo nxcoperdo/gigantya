@@ -8,10 +8,67 @@ import { sendEmail } from '../services/notificationService.js';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 
-// Cliente de verificación de Google. Solo necesita el Client ID (no el
-// secret) porque validamos el ID token que ya firmó Google en el navegador.
+// Cliente de verificación de Google (ID tokens) y de intercambio de
+// "code" por tokens (flujo de redirect, ver googleOAuthCallback). Ambos
+// flujos comparten el mismo Client ID; el secret solo lo usa el segundo.
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// Nonce de CSRF del flujo de redirect: un valor aleatorio que viaja en una
+// cookie httpOnly de corta duración y se compara contra el `state` que
+// devuelve Google (double-submit cookie, ver googleOAuthStart/Callback).
+// Evita depender de sesiones de servidor solo para este handshake.
+const GOOGLE_STATE_COOKIE = 'g_oauth_state';
+const GOOGLE_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutos: alcanza de sobra para elegir cuenta en Google
+
+/**
+ * Busca o crea el usuario correspondiente a un payload de ID token de
+ * Google ya verificado. Comparte la lógica entre el flujo "credential"
+ * (botón/One Tap de GIS, ID token vía iframe) y el flujo "redirect"
+ * (Authorization Code, para cuando la PWA corre instalada y GIS no puede
+ * mostrar el selector de cuentas). Ambos flujos verifican el ID token con
+ * `googleClient.verifyIdToken` y llegan acá con el mismo shape de payload.
+ *
+ * Lanza un error con `statusCode` (401/403) si el token/cuenta no son
+ * válidos, para que el caller decida cómo responder (JSON vs redirect).
+ */
+async function resolveGoogleUser(payload) {
+  const email = payload.email;
+  const nombre = payload.name || (email ? email.split('@')[0] : 'Usuario');
+  const googleId = payload.sub;
+  const avatar = payload.picture || null;
+
+  if (!email || !payload.email_verified) {
+    const err = new Error('La cuenta de Google no tiene un email verificado');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  let usuario = await UserModel.getUserByEmailIgnoreStatus(email);
+
+  if (usuario) {
+    if (['suspendido', 'inactivo'].includes(usuario.estado)) {
+      const err = new Error('Tu cuenta ha sido suspendida. Por favor, contacta al administrador.');
+      err.statusCode = 403;
+      throw err;
+    }
+    if (!usuario.google_id) {
+      await UserModel.linkGoogleAccount(usuario.id, googleId, avatar);
+    }
+  } else {
+    const userId = await UserModel.createGoogleUser({
+      nombre,
+      email,
+      google_id: googleId,
+      avatar_url: avatar,
+    });
+    usuario = await UserModel.getUserById(userId);
+  }
+
+  return usuario;
+}
 
 /**
  * Registro de nuevo usuario.
@@ -279,39 +336,11 @@ export async function googleLogin(req, res) {
       return res.status(401).json({ error: 'Token de Google inválido o expirado' });
     }
 
-    const email = payload.email;
-    const nombre = payload.name || (email ? email.split('@')[0] : 'Usuario');
-    const googleId = payload.sub;
-    const avatar = payload.picture || null;
-
-    if (!email || !payload.email_verified) {
-      return res.status(401).json({ error: 'La cuenta de Google no tiene un email verificado' });
-    }
-
-    // Buscar por email (ignorando estado para poder informar si está suspendido)
-    let usuario = await UserModel.getUserByEmailIgnoreStatus(email);
-
-    if (usuario) {
-      if (['suspendido', 'inactivo'].includes(usuario.estado)) {
-        return res.status(403).json({
-          error: 'Tu cuenta ha sido suspendida. Por favor, contacta al administrador.'
-        });
-      }
-      // Primera vez que este usuario (registrado por email) entra con Google:
-      // guardamos su google_id para futuros logins.
-      if (!usuario.google_id) {
-        await UserModel.linkGoogleAccount(usuario.id, googleId, avatar);
-      }
-    } else {
-      // Usuario nuevo: creamos un cliente sin contraseña. Sin teléfono ni
-      // dirección; los completa en el checkout.
-      const userId = await UserModel.createGoogleUser({
-        nombre,
-        email,
-        google_id: googleId,
-        avatar_url: avatar,
-      });
-      usuario = await UserModel.getUserById(userId);
+    let usuario;
+    try {
+      usuario = await resolveGoogleUser(payload);
+    } catch (e) {
+      return res.status(e.statusCode || 500).json({ error: e.message });
     }
 
     const token = generateToken(usuario);
@@ -335,6 +364,150 @@ export async function googleLogin(req, res) {
     console.error('Error en googleLogin:', error);
     res.status(500).json({ error: 'Error en login con Google', detalles: error.message });
   }
+}
+
+/**
+ * Paso 1 del login con Google por REDIRECT (Authorization Code flow).
+ *
+ * Alternativa a `googleLogin` para cuando la app corre como PWA instalada
+ * (`display: standalone`): ahí el botón/One Tap de Google Identity
+ * Services no tiene acceso a las cookies del navegador del sistema, así
+ * que nunca muestra las cuentas ya logueadas. Este flujo en cambio hace
+ * una navegación de página completa a accounts.google.com (no un iframe
+ * embebido), que sí puede leer la sesión real del navegador.
+ *
+ * El frontend solo redirige acá (GET, no fetch) con un `redirect`
+ * opcional (a dónde volver tras loguearse). Guardamos un nonce + ese
+ * `redirect` en una cookie httpOnly de corta duración para validar el
+ * `state` en el callback (protección CSRF tipo "double submit cookie").
+ */
+export function googleOAuthStart(req, res) {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    console.error('⚠️ Falta configurar GOOGLE_CLIENT_SECRET/GOOGLE_REDIRECT_URI para el login con Google por redirect');
+    return res.status(500).send('El login con Google no está configurado en el servidor');
+  }
+
+  // Solo aceptamos una ruta relativa propia como destino de vuelta, nunca
+  // una URL absoluta: evita que este endpoint se use como open redirect.
+  const rawRedirect = typeof req.query.redirect === 'string' ? req.query.redirect : '/';
+  const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+
+  const nonce = crypto.randomBytes(24).toString('hex');
+
+  res.cookie(GOOGLE_STATE_COOKIE, `${nonce}|${redirectTo}`, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: GOOGLE_STATE_TTL_MS,
+    path: '/api/auth/google',
+  });
+
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+  authUrl.searchParams.set('redirect_uri', GOOGLE_REDIRECT_URI);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('scope', 'openid email profile');
+  authUrl.searchParams.set('state', nonce);
+  // Fuerza el selector de cuentas en vez de auto-elegir la última usada:
+  // es justo lo que este flujo busca arreglar.
+  authUrl.searchParams.set('prompt', 'select_account');
+
+  res.redirect(authUrl.toString());
+}
+
+/**
+ * Paso 2 del login con Google por redirect: Google vuelve acá con
+ * `code`+`state` (o `error` si el usuario canceló). Canjeamos el code
+ * por tokens server-to-server, verificamos el ID token igual que en
+ * `googleLogin`, resolvemos el usuario con la misma lógica compartida
+ * (`resolveGoogleUser`) y devolvemos el control al frontend con el JWT
+ * propio en el fragment (`#token=...`) de la URL — nunca en el query
+ * string, para que no quede en logs de acceso ni en el header Referer.
+ */
+export async function googleOAuthCallback(req, res) {
+  const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const cookieState = req.cookies?.[GOOGLE_STATE_COOKIE];
+  res.clearCookie(GOOGLE_STATE_COOKIE, { path: '/api/auth/google' });
+
+  const failWith = (msg) => {
+    const url = new URL('/auth/google/callback', frontendBase);
+    url.hash = `error=${encodeURIComponent(msg)}`;
+    res.redirect(url.toString());
+  };
+
+  const { code, state, error: googleError } = req.query;
+
+  if (googleError) {
+    return failWith('Inicio de sesión con Google cancelado');
+  }
+  if (!code || !state || !cookieState) {
+    return failWith('Solicitud de login con Google inválida o expirada');
+  }
+
+  const [expectedNonce, redirectTo] = cookieState.split('|');
+  if (state !== expectedNonce) {
+    console.warn('⚠️ state de Google OAuth no coincide (posible CSRF)');
+    return failWith('Solicitud de login con Google inválida o expirada');
+  }
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    console.error('⚠️ Falta configurar GOOGLE_CLIENT_SECRET/GOOGLE_REDIRECT_URI para el login con Google por redirect');
+    return failWith('El login con Google no está configurado en el servidor');
+  }
+
+  let tokens;
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+    tokens = await tokenRes.json();
+    if (!tokenRes.ok || !tokens.id_token) {
+      throw new Error(tokens.error_description || tokens.error || 'Respuesta inválida de Google');
+    }
+  } catch (e) {
+    console.warn('⚠️ Error canjeando code de Google (redirect flow):', e.message);
+    return failWith('No se pudo completar el login con Google');
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (e) {
+    console.warn('⚠️ ID token de Google inválido (redirect flow):', e.message);
+    return failWith('Token de Google inválido o expirado');
+  }
+
+  let usuario;
+  try {
+    usuario = await resolveGoogleUser(payload);
+  } catch (e) {
+    return failWith(e.message);
+  }
+
+  const jwtToken = generateToken(usuario);
+  const refreshToken = generateRefreshToken(usuario.id);
+
+  console.log(`✅ Login Google (redirect) exitoso: id=${usuario.id} rol=${usuario.tipo_usuario}`);
+
+  const url = new URL('/auth/google/callback', frontendBase);
+  url.hash = new URLSearchParams({
+    token: jwtToken,
+    refreshToken,
+    redirect: redirectTo || '/',
+  }).toString();
+  res.redirect(url.toString());
 }
 
 /**
@@ -594,6 +767,8 @@ export default {
   register,
   login,
   googleLogin,
+  googleOAuthStart,
+  googleOAuthCallback,
   getProfile,
   updateProfile,
   changePassword,

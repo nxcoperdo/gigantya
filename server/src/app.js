@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { UPLOADS_DIR } from './middleware/uploadMiddleware.js';
@@ -133,6 +134,11 @@ app.use(compression({
 // Limitar tamaño del body para prevenir ataques de memoria
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Cookies: solo las usa el flujo de login con Google por redirect
+// (GET /api/auth/google/start -> /callback) para el nonce de CSRF del
+// `state` (cookie httpOnly de corta duración, no hay sesiones de server).
+app.use(cookieParser());
 
 // ========== RATE LIMITING DIFERENCIADO ==========
 

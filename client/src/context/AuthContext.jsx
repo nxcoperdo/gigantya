@@ -65,6 +65,34 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Completa el login con Google por REDIRECT: la página de callback
+  // (GoogleOAuthCallbackPage) ya recibió token+refreshToken del backend
+  // (flujo Authorization Code, usado cuando la PWA corre instalada). Acá
+  // solo falta guardar las credenciales y traer el `usuario` con /me,
+  // porque ese endpoint no devuelve el usuario en el redirect (solo los
+  // tokens, para no exponer datos de perfil en la URL).
+  const completeGoogleRedirectLogin = async (googleToken, googleRefreshToken) => {
+    try {
+      setError(null);
+      localStorage.setItem('token', googleToken);
+      if (googleRefreshToken) localStorage.setItem('refreshToken', googleRefreshToken);
+
+      const { usuario } = await userService.getProfile();
+
+      localStorage.setItem('user', JSON.stringify(usuario));
+      setToken(googleToken);
+      setUser(usuario);
+
+      return usuario;
+    } catch (err) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      const errorMsg = err.response?.data?.error || 'Error al iniciar sesión con Google';
+      setError(errorMsg);
+      throw err;
+    }
+  };
+
   const register = async (userData) => {
     try {
       setError(null);
@@ -152,6 +180,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!token,
     login,
     loginWithGoogle,
+    completeGoogleRedirectLogin,
     register,
     logout,
     clearLocalSession,
