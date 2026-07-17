@@ -157,13 +157,15 @@ export default function CompleteProfileModal({ onComplete, onSkip }) {
 
           <div>
             <label className="block text-sm font-semibold mb-1.5">Teléfono</label>
-            <div className="relative">
-              <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)] pointer-events-none" />
+            <div className="flex items-stretch">
+              <span className="flex items-center justify-center px-3.5 rounded-l-xl border border-r-0 border-[color:var(--border-default)] bg-[color:var(--bg-subtle)] text-[color:var(--text-muted)]">
+                <Phone size={18} />
+              </span>
               <input
                 type="tel"
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
-                className="input pl-10"
+                className="input rounded-l-none flex-1 min-w-0"
                 placeholder="300 123 4567"
                 autoComplete="tel"
                 required
