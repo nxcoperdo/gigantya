@@ -12,6 +12,7 @@ import CookiesBanner from './components/legal/CookiesBanner';
 import LegalGate from './components/legal/LegalGate';
 import HelpButton from './components/help/HelpButton';
 import ClientHelpButton from './components/help/ClientHelpButton';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -237,6 +238,10 @@ export default function App() {
                 IMPORTANTE: debe ir DENTRO del <AuthProvider> porque usa
                 useAuth() para saber si hay un usuario logueado. */}
             <LegalGate />
+
+            {/* Toast "nueva versión disponible" de la PWA (service worker en
+                modo prompt). Invisible salvo cuando hay un update esperando. */}
+            <PWAUpdatePrompt />
           </div>
         </CartProvider>
       </AuthProvider>
