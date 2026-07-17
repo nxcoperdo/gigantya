@@ -148,7 +148,56 @@ export async function getUserById(id) {
  * Verificar contrasena
  */
 export async function verifyPassword(contrasena, contrasena_hash) {
+  // Cuentas creadas con Google no tienen contraseña propia (hash NULL).
+  // bcrypt.compare(x, null) lanzaría; devolvemos false para que el login
+  // por contraseña falle limpio (el controller informa que use Google).
+  if (!contrasena_hash) return false;
   return bcrypt.compare(contrasena, contrasena_hash);
+}
+
+/**
+ * Crear un usuario a partir de una cuenta de Google (sin contraseña).
+ * Siempre es rol 'cliente'. `telefono` queda NULL: lo completa en el checkout.
+ */
+export async function createGoogleUser({ nombre, email, google_id, avatar_url = null }) {
+  const sql = `
+    INSERT INTO usuarios (
+      nombre, email, google_id, avatar_url, contrasena_hash,
+      tipo_usuario, otros_datos, estado, creado_en
+    ) VALUES (?, ?, ?, ?, NULL, 'cliente', ?, 'activo', NOW())
+  `;
+  try {
+    const result = await query(sql, [
+      nombre,
+      email,
+      google_id,
+      avatar_url,
+      JSON.stringify({}),
+    ]);
+    return result.insertId;
+  } catch (error) {
+    throw new Error(`Error creando usuario de Google: ${error.message}`);
+  }
+}
+
+/**
+ * Vincular una cuenta existente (registrada por email) con su google_id.
+ * Se llama cuando alguien que ya tenía cuenta local entra por primera vez
+ * con Google usando el mismo email. También guarda el avatar si no tenía.
+ */
+export async function linkGoogleAccount(userId, google_id, avatar_url = null) {
+  const sql = `
+    UPDATE usuarios
+       SET google_id = ?,
+           avatar_url = COALESCE(avatar_url, ?)
+     WHERE id = ?
+  `;
+  try {
+    await query(sql, [google_id, avatar_url, userId]);
+    return true;
+  } catch (error) {
+    throw new Error(`Error vinculando cuenta de Google: ${error.message}`);
+  }
 }
 
 /**

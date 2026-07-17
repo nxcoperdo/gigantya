@@ -42,6 +42,29 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Login/registro con Google. Recibe el `credential` (ID token) que emite
+  // Google Identity Services y lo canjea en el backend por nuestro JWT.
+  // Guarda token+usuario igual que el login normal.
+  const loginWithGoogle = async (credential) => {
+    try {
+      setError(null);
+      const response = await authService.google(credential);
+      const { token, usuario } = response.data;
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(usuario));
+
+      setToken(token);
+      setUser(usuario);
+
+      return usuario;
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Error al iniciar sesión con Google';
+      setError(errorMsg);
+      throw err;
+    }
+  };
+
   const register = async (userData) => {
     try {
       setError(null);
@@ -128,6 +151,7 @@ export function AuthProvider({ children }) {
     error,
     isAuthenticated: !!token,
     login,
+    loginWithGoogle,
     register,
     logout,
     clearLocalSession,

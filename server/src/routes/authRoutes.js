@@ -19,6 +19,13 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 
 /**
+ * @route   POST /api/auth/google
+ * @desc    Login / registro con Google (verifica el ID token de GIS)
+ * @access  Public
+ */
+router.post('/google', authController.googleLogin);
+
+/**
  * @route   GET /api/auth/me
  * @desc    Obtener perfil del usuario autenticado
  * @access  Private

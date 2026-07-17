@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -84,6 +85,14 @@ export default function LoginPage() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
+
+        {/* Separador + login con Google */}
+        <div className="flex items-center gap-4 my-6">
+          <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
+          <span className="text-[color:var(--text-muted)] text-sm">o</span>
+          <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
+        </div>
+        <GoogleLoginButton onError={setError} redirectTo="/" />
 
         <div className="mt-6 text-center text-[color:var(--text-secondary)]">
           <p>¿No tienes cuenta?{' '}

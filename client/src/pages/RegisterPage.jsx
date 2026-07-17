@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { zonaService } from '../services/api';
 import { MapPin, AlertCircle, ChevronDown } from 'lucide-react';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 // Sin AddressAutocomplete ni AddressMapPicker: el usuario escribe la dirección
 // como texto libre. El restaurante la geocodifica en el iframe de embed si no
 // hay coordenadas (AddressMapPreview.jsx hace fallback por texto).
@@ -181,6 +182,14 @@ export default function RegisterPage() {
             {error}
           </div>
         )}
+
+        {/* Registro rápido con Google (la dirección se completa en el checkout) */}
+        <GoogleLoginButton onError={setError} redirectTo="/" />
+        <div className="flex items-center gap-4 my-5">
+          <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
+          <span className="text-[color:var(--text-muted)] text-sm">o registrate con tu email</span>
+          <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
+        </div>
 
         {sinZonas && !sectoresLoading && (
           <div className="mb-5 sm:mb-6 alert alert-warning text-xs sm:text-sm">

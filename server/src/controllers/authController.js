@@ -6,6 +6,12 @@ import pool from '../config/database.js';
 import { query, queryOne } from '../config/database.js';
 import { sendEmail } from '../services/notificationService.js';
 import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
+
+// Cliente de verificación de Google. Solo necesita el Client ID (no el
+// secret) porque validamos el ID token que ya firmó Google en el navegador.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 /**
  * Registro de nuevo usuario.
@@ -234,6 +240,100 @@ export async function login(req, res) {
       error: 'Error en login',
       detalles: error.message 
     });
+  }
+}
+
+/**
+ * Login / registro con Google (One Tap / botón "Continuar con Google").
+ *
+ * Recibe el `credential` (ID token JWT firmado por Google) que devuelve
+ * Google Identity Services en el frontend. Lo verificamos contra nuestro
+ * Client ID y:
+ *   - si el email ya existe → lo logueamos (y linkeamos google_id si faltaba)
+ *   - si no existe → creamos un cliente nuevo sin contraseña
+ * En ambos casos devolvemos el MISMO shape que /login (token + usuario),
+ * así el AuthContext no distingue el origen.
+ */
+export async function googleLogin(req, res) {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ error: 'Falta el token de Google (credential)' });
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      console.error('⚠️ GOOGLE_CLIENT_ID no está configurado en el .env del server');
+      return res.status(500).json({ error: 'El login con Google no está configurado en el servidor' });
+    }
+
+    // Verificar el ID token con Google (firma + audience + expiración)
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (e) {
+      console.warn('⚠️ Token de Google inválido:', e.message);
+      return res.status(401).json({ error: 'Token de Google inválido o expirado' });
+    }
+
+    const email = payload.email;
+    const nombre = payload.name || (email ? email.split('@')[0] : 'Usuario');
+    const googleId = payload.sub;
+    const avatar = payload.picture || null;
+
+    if (!email || !payload.email_verified) {
+      return res.status(401).json({ error: 'La cuenta de Google no tiene un email verificado' });
+    }
+
+    // Buscar por email (ignorando estado para poder informar si está suspendido)
+    let usuario = await UserModel.getUserByEmailIgnoreStatus(email);
+
+    if (usuario) {
+      if (['suspendido', 'inactivo'].includes(usuario.estado)) {
+        return res.status(403).json({
+          error: 'Tu cuenta ha sido suspendida. Por favor, contacta al administrador.'
+        });
+      }
+      // Primera vez que este usuario (registrado por email) entra con Google:
+      // guardamos su google_id para futuros logins.
+      if (!usuario.google_id) {
+        await UserModel.linkGoogleAccount(usuario.id, googleId, avatar);
+      }
+    } else {
+      // Usuario nuevo: creamos un cliente sin contraseña. Sin teléfono ni
+      // dirección; los completa en el checkout.
+      const userId = await UserModel.createGoogleUser({
+        nombre,
+        email,
+        google_id: googleId,
+        avatar_url: avatar,
+      });
+      usuario = await UserModel.getUserById(userId);
+    }
+
+    const token = generateToken(usuario);
+    const refreshToken = generateRefreshToken(usuario.id);
+
+    console.log(`✅ Login Google exitoso: id=${usuario.id} rol=${usuario.tipo_usuario}`);
+
+    res.json({
+      mensaje: 'Login con Google exitoso',
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        tipo_usuario: usuario.tipo_usuario,
+        restaurante_id: usuario.restaurante_id ?? null,
+      },
+      token,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error('Error en googleLogin:', error);
+    res.status(500).json({ error: 'Error en login con Google', detalles: error.message });
   }
 }
 
@@ -493,6 +593,7 @@ export async function resetPassword(req, res) {
 export default {
   register,
   login,
+  googleLogin,
   getProfile,
   updateProfile,
   changePassword,
