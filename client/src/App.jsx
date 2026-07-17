@@ -13,6 +13,7 @@ import LegalGate from './components/legal/LegalGate';
 import HelpButton from './components/help/HelpButton';
 import ClientHelpButton from './components/help/ClientHelpButton';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
+import CompleteProfileGate from './components/CompleteProfileGate';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -238,6 +239,11 @@ export default function App() {
                 IMPORTANTE: debe ir DENTRO del <AuthProvider> porque usa
                 useAuth() para saber si hay un usuario logueado. */}
             <LegalGate />
+
+            {/* Modal de completar perfil para clientes que entran con Google
+                (sin dirección/teléfono). Usa z-[90], por debajo del LegalGate
+                (z-100), así aparece recién tras aceptar los documentos. */}
+            <CompleteProfileGate />
 
             {/* Toast "nueva versión disponible" de la PWA (service worker en
                 modo prompt). Invisible salvo cuando hay un update esperando. */}
