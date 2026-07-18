@@ -187,7 +187,7 @@ export default function RegisterPage() {
         <GoogleLoginButton onError={setError} redirectTo="/" />
         <div className="flex items-center gap-4 my-5">
           <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
-          <span className="text-[color:var(--text-muted)] text-sm">o registrate con tu email</span>
+          <span className="text-[color:var(--text-muted)] text-sm">o regístrate con tu email</span>
           <div className="flex-1 h-px bg-[color:var(--border-default)]"></div>
         </div>
 

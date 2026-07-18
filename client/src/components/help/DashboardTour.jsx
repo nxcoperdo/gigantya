@@ -78,6 +78,20 @@ const STEPS = [
     side: 'bottom',
   },
   {
+    target: '[data-tour="dashboard-tab-menu-dia"]',
+    title: '📅 Pestaña Menú del día',
+    description: 'Si manejas corrientazo (el desayuno o almuerzo que cambia cada día), esta pestaña es para ti. Armas una plantilla semanal: para cada día eliges el combo de desayuno y el de almuerzo. La app le muestra a tus clientes solo el combo de hoy y rota sola cada semana, sin que tengas que hacer nada.',
+    side: 'bottom',
+    activateTab: 'menu-dia',
+  },
+  {
+    target: '[data-tour="dashboard-tab-menu-dia"]',
+    title: '🍽️ Cómo cargar un combo',
+    description: 'Haz click en la casilla del día (Desayuno o Almuerzo) y luego en "Crear nuevo". Escribe el nombre (ej: "Almuerzo del día"), los componentes (sopa, principio, proteína, jugo), el precio y una foto. Puedes reutilizar el mismo combo en varios días eligiéndolo desde "Combos existentes". Opcional: define las franjas horarias para que cada comida se muestre a su hora.',
+    side: 'bottom',
+    activateTab: 'menu-dia',
+  },
+  {
     target: '[data-tour="dashboard-tab-pagos"]',
     title: '💰 Pestaña Pagos',
     description: 'Acá tienes dos cosas: la sub-pestaña "Validación de Comprobantes" donde apruebas o rechazas los comprobantes que te mandan los clientes, y "Configuración de Pagos" donde escribes tu número de Nequi, Daviplata o BRE-B para que el cliente los vea al pedir y pueda transferirte directo.',

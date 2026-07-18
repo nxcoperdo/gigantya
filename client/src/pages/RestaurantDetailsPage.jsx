@@ -17,11 +17,14 @@ import { formatDate } from '../utils/dateHelper';
 import MobileMenuNav from '../components/MobileMenuNav';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import MobileCartBar from '../components/MobileCartBar';
+import MenuDeHoy from '../components/MenuDeHoy';
+import { menuDiaService } from '../services/api';
 
 export default function RestaurantDetailsPage() {
   const { id } = useParams();
   const [restaurante, setRestaurante] = useState(null);
   const [productos, setProductos] = useState([]);
+  const [menuHoy, setMenuHoy] = useState(null); // combos de hoy (desayuno/almuerzo)
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [cantidades, setCantidades] = useState({});
@@ -56,6 +59,7 @@ export default function RestaurantDetailsPage() {
     fetchRestaurant();
     fetchProductos();
     fetchRatings();
+    fetchMenuHoy();
   }, [id]);
 
   // Hidratar `cantidades` desde el carrito persistido en CartContext.
@@ -151,7 +155,23 @@ export default function RestaurantDetailsPage() {
      }
    };
 
-  const groupedProductos = productos.reduce((acc, product) => {
+   // Menú del día (corrientazo). Silencioso: si el local no tiene menú del
+   // día, el componente <MenuDeHoy /> no renderiza nada.
+   const fetchMenuHoy = async () => {
+     try {
+       const res = await menuDiaService.getHoy(id);
+       setMenuHoy(res.data || null);
+     } catch (error) {
+       console.error('Error fetching menú de hoy:', error);
+       setMenuHoy(null);
+     }
+   };
+
+  // Los combos del "menú del día" (es_menu_dia) NO van en el grid normal:
+  // solo aparecen en la sección <MenuDeHoy /> de arriba.
+  const productosVisibles = productos.filter((p) => !Number(p.es_menu_dia));
+
+  const groupedProductos = productosVisibles.reduce((acc, product) => {
     const catId = product.categoria_id || 'sin-categoria';
     const catName = product.categoria_nombre || 'Otros';
     const catOrden = product.categoria_orden || 999;
@@ -447,6 +467,15 @@ export default function RestaurantDetailsPage() {
            />
          )}
 
+         {/* Menú del día (corrientazo): combos de hoy. Solo aparece si el
+             local tiene menú del día configurado para hoy. */}
+         <MenuDeHoy
+           menu={menuHoy}
+           restauranteId={restaurante?.id}
+           onAdd={handleAddToCart}
+           isOpen={isRestaurantOpenNow}
+         />
+
          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-6 sm:mb-8 px-2" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-family)' }}>Menú</h2>
 
          {!isRestaurantOpenNow && (
@@ -497,7 +526,7 @@ export default function RestaurantDetailsPage() {
              const hasQuery = trimmedQuery.length > 0;
 
              if (hasQuery) {
-               const matches = productos.filter(
+               const matches = productosVisibles.filter(
                  (p) =>
                    (p.nombre || '').toLowerCase().includes(trimmedQuery) ||
                    (p.descripcion || '').toLowerCase().includes(trimmedQuery)

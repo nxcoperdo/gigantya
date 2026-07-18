@@ -1,6 +1,7 @@
 import express from 'express';
 import * as restaurantController from '../controllers/restaurantController.js';
 import * as restaurantShippingController from '../controllers/restaurantShippingController.js';
+import * as menuDiaController from '../controllers/menuDiaController.js';
 import { verifyToken, requireRestaurant } from '../middleware/authMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 
@@ -35,11 +36,26 @@ router.get('/me', verifyToken, restaurantController.getMyRestaurant);
 router.get('/me/stats', verifyToken, requireRestaurant, restaurantController.getRestaurantStats);
 
 /**
+ * Menú del día (corrientazo) — plantilla semanal del dueño.
+ * Van ANTES de /:id porque el prefijo /me es estático.
+ */
+router.get('/me/menu-dia', verifyToken, requireRestaurant, menuDiaController.getWeeklyMenu);
+router.put('/me/menu-dia/celda', verifyToken, requireRestaurant, menuDiaController.setMenuCell);
+router.delete('/me/menu-dia/celda', verifyToken, requireRestaurant, menuDiaController.deleteMenuCell);
+router.put('/me/menu-dia/horarios', verifyToken, requireRestaurant, menuDiaController.setHorarios);
+
+/**
  * @route   GET /api/restaurants/:id
  * @desc    Obtener detalles de un restaurante con su menú
  * @access  Public
  */
 router.get('/:id', restaurantController.getRestaurant);
+
+/**
+ * @route   GET /api/restaurants/:id/menu-dia/hoy
+ * @desc    Combos del día de hoy (desayuno + almuerzo). Público.
+ */
+router.get('/:id/menu-dia/hoy', menuDiaController.getTodayMenu);
 
 /**
  * @route   POST /api/restaurants

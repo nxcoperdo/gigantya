@@ -94,7 +94,7 @@ export async function getProduct(req, res) {
  */
 export async function createProduct(req, res) {
   try {
-    const { nombre, descripcion, precio, categoria_id, imagen_url } = req.body;
+    const { nombre, descripcion, precio, categoria_id, imagen_url, es_menu_dia } = req.body;
 
     // Validar que sea restaurante
     if (req.user.tipo_usuario !== 'restaurante') {
@@ -150,7 +150,8 @@ export async function createProduct(req, res) {
       descripcion,
       precio,
       imagen_url,
-      disponible: true
+      disponible: true,
+      es_menu_dia: es_menu_dia === true || es_menu_dia === 1 || es_menu_dia === '1',
     });
 
     res.status(201).json({

@@ -34,7 +34,7 @@ export default function PWAUpdatePrompt() {
             Nueva versión disponible
           </p>
           <p className="text-sm text-[color:var(--text-secondary,#6b7280)] mt-0.5">
-            Actualizá para tener las últimas mejoras de Gigantya.
+            Actualiza para tener las últimas mejoras de Gigantya.
           </p>
           <div className="flex items-center gap-2 mt-3">
             <button

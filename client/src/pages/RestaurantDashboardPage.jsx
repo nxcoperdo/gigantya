@@ -47,7 +47,9 @@ import {
   DollarSign,
   Store,
   Printer,
+  CalendarDays,
 } from 'lucide-react';
+import MenuDiaManager from '../components/MenuDiaManager';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatDate, formatDateTime, formatShortDate } from '../utils/dateHelper';
 
@@ -744,6 +746,18 @@ export default function RestaurantDashboardPage() {
                   Gestión
                 </button>
                 <button
+                  onClick={() => setActiveTab('menu-dia')}
+                  data-tour="dashboard-tab-menu-dia"
+                  className={`relative flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                    activeTab === 'menu-dia'
+                      ? 'bg-[color:var(--bg-elevated)] text-primary shadow-sm'
+                      : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] bg-[color:var(--bg-muted)]'
+                  }`}
+                >
+                  <CalendarDays size={16} />
+                  Menú del día
+                </button>
+                <button
                   onClick={() => {
                     setActiveTab('payments');
                     setPendingProofsCount(0);
@@ -917,6 +931,8 @@ export default function RestaurantDashboardPage() {
           ) : (
             <Navigate to="/dashboard?tab=management" replace />
           )
+        ) : activeTab === 'menu-dia' ? (
+          <MenuDiaManager />
         ) : (
           <>
             {/* Capa 1 — manual contextual: tips contextuales.

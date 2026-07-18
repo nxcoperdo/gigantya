@@ -28,7 +28,10 @@ export async function createProduct(productData) {
     descripcion,
     precio,
     imagen_url,
-    disponible = true
+    disponible = true,
+    // Combo del "menú del día" (corrientazo): se oculta del menú normal y
+    // solo aparece en la sección "Menú de hoy" vía la plantilla semanal.
+    es_menu_dia = false
   } = productData;
 
   // Defensa: si el front manda categoria_id como string vacío, la columna INT
@@ -46,9 +49,10 @@ export async function createProduct(productData) {
       precio,
       imagen_url,
       disponible,
+      es_menu_dia,
       estado,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo', NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'activo', NOW())
   `;
 
   try {
@@ -59,7 +63,8 @@ export async function createProduct(productData) {
       descripcion,
       precio,
       imagen_url,
-      disponible ? 1 : 0
+      disponible ? 1 : 0,
+      es_menu_dia ? 1 : 0
     ]);
     return result.insertId;
   } catch (error) {
@@ -229,6 +234,8 @@ export async function updateProduct(id, updateData) {
     // productController pero no estaba en allowedFields → era código muerto.
     // Ahora el toggle de destacado realmente persiste.
     'destacado',
+    // Combo del menú del día (corrientazo)
+    'es_menu_dia',
   ];
 
   const fields = Object.keys(updateData).filter(key => allowedFields.includes(key));

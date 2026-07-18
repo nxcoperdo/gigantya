@@ -88,9 +88,9 @@ export default function CompleteProfileModal({ onComplete, onSkip }) {
     e.preventDefault();
     setError('');
 
-    if (!telefono.trim()) return setError('Ingresá tu número de teléfono');
-    if (!direccion.trim()) return setError('Ingresá tu dirección');
-    if (!barrioId) return setError('Seleccioná tu sector y barrio');
+    if (!telefono.trim()) return setError('Ingresa tu número de teléfono');
+    if (!direccion.trim()) return setError('Ingresa tu dirección');
+    if (!barrioId) return setError('Selecciona tu sector y barrio');
 
     setSaving(true);
     try {
@@ -110,7 +110,7 @@ export default function CompleteProfileModal({ onComplete, onSkip }) {
       await refreshUser();
       onComplete?.();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo guardar. Intentá de nuevo.');
+      setError(err.response?.data?.error || 'No se pudo guardar. Intenta de nuevo.');
       setSaving(false);
     }
   };
@@ -135,7 +135,7 @@ export default function CompleteProfileModal({ onComplete, onSkip }) {
             </div>
             <div>
               <h2 className="text-xl font-bold font-heading leading-tight">
-                Completá tu perfil
+                Completa tu perfil
               </h2>
               <p className="text-white/85 text-sm">
                 {user?.nombre ? `¡Hola, ${user.nombre.split(' ')[0]}! ` : ''}
@@ -151,7 +151,7 @@ export default function CompleteProfileModal({ onComplete, onSkip }) {
 
           {sinZonas && !sectoresLoading && (
             <div className="alert alert-warning text-xs sm:text-sm">
-              Aún no hay sectores/barrios configurados. Pedile al administrador que los cree.
+              Aún no hay sectores/barrios configurados. Pídele al administrador que los cree.
             </div>
           )}
 

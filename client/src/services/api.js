@@ -363,6 +363,18 @@ export const exportService = {
 
 // ========== ZONAS (sectores / barrios) ==========
 
+// ========== MENÚ DEL DÍA (corrientazo) ==========
+export const menuDiaService = {
+  // Público: combos de hoy (desayuno + almuerzo) de un restaurante
+  getHoy: (restauranteId) => api.get(`/restaurants/${restauranteId}/menu-dia/hoy`),
+  // Dueño: plantilla semanal + combos disponibles + franjas horarias
+  getWeekly: () => api.get('/restaurants/me/menu-dia'),
+  setCell: (data) => api.put('/restaurants/me/menu-dia/celda', data),
+  deleteCell: (tipo_comida, dia_semana) =>
+    api.delete('/restaurants/me/menu-dia/celda', { data: { tipo_comida, dia_semana } }),
+  setHorarios: (data) => api.put('/restaurants/me/menu-dia/horarios', data),
+};
+
 export const zonaService = {
   getSectores: () => api.get('/zonas/sectores'),
   getBarrios: (sector_id = null) =>
