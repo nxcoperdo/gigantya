@@ -252,6 +252,23 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
     setPreview(URL.createObjectURL(f));
   };
 
+  // Elimina un combo por completo (soft-delete del producto). Sale de todos
+  // los días automáticamente (las queries del menú filtran estado='activo').
+  const [deletingId, setDeletingId] = useState(null);
+  const handleDeleteCombo = async (c) => {
+    if (!window.confirm(`¿Eliminar el combo "${c.nombre}"? Se quitará de todos los días.`)) return;
+    setDeletingId(c.id);
+    setError('');
+    try {
+      await productService.delete(c.id);
+      await onCombosChanged();
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo eliminar el combo');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   // Helpers de los grupos de opciones
   const addGrupo = () =>
     setGrupos((gs) => [...gs, { nombre: '', obligatorio: true, opciones: [{ nombre: '', precio_extra: '' }, { nombre: '', precio_extra: '' }] }]);
@@ -357,21 +374,35 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
               </p>
             ) : (
               <div className="space-y-2">
+                {error && <div className="alert alert-error text-sm">{error}</div>}
+                <p className="text-xs text-[color:var(--text-secondary)]">Toca un combo para asignarlo a este día. Con 🗑 lo eliminas por completo.</p>
                 {combos.map((c) => (
-                  <button
+                  <div
                     key={c.id}
-                    onClick={() => onAssign(editing.tipo, editing.dia, c.id)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-[color:var(--border-subtle)] hover:border-primary hover:bg-primaryLight/20 transition-colors text-left"
+                    className="flex items-center gap-1 rounded-xl border border-[color:var(--border-subtle)] pr-1.5 hover:border-primary transition-colors"
                   >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-[color:var(--bg-muted)] flex-shrink-0">
-                      {c.imagen_url ? <img src={getImageUrl(c.imagen_url)} alt={c.nombre} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{c.nombre}</p>
-                      {c.descripcion && <p className="text-xs text-[color:var(--text-secondary)] truncate">{c.descripcion}</p>}
-                    </div>
-                    <span className="text-primary font-bold text-sm tabular-nums flex-shrink-0">{formatCurrency(c.precio)}</span>
-                  </button>
+                    <button
+                      onClick={() => onAssign(editing.tipo, editing.dia, c.id)}
+                      className="flex-1 flex items-center gap-3 p-2.5 text-left min-w-0"
+                    >
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-[color:var(--bg-muted)] flex-shrink-0">
+                        {c.imagen_url ? <img src={getImageUrl(c.imagen_url)} alt={c.nombre} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{c.nombre}</p>
+                        {c.descripcion && <p className="text-xs text-[color:var(--text-secondary)] truncate">{c.descripcion}</p>}
+                      </div>
+                      <span className="text-primary font-bold text-sm tabular-nums flex-shrink-0">{formatCurrency(c.precio)}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCombo(c)}
+                      disabled={deletingId === c.id}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0 disabled:opacity-40"
+                      title="Eliminar combo"
+                    >
+                      {deletingId === c.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
+                  </div>
                 ))}
               </div>
             )

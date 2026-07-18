@@ -102,6 +102,11 @@ export async function getProductsByRestaurant(restaurante_id) {
     FROM productos p
     LEFT JOIN categorias c ON p.categoria_id = c.id
     WHERE p.restaurante_id = ? AND p.estado = 'activo'
+      -- Los combos del menú del día (es_menu_dia=1) NO van en el menú normal:
+      -- se sirven solo en la sección "Menú de hoy" (getTodayByRestaurant) y se
+      -- gestionan en la pestaña "Menú del día". Filtrarlos acá evita que se
+      -- filtren al grid del cliente o a Gestión aunque el front esté cacheado.
+      AND p.es_menu_dia = 0
     ORDER BY c.orden ASC, p.nombre ASC
   `;
 
