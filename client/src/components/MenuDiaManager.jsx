@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Plus, Trash2, Clock, X, Check, Sun, UtensilsCrossed, Loader2, Pencil, ImagePlus, CalendarDays, SlidersHorizontal,
+  Plus, Trash2, Clock, X, Check, Sun, UtensilsCrossed, Loader2, Pencil, ImagePlus, CalendarDays,
 } from 'lucide-react';
 import { menuDiaService, productService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
-import ProductModal from './ProductModal';
 
 const DIAS = [
   { n: 1, label: 'Lunes' },
@@ -29,7 +28,7 @@ const emptyHorarios = { desayuno: { desde: '', hasta: '' }, almuerzo: { desde: '
  * Grilla semanal (7 días × Desayuno/Almuerzo). Cada celda apunta a un combo
  * (producto con es_menu_dia). El dueño lo arma una vez y rota solo.
  */
-export default function MenuDiaManager({ restaurante }) {
+export default function MenuDiaManager() {
   const [weekly, setWeekly] = useState([]);
   const [combos, setCombos] = useState([]);
   const [horarios, setHorarios] = useState(emptyHorarios);
@@ -37,8 +36,6 @@ export default function MenuDiaManager({ restaurante }) {
   const [msg, setMsg] = useState(null); // { type: 'ok'|'error', text }
 
   const [editing, setEditing] = useState(null); // { tipo, dia }
-  // Combo cuyas opciones (modificadores) se están editando en el ProductModal.
-  const [editingCombo, setEditingCombo] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -124,7 +121,7 @@ export default function MenuDiaManager({ restaurante }) {
         <div>
           <h3 className="text-lg font-heading font-bold text-[color:var(--text-primary)]">Menú del día (corrientazo)</h3>
           <p className="text-sm text-[color:var(--text-secondary)]">
-            Arma el desayuno y el almuerzo de cada día. La app le muestra al cliente solo el de hoy, y rota sola cada semana. Con el botón <SlidersHorizontal size={13} className="inline align-text-bottom text-primary" /> de cada combo agregas opciones para que el cliente elija (ej: tipo de huevo: rancheros, fritos o revueltos).
+            Arma el desayuno y el almuerzo de cada día. La app le muestra al cliente solo el de hoy, y rota sola cada semana. Al crear un combo puedes agregarle opciones para que el cliente elija (ej: tipo de huevo: rancheros, fritos o revueltos).
           </p>
         </div>
       </div>
@@ -192,20 +189,6 @@ export default function MenuDiaManager({ restaurante }) {
                           <p className="text-primary font-bold text-sm tabular-nums">{formatCurrency(cell.precio)}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <button
-                            onClick={() => setEditingCombo({
-                              id: cell.producto_id,
-                              nombre: cell.nombre,
-                              descripcion: cell.descripcion,
-                              precio: cell.precio,
-                              imagen_url: cell.imagen_url,
-                              disponible: cell.disponible,
-                            })}
-                            className="p-1.5 rounded-lg hover:bg-[color:var(--bg-muted)] text-primary"
-                            title="Opciones (ej: tipo de huevo, tamaño…)"
-                          >
-                            <SlidersHorizontal size={15} />
-                          </button>
                           <button onClick={() => setEditing({ tipo: key, dia: n })} className="p-1.5 rounded-lg hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)]" title="Cambiar combo">
                             <Pencil size={15} />
                           </button>
@@ -242,18 +225,6 @@ export default function MenuDiaManager({ restaurante }) {
           onCombosChanged={load}
         />
       )}
-
-      {/* Editor de opciones/modificadores del combo (reusa el ProductModal).
-          Sirve para que el cliente elija variantes: tipo de huevo (rancheros/
-          fritos/revueltos), tamaño, proteína, etc. */}
-      <ProductModal
-        isOpen={!!editingCombo}
-        onClose={() => setEditingCombo(null)}
-        onSave={() => { setEditingCombo(null); load(); }}
-        product={editingCombo}
-        restaurantId={restaurante?.id}
-        restaurante={restaurante}
-      />
     </div>
   );
 }
@@ -268,6 +239,8 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Grupos de opciones: [{ nombre, obligatorio, opciones: [{ nombre, precio_extra }] }]
+  const [grupos, setGrupos] = useState([]);
 
   const diaLabel = dias.find((d) => d.n === editing.dia)?.label;
   const tipoLabel = tipos.find((t) => t.key === editing.tipo)?.label;
@@ -278,6 +251,18 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
+
+  // Helpers de los grupos de opciones
+  const addGrupo = () =>
+    setGrupos((gs) => [...gs, { nombre: '', obligatorio: true, opciones: [{ nombre: '', precio_extra: '' }, { nombre: '', precio_extra: '' }] }]);
+  const removeGrupo = (gi) => setGrupos((gs) => gs.filter((_, i) => i !== gi));
+  const updateGrupo = (gi, patch) => setGrupos((gs) => gs.map((g, i) => (i === gi ? { ...g, ...patch } : g)));
+  const addOpcion = (gi) =>
+    setGrupos((gs) => gs.map((g, i) => (i === gi ? { ...g, opciones: [...g.opciones, { nombre: '', precio_extra: '' }] } : g)));
+  const removeOpcion = (gi, oi) =>
+    setGrupos((gs) => gs.map((g, i) => (i === gi ? { ...g, opciones: g.opciones.filter((_, j) => j !== oi) } : g)));
+  const updateOpcion = (gi, oi, patch) =>
+    setGrupos((gs) => gs.map((g, i) => (i === gi ? { ...g, opciones: g.opciones.map((o, j) => (j === oi ? { ...o, ...patch } : o)) } : g)));
 
   const createCombo = async () => {
     setError('');
@@ -301,7 +286,34 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
         imagen_url,
         es_menu_dia: true,
       });
-      await onCreated(data.producto_id);
+      const productoId = data.producto_id;
+
+      // Guardar las opciones (modificadores) que cargó el dueño, si hay.
+      // Cada grupo = "el cliente elige 1" (max 1); obligatorio configurable.
+      const gruposPayload = grupos
+        .map((g) => ({
+          nombre: (g.nombre || '').trim(),
+          obligatorio: !!g.obligatorio,
+          min_selecciones: g.obligatorio ? 1 : 0,
+          max_selecciones: 1,
+          adiciones: (g.opciones || [])
+            .filter((o) => (o.nombre || '').trim())
+            .map((o) => ({
+              nombre: o.nombre.trim(),
+              precio_extra: o.precio_extra === '' || o.precio_extra == null ? 0 : Number(o.precio_extra),
+            })),
+        }))
+        .filter((g) => g.nombre && g.adiciones.length > 0);
+
+      if (gruposPayload.length) {
+        await productService.replacePaqueteModificadores(productoId, {
+          grupos: gruposPayload,
+          adiciones_sueltas: [],
+          removibles: [],
+        });
+      }
+
+      await onCreated(productoId);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear el combo');
       setSaving(false);
@@ -390,6 +402,74 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
                   </label>
                 </div>
               </div>
+
+              {/* Opciones para elegir (modificadores) */}
+              <div className="border-t border-[color:var(--border-subtle)] pt-3">
+                <label className="block text-sm font-semibold">
+                  Opciones para elegir <span className="font-normal text-[color:var(--text-muted)]">(opcional)</span>
+                </label>
+                <p className="text-xs text-[color:var(--text-secondary)] mb-2">
+                  Ej: «Tipo de huevo» → Rancheros, Fritos, Revueltos. El cliente elige una al pedir.
+                </p>
+
+                {grupos.map((g, gi) => (
+                  <div key={gi} className="rounded-xl border border-[color:var(--border-subtle)] p-3 mb-2 bg-[color:var(--bg-subtle)]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        value={g.nombre}
+                        onChange={(e) => updateGrupo(gi, { nombre: e.target.value })}
+                        className="input py-1.5 text-sm flex-1 min-w-0"
+                        placeholder="Nombre del grupo (ej: Tipo de huevo)"
+                      />
+                      <button type="button" onClick={() => removeGrupo(gi)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0" title="Quitar grupo">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    {g.opciones.map((o, oi) => (
+                      <div key={oi} className="flex items-center gap-2 mb-1.5">
+                        <input
+                          value={o.nombre}
+                          onChange={(e) => updateOpcion(gi, oi, { nombre: e.target.value })}
+                          className="input py-1.5 text-sm flex-1 min-w-0"
+                          placeholder="Opción (ej: Rancheros)"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={o.precio_extra}
+                          onChange={(e) => updateOpcion(gi, oi, { precio_extra: e.target.value })}
+                          className="input py-1.5 text-sm w-20 flex-shrink-0"
+                          placeholder="+$0"
+                          title="Costo extra (opcional)"
+                        />
+                        <button type="button" onClick={() => removeOpcion(gi, oi)} className="p-1 text-[color:var(--text-muted)] hover:text-red-500 flex-shrink-0" title="Quitar opción">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center justify-between mt-2">
+                      <button type="button" onClick={() => addOpcion(gi)} className="text-xs text-primary font-medium inline-flex items-center gap-1">
+                        <Plus size={13} /> Agregar opción
+                      </button>
+                      <label className="text-xs inline-flex items-center gap-1.5 text-[color:var(--text-secondary)] cursor-pointer">
+                        <input type="checkbox" checked={g.obligatorio} onChange={(e) => updateGrupo(gi, { obligatorio: e.target.checked })} />
+                        Obligatorio
+                      </label>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addGrupo}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-[color:var(--border-default)] text-sm text-[color:var(--text-secondary)] hover:border-primary hover:text-primary transition-colors"
+                >
+                  <Plus size={15} /> Agregar grupo de opciones
+                </button>
+              </div>
+
               <button onClick={createCombo} disabled={saving} className="btn btn-primary w-full flex items-center justify-center gap-2">
                 {saving ? <><Loader2 size={16} className="animate-spin" /> Creando…</> : <><Check size={16} /> Crear y asignar</>}
               </button>
