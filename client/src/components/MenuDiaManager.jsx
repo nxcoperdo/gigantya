@@ -321,36 +321,38 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[color:var(--bg-elevated)] w-full h-full sm:h-auto sm:max-w-lg sm:rounded-2xl shadow-2xl overflow-y-auto animate-scaleIn">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--border-subtle)] sticky top-0 bg-[color:var(--bg-elevated)]">
-          <div>
-            <h3 className="font-bold text-[color:var(--text-primary)]">{tipoLabel} · {diaLabel}</h3>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[color:var(--bg-elevated)] w-full h-full sm:h-auto sm:max-h-[88vh] sm:max-w-lg sm:rounded-2xl shadow-2xl flex flex-col animate-scaleIn">
+        {/* Header (fijo) */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--border-subtle)] flex-shrink-0">
+          <div className="min-w-0">
+            <h3 className="font-bold text-[color:var(--text-primary)] truncate">{tipoLabel} · {diaLabel}</h3>
             <p className="text-xs text-[color:var(--text-secondary)]">Elige un combo o crea uno nuevo</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[color:var(--bg-muted)]"><X size={20} /></button>
+          <button onClick={onClose} className="p-2 -mr-1 rounded-lg hover:bg-[color:var(--bg-muted)] flex-shrink-0"><X size={20} /></button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-[color:var(--border-subtle)]">
+        {/* Tabs (fijo) */}
+        <div className="flex border-b border-[color:var(--border-subtle)] flex-shrink-0">
           <button
             onClick={() => setTab('pick')}
-            className={`flex-1 py-2.5 text-sm font-medium ${tab === 'pick' ? 'text-primary border-b-2 border-primary' : 'text-[color:var(--text-secondary)]'}`}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === 'pick' ? 'text-primary border-b-2 border-primary' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
           >
             Combos existentes ({combos.length})
           </button>
           <button
             onClick={() => setTab('create')}
-            className={`flex-1 py-2.5 text-sm font-medium ${tab === 'create' ? 'text-primary border-b-2 border-primary' : 'text-[color:var(--text-secondary)]'}`}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === 'create' ? 'text-primary border-b-2 border-primary' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
           >
             Crear nuevo
           </button>
         </div>
 
-        <div className="p-5">
+        {/* Cuerpo (SCROLLEA) */}
+        <div className="flex-1 overflow-y-auto px-5 py-5">
           {tab === 'pick' ? (
             combos.length === 0 ? (
-              <p className="text-center text-sm text-[color:var(--text-muted)] py-8">
+              <p className="text-center text-sm text-[color:var(--text-muted)] py-10">
                 Todavía no tienes combos. Crea el primero en la pestaña «Crear nuevo».
               </p>
             ) : (
@@ -368,13 +370,13 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
                       <p className="font-semibold text-sm truncate">{c.nombre}</p>
                       {c.descripcion && <p className="text-xs text-[color:var(--text-secondary)] truncate">{c.descripcion}</p>}
                     </div>
-                    <span className="text-primary font-bold text-sm tabular-nums">{formatCurrency(c.precio)}</span>
+                    <span className="text-primary font-bold text-sm tabular-nums flex-shrink-0">{formatCurrency(c.precio)}</span>
                   </button>
                 ))}
               </div>
             )
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {error && <div className="alert alert-error text-sm">{error}</div>}
               <div>
                 <label className="block text-sm font-semibold mb-1.5">Nombre del combo</label>
@@ -388,7 +390,7 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5">Precio</label>
-                <input type="number" min="0" value={form.precio} onChange={(e) => setForm((f) => ({ ...f, precio: e.target.value }))} className="input" placeholder="15000" />
+                <input type="number" min="0" inputMode="numeric" value={form.precio} onChange={(e) => setForm((f) => ({ ...f, precio: e.target.value }))} className="input" placeholder="15000" />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5">Foto <span className="text-[color:var(--text-muted)] font-normal">(opcional)</span></label>
@@ -404,78 +406,99 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
               </div>
 
               {/* Opciones para elegir (modificadores) */}
-              <div className="border-t border-[color:var(--border-subtle)] pt-3">
+              <div className="border-t border-[color:var(--border-subtle)] pt-4">
                 <label className="block text-sm font-semibold">
                   Opciones para elegir <span className="font-normal text-[color:var(--text-muted)]">(opcional)</span>
                 </label>
-                <p className="text-xs text-[color:var(--text-secondary)] mb-2">
+                <p className="text-xs text-[color:var(--text-secondary)] mb-3">
                   Ej: «Tipo de huevo» → Rancheros, Fritos, Revueltos. El cliente elige una al pedir.
                 </p>
 
-                {grupos.map((g, gi) => (
-                  <div key={gi} className="rounded-xl border border-[color:var(--border-subtle)] p-3 mb-2 bg-[color:var(--bg-subtle)]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <input
-                        value={g.nombre}
-                        onChange={(e) => updateGrupo(gi, { nombre: e.target.value })}
-                        className="input py-1.5 text-sm flex-1 min-w-0"
-                        placeholder="Nombre del grupo (ej: Tipo de huevo)"
-                      />
-                      <button type="button" onClick={() => removeGrupo(gi)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0" title="Quitar grupo">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-
-                    {g.opciones.map((o, oi) => (
-                      <div key={oi} className="flex items-center gap-2 mb-1.5">
+                <div className="space-y-3">
+                  {grupos.map((g, gi) => (
+                    <div key={gi} className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)] overflow-hidden">
+                      {/* Cabecera del grupo */}
+                      <div className="flex items-center gap-2 p-2.5 border-b border-[color:var(--border-subtle)]">
                         <input
-                          value={o.nombre}
-                          onChange={(e) => updateOpcion(gi, oi, { nombre: e.target.value })}
-                          className="input py-1.5 text-sm flex-1 min-w-0"
-                          placeholder="Opción (ej: Rancheros)"
+                          value={g.nombre}
+                          onChange={(e) => updateGrupo(gi, { nombre: e.target.value })}
+                          className="input py-2 flex-1 min-w-0 font-medium"
+                          placeholder="Nombre del grupo (ej: Tipo de huevo)"
                         />
-                        <input
-                          type="number"
-                          min="0"
-                          value={o.precio_extra}
-                          onChange={(e) => updateOpcion(gi, oi, { precio_extra: e.target.value })}
-                          className="input py-1.5 text-sm w-20 flex-shrink-0"
-                          placeholder="+$0"
-                          title="Costo extra (opcional)"
-                        />
-                        <button type="button" onClick={() => removeOpcion(gi, oi)} className="p-1 text-[color:var(--text-muted)] hover:text-red-500 flex-shrink-0" title="Quitar opción">
-                          <X size={16} />
+                        <button type="button" onClick={() => removeGrupo(gi)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0" title="Quitar grupo">
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                    ))}
 
-                    <div className="flex items-center justify-between mt-2">
-                      <button type="button" onClick={() => addOpcion(gi)} className="text-xs text-primary font-medium inline-flex items-center gap-1">
-                        <Plus size={13} /> Agregar opción
-                      </button>
-                      <label className="text-xs inline-flex items-center gap-1.5 text-[color:var(--text-secondary)] cursor-pointer">
-                        <input type="checkbox" checked={g.obligatorio} onChange={(e) => updateGrupo(gi, { obligatorio: e.target.checked })} />
-                        Obligatorio
-                      </label>
+                      {/* Opciones del grupo */}
+                      <div className="p-2.5 space-y-2">
+                        {g.opciones.map((o, oi) => (
+                          <div key={oi} className="flex items-center gap-2">
+                            <input
+                              value={o.nombre}
+                              onChange={(e) => updateOpcion(gi, oi, { nombre: e.target.value })}
+                              className="input py-2 flex-1 min-w-0"
+                              placeholder="Opción (ej: Rancheros)"
+                            />
+                            <div className="relative flex-shrink-0 w-24">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)] text-sm pointer-events-none">+$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                inputMode="numeric"
+                                value={o.precio_extra}
+                                onChange={(e) => updateOpcion(gi, oi, { precio_extra: e.target.value })}
+                                className="input py-2 pl-8 w-full text-sm"
+                                placeholder="0"
+                                title="Costo extra (opcional)"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeOpcion(gi, oi)}
+                              disabled={g.opciones.length <= 1}
+                              className="p-2 text-[color:var(--text-muted)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                              title="Quitar opción"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+
+                        <div className="flex items-center justify-between pt-1">
+                          <button type="button" onClick={() => addOpcion(gi)} className="text-sm text-primary font-medium inline-flex items-center gap-1 py-1">
+                            <Plus size={15} /> Agregar opción
+                          </button>
+                          <label className="text-sm inline-flex items-center gap-2 text-[color:var(--text-secondary)] cursor-pointer select-none">
+                            <input type="checkbox" checked={g.obligatorio} onChange={(e) => updateGrupo(gi, { obligatorio: e.target.checked })} className="w-4 h-4 accent-[color:var(--color-primary)]" />
+                            Obligatorio
+                          </label>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
 
                 <button
                   type="button"
                   onClick={addGrupo}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-[color:var(--border-default)] text-sm text-[color:var(--text-secondary)] hover:border-primary hover:text-primary transition-colors"
+                  className="w-full mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-dashed border-[color:var(--border-default)] text-sm font-medium text-[color:var(--text-secondary)] hover:border-primary hover:text-primary transition-colors"
                 >
-                  <Plus size={15} /> Agregar grupo de opciones
+                  <Plus size={16} /> Agregar grupo de opciones
                 </button>
               </div>
-
-              <button onClick={createCombo} disabled={saving} className="btn btn-primary w-full flex items-center justify-center gap-2">
-                {saving ? <><Loader2 size={16} className="animate-spin" /> Creando…</> : <><Check size={16} /> Crear y asignar</>}
-              </button>
             </div>
           )}
         </div>
+
+        {/* Footer (fijo) — botón de acción solo al crear */}
+        {tab === 'create' && (
+          <div className="px-5 py-4 border-t border-[color:var(--border-subtle)] flex-shrink-0">
+            <button onClick={createCombo} disabled={saving} className="btn btn-primary w-full flex items-center justify-center gap-2">
+              {saving ? <><Loader2 size={16} className="animate-spin" /> Creando…</> : <><Check size={16} /> Crear y asignar</>}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
