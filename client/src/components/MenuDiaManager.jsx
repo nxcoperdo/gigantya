@@ -259,14 +259,22 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
     if (!window.confirm(`¿Eliminar el combo "${c.nombre}"? Se quitará de todos los días.`)) return;
     setDeletingId(c.id);
     setError('');
+    // 1) El borrado en sí. Si falla acá, sí mostramos error.
     try {
       await productService.delete(c.id);
-      await onCombosChanged();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo eliminar el combo');
-    } finally {
       setDeletingId(null);
+      return;
     }
+    // 2) El borrado ya ocurrió. Refrescar la lista es secundario: si falla
+    //    (red, etc.) NO mostramos el error de borrado (sería engañoso).
+    try {
+      await onCombosChanged();
+    } catch (err) {
+      console.warn('[MenuDia] combo eliminado, pero falló el refresco:', err?.message);
+    }
+    setDeletingId(null);
   };
 
   // Helpers de los grupos de opciones
