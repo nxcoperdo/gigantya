@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Plus, Trash2, Clock, X, Check, Sun, UtensilsCrossed, Loader2, Pencil, ImagePlus, CalendarDays,
+  Plus, Trash2, Clock, X, Check, Sun, UtensilsCrossed, Loader2, Pencil, ImagePlus, CalendarDays, SlidersHorizontal,
 } from 'lucide-react';
 import { menuDiaService, productService } from '../services/api';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatCurrency } from '../utils/formatHelper';
+import ProductModal from './ProductModal';
 
 const DIAS = [
   { n: 1, label: 'Lunes' },
@@ -28,7 +29,7 @@ const emptyHorarios = { desayuno: { desde: '', hasta: '' }, almuerzo: { desde: '
  * Grilla semanal (7 días × Desayuno/Almuerzo). Cada celda apunta a un combo
  * (producto con es_menu_dia). El dueño lo arma una vez y rota solo.
  */
-export default function MenuDiaManager() {
+export default function MenuDiaManager({ restaurante }) {
   const [weekly, setWeekly] = useState([]);
   const [combos, setCombos] = useState([]);
   const [horarios, setHorarios] = useState(emptyHorarios);
@@ -36,6 +37,8 @@ export default function MenuDiaManager() {
   const [msg, setMsg] = useState(null); // { type: 'ok'|'error', text }
 
   const [editing, setEditing] = useState(null); // { tipo, dia }
+  // Combo cuyas opciones (modificadores) se están editando en el ProductModal.
+  const [editingCombo, setEditingCombo] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -121,7 +124,7 @@ export default function MenuDiaManager() {
         <div>
           <h3 className="text-lg font-heading font-bold text-[color:var(--text-primary)]">Menú del día (corrientazo)</h3>
           <p className="text-sm text-[color:var(--text-secondary)]">
-            Arma el desayuno y el almuerzo de cada día. La app le muestra al cliente solo el de hoy, y rota sola cada semana.
+            Arma el desayuno y el almuerzo de cada día. La app le muestra al cliente solo el de hoy, y rota sola cada semana. Con el botón <SlidersHorizontal size={13} className="inline align-text-bottom text-primary" /> de cada combo agregas opciones para que el cliente elija (ej: tipo de huevo: rancheros, fritos o revueltos).
           </p>
         </div>
       </div>
@@ -189,7 +192,21 @@ export default function MenuDiaManager() {
                           <p className="text-primary font-bold text-sm tabular-nums">{formatCurrency(cell.precio)}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <button onClick={() => setEditing({ tipo: key, dia: n })} className="p-1.5 rounded-lg hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)]" title="Cambiar">
+                          <button
+                            onClick={() => setEditingCombo({
+                              id: cell.producto_id,
+                              nombre: cell.nombre,
+                              descripcion: cell.descripcion,
+                              precio: cell.precio,
+                              imagen_url: cell.imagen_url,
+                              disponible: cell.disponible,
+                            })}
+                            className="p-1.5 rounded-lg hover:bg-[color:var(--bg-muted)] text-primary"
+                            title="Opciones (ej: tipo de huevo, tamaño…)"
+                          >
+                            <SlidersHorizontal size={15} />
+                          </button>
+                          <button onClick={() => setEditing({ tipo: key, dia: n })} className="p-1.5 rounded-lg hover:bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)]" title="Cambiar combo">
                             <Pencil size={15} />
                           </button>
                           <button onClick={() => clearCell(key, n)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500" title="Quitar">
@@ -225,6 +242,18 @@ export default function MenuDiaManager() {
           onCombosChanged={load}
         />
       )}
+
+      {/* Editor de opciones/modificadores del combo (reusa el ProductModal).
+          Sirve para que el cliente elija variantes: tipo de huevo (rancheros/
+          fritos/revueltos), tamaño, proteína, etc. */}
+      <ProductModal
+        isOpen={!!editingCombo}
+        onClose={() => setEditingCombo(null)}
+        onSave={() => { setEditingCombo(null); load(); }}
+        product={editingCombo}
+        restaurantId={restaurante?.id}
+        restaurante={restaurante}
+      />
     </div>
   );
 }

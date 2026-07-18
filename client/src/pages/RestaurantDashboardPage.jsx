@@ -932,7 +932,7 @@ export default function RestaurantDashboardPage() {
             <Navigate to="/dashboard?tab=management" replace />
           )
         ) : activeTab === 'menu-dia' ? (
-          <MenuDiaManager />
+          <MenuDiaManager restaurante={restaurant} />
         ) : (
           <>
             {/* Capa 1 — manual contextual: tips contextuales.
