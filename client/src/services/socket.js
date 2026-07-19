@@ -165,7 +165,71 @@ export const socketService = {
     socket.on('pos:inventory_low', callback);
   },
 
-  // ========== RESTAURANTES ==========
+  // ========== CHAT (piloto local 4) ==========
+// El cliente del chat reusa la conexión /orders. El server exige token
+// solo para los eventos `chat:join` (no rompe el POS).
+
+/**
+ * Une al socket al room de una conversación. El handshake del socket ya
+ * tiene el token (si lo hay) en `socket.auth.token`; el server lo lee
+ * en el handler de `chat:join`. Para anónimos, el `anon_identifier`
+ * (cliente_identificador que devolvió ensureConversation) se manda como
+ * segundo parámetro y el server valida que coincida.
+ *
+ * Devuelve una Promise con el ack del server.
+ */
+joinConversation: (conversacion_id, anon_identifier = null) => {
+  const socket = socketService.connectOrders();
+  return new Promise((resolve, reject) => {
+    socket.emit('chat:join', { conversacion_id, anon_identifier }, (ack) => {
+      if (ack?.ok) resolve(ack);
+      else reject(new Error(ack?.error || 'No se pudo unir a la conversación'));
+    });
+  });
+},
+
+leaveConversation: (conversacion_id) => {
+  const socket = socketService.connectOrders();
+  socket.emit('chat:leave', { conversacion_id });
+},
+
+/**
+ * Avisa al otro lado que el user está escribiendo. El server lo
+ * retransmite al room (excepto al emisor).
+ */
+sendTyping: (conversacion_id, typing = true) => {
+  const socket = socketService.connectOrders();
+  socket.emit('chat:typing', { conversacion_id, typing });
+},
+
+onNewChatMessage: (callback) => {
+  const socket = socketService.connectOrders();
+  socket.on('chat:new_message', callback);
+},
+
+onChatTyping: (callback) => {
+  const socket = socketService.connectOrders();
+  socket.on('chat:typing', callback);
+},
+
+onChatPresence: (callback) => {
+  const socket = socketService.connectOrders();
+  socket.on('chat:presence', callback);
+},
+
+offNewChatMessage: (callback) => {
+  if (ordersSocket) ordersSocket.off('chat:new_message', callback);
+},
+
+offChatTyping: (callback) => {
+  if (ordersSocket) ordersSocket.off('chat:typing', callback);
+},
+
+offChatPresence: (callback) => {
+  if (ordersSocket) ordersSocket.off('chat:presence', callback);
+},
+
+// ========== RESTAURANTES ==========
 
   joinRestaurantRoom: (restaurante_id) => {
     const socket = socketService.connectRestaurants();

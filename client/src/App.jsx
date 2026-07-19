@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { ChatProvider } from './context/ChatContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -32,6 +33,9 @@ const RestaurantDashboardPage = lazy(() => import('./pages/RestaurantDashboardPa
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const HomeMediaPage = lazy(() => import('./pages/admin/HomeMediaPage'));
 const HomeHeroPage = lazy(() => import('./pages/admin/HomeHeroPage'));
+// Chat del local (piloto: solo el dueño del local 4 lo ve realmente usado,
+// pero la ruta está abierta a cualquier rol staff del restaurante).
+const ChatAdminPage = lazy(() => import('./pages/admin/ChatAdminPage'));
 
 // Páginas legales (TyC, Privacidad, Cookies, Merchant Agreement)
 const TerminosPage = lazy(() => import('./pages/legal/TerminosPage'));
@@ -60,6 +64,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <CartProvider>
+            <ChatProvider>
             <ScrollToTop />
             <div className="flex flex-col min-h-screen">
               <Header />
@@ -118,6 +123,14 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRole="restaurante">
                         <RestaurantDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard/chat"
+                    element={
+                      <ProtectedRoute allowedRoles={['restaurante','cajero','mesero','cocina','admin']}>
+                        <ChatAdminPage />
                       </ProtectedRoute>
                     }
                   />
@@ -248,6 +261,7 @@ export default function App() {
                 modo prompt). Invisible salvo cuando hay un update esperando. */}
             <PWAUpdatePrompt />
           </div>
+          </ChatProvider>
         </CartProvider>
       </AuthProvider>
       </ThemeProvider>

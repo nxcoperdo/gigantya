@@ -19,6 +19,12 @@ import ScrollToTopButton from '../components/ScrollToTopButton';
 import MobileCartBar from '../components/MobileCartBar';
 import MenuDeHoy from '../components/MenuDeHoy';
 import { menuDiaService } from '../services/api';
+// Piloto chat (Fase 4 — solo local 4 / fruver)
+import { useChat } from '../context/ChatContext.jsx';
+import ChatIdentityModal from '../components/chat/ChatIdentityModal.jsx';
+import ChatPanel from '../components/chat/ChatPanel.jsx';
+import ChatLauncher from '../components/chat/ChatLauncher.jsx';
+import ProductQuickSend from '../components/chat/ProductQuickSend.jsx';
 
 export default function RestaurantDetailsPage() {
   const { id } = useParams();
@@ -295,6 +301,24 @@ export default function RestaurantDetailsPage() {
    // muestra únicamente para ellos.
    const esMercadoAbarrotes = Boolean(Number(restaurante?.es_mercado_abarrotes));
 
+   // Piloto chat: gateado a locales de mercado/abarrotes. Es la condición
+   // natural porque el chat existe exactamente para evitar que el cliente
+   // tenga que pelearse con las presentaciones (libra/bloque/kilo) en
+   // mercados. Si en el futuro se quiere extender a otros tipos, agregar
+   // un flag `restaurantes.acepta_chat` o un gate de plan (Premium+).
+   const chatHabilitado = esMercadoAbarrotes;
+   const { initForRestaurante, sendProductToChat } = useChat();
+
+   // Cuando carga el restaurante, abrimos (silenciosamente) la conversación
+   // si ya hay identidad guardada para este local, o disparamos el modal
+   // si no la hay. Solo si el chat está habilitado.
+   useEffect(() => {
+     if (!chatHabilitado || !restaurante) return;
+     initForRestaurante(Number(id));
+     // initForRestaurante es estable por useCallback, pero por si acaso:
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [chatHabilitado, restaurante?.id]);
+
    return (
      <div
        className="min-h-screen bg-[color:var(--bg-subtle)]"
@@ -554,7 +578,7 @@ export default function RestaurantDetailsPage() {
                      {matches.length} {matches.length === 1 ? 'resultado' : 'resultados'} para «{searchQuery}»
                    </p>
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 sm:gap-6">
-                     {matches.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades, esMercadoAbarrotes))}
+                     {matches.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades, esMercadoAbarrotes, chatHabilitado, sendProductToChat))}
                    </div>
                  </div>
                );
@@ -578,7 +602,7 @@ export default function RestaurantDetailsPage() {
                      </div>
 
                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 sm:gap-6">
-                       {catData.productos.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades, esMercadoAbarrotes))}
+                       {catData.productos.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades, esMercadoAbarrotes, chatHabilitado, sendProductToChat))}
                      </div>
                    </div>
                  ))}
@@ -707,6 +731,19 @@ export default function RestaurantDetailsPage() {
        {/* Mini-banner del carrito — se monta fuera del contenedor scrolleable
            porque es fixed. */}
        <MobileCartBar />
+
+       {/* Piloto chat: solo se monta si este local es el 4 (fruver).
+           ChatPanel y ChatLauncher se renderizan condicionalmente desde
+           dentro del ChatContext (panelOpen). ChatIdentityModal aparece
+           automáticamente la primera vez si el cliente no tiene identidad
+           guardada en localStorage para este local. */}
+       {chatHabilitado && (
+         <>
+           <ChatPanel restauranteNombre={restaurante?.nombre} />
+           <ChatLauncher />
+           <ChatIdentityModal />
+         </>
+       )}
      </div>
    );
 }
@@ -787,7 +824,9 @@ function renderProductCard(
   expandedDescs,
   toggleDescExpanded,
   cantidades,
-  esMercadoAbarrotes = false
+  esMercadoAbarrotes = false,
+  chatHabilitado = false,
+  onSendProductToChat = null,
 ) {
   // Stagger suave solo en los primeros 6 productos del primer viewport
   // visible. El resto entra instantáneamente. Antes era idx*50ms sin
@@ -882,6 +921,13 @@ function renderProductCard(
           )}
         </div>
 
+        {chatHabilitado && onSendProductToChat ? (
+          <ProductQuickSend
+            producto={producto}
+            onAddToCart={() => handleAddToCart(producto)}
+            onSendToChat={() => onSendProductToChat(producto)}
+          />
+        ) : (
         <button
           onClick={() => handleAddToCart(producto)}
           disabled={!producto.disponible || !isRestaurantOpenNow}
@@ -918,6 +964,7 @@ function renderProductCard(
             </>
           )}
         </button>
+        )}
       </div>
     </div>
   );

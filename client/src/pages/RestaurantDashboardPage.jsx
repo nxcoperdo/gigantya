@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService, userService } from '../services/api';
+import chatService from '../services/chat';
 import Loading from '../components/Loading';
 import ProductModal from '../components/ProductModal';
 import RestaurantModal from '../components/RestaurantModal';
@@ -49,6 +50,7 @@ import {
   Printer,
   CalendarDays,
   Share2,
+  MessageCircle,
 } from 'lucide-react';
 import MenuDiaManager from '../components/MenuDiaManager';
 import ShareLocalModal from '../components/ShareLocalModal';
@@ -279,6 +281,7 @@ export default function RestaurantDashboardPage() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
   const [shareOpen, setShareOpen] = useState(false); // modal "Compartir mi local"
+  const [chatNoLeidos, setChatNoLeidos] = useState(0); // badge "Chat con clientes"
   // Tour guiado: se dispara desde el banner o desde el FAB `?`.
   // Usamos un counter para forzar remontaje del modal cuando se
   // reabre (así el state interno de DashboardTour resetea a step 0).
@@ -447,10 +450,26 @@ export default function RestaurantDashboardPage() {
     }
   };
 
+  // Carga el total de mensajes no leídos del chat del local. Si el local
+  // no tiene conversaciones (o el endpoint falla porque el chat aún no
+  // está habilitado), dejamos el badge en 0 sin romper la pantalla.
+  const loadChatUnread = async () => {
+    try {
+      const data = await chatService.adminListConversaciones({ estado: 'todas' });
+      setChatNoLeidos(data.no_leidos_total || 0);
+    } catch (err) {
+      // Silencioso: si el chat no está disponible para este rol, no
+      // molestamos al usuario. El link igual funciona y entra a la
+      // página de chat (que mostrará el error inline).
+      setChatNoLeidos(0);
+    }
+  };
+
   useEffect(() => {
     if (!restaurant?.id) return;
 
     loadOrders();
+    loadChatUnread();
   }, [restaurant?.id]);
 
   useEffect(() => {
@@ -464,6 +483,7 @@ export default function RestaurantDashboardPage() {
     ordersPollingRef.current = setInterval(() => {
       loadOrders({ silent: true });
       loadPendingProofsCount();
+      loadChatUnread();
     }, 7000);
 
     return () => {
@@ -705,14 +725,33 @@ export default function RestaurantDashboardPage() {
               </p>
 
               {/* Compartir el enlace del local con los clientes */}
-              <button
-                type="button"
-                onClick={() => setShareOpen(true)}
-                className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-sm shadow-emerald-500/25 hover:bg-emerald-600 active:scale-95 transition-all"
-              >
-                <Share2 size={17} />
-                Compartir mi local
-              </button>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShareOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-sm shadow-emerald-500/25 hover:bg-emerald-600 active:scale-95 transition-all"
+                >
+                  <Share2 size={17} />
+                  Compartir mi local
+                </button>
+
+                {/* Link a la bandeja de chat del local (piloto local 4).
+                    El badge muestra la suma de mensajes no leídos de las
+                    conversaciones abiertas; se refresca cada 7s junto con
+                    pedidos y comprobantes. */}
+                <Link
+                  to="/dashboard/chat"
+                  className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[color:var(--color-primary)] text-white text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all"
+                >
+                  <MessageCircle size={17} />
+                  Chat con clientes
+                  {chatNoLeidos > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white">
+                      {chatNoLeidos > 9 ? '9+' : chatNoLeidos}
+                    </span>
+                  )}
+                </Link>
+              </div>
               {/* Item de menú "Activar ayuda de nuevo" — solo se muestra
                   si el dueño descartó el banner de ayuda en algún momento. */}
               <div className="mt-2">

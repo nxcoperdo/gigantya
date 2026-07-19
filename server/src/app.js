@@ -55,6 +55,7 @@ import publicRoutes from './routes/publicRoutes.js';
 // Endpoint público, sin `verifyToken`.
 import searchRoutes from './routes/searchRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 import zonaRoutes from './routes/zonaRoutes.js';
@@ -241,6 +242,7 @@ app.use('/api/categorias', categoryRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/zonas', zonaRoutes);

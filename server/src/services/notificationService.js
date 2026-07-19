@@ -388,6 +388,44 @@ const EmailTemplates = {
   `,
 
   /**
+   * Dueño de local: nuevo mensaje de un cliente en el chat del local.
+   * Complementa la notificación in-app (NotificationModel) — este llega
+   * también si el dueño no tiene la pestaña de chat abierta.
+   *
+   * Params: { nombre, restaurante, cliente, preview, link }
+   *   - nombre: nombre del dueño (para "Hola X")
+   *   - restaurante: nombre del local
+   *   - cliente: nombre del cliente que escribió
+   *   - preview: primeros 200 chars del mensaje
+   *   - link: URL absoluta al chat (ej: https://gigantya.com/dashboard/chat)
+   */
+  newChatMessage: ({ nombre, restaurante, cliente, preview, link }) => `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #1f2937; font-size: 20px; margin: 0 0 8px;">
+        💬 Nuevo mensaje de ${escapeHtml(cliente || 'un cliente')}
+      </h1>
+      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
+        Hola ${escapeHtml(String(nombre || '').split(' ')[0] || '')}, <strong>${escapeHtml(cliente || 'un cliente')}</strong>
+        te escribió en el chat de <strong>${escapeHtml(restaurante || 'tu local')}</strong>:
+      </p>
+      <div style="background: #f3f4f6; border-left: 4px solid #FF6B00; padding: 14px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0; color: #1f2937; font-size: 14px; line-height: 1.5; font-style: italic;">
+          "${escapeHtml(preview || '')}"
+        </p>
+      </div>
+      <p style="margin-top: 24px; text-align: center;">
+        <a href="${escapeHtml(link || 'https://gigantya.com/dashboard/chat')}"
+           style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Abrir el chat
+        </a>
+      </p>
+      <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+        Recibiste este email porque sos dueño de un local con la función de chat habilitada en GigantYA.
+      </p>
+    </div>
+  `,
+
+  /**
    * Dueño de local: repaso semanal con tips contextuales.
    * Se manda solo si el dueño no entró al dashboard en 7+ días
    * (ver `weeklyDigestCron.js`).
@@ -477,6 +515,7 @@ function getSubjectForTemplate(template, pedido) {
     paymentRejected: `⚠️ Pago rechazado - Pedido #${pedido.id}`,
     orderCancelledByClient: `❌ Pedido #${pedido.id} cancelado por el cliente - GigantYA`,
     weeklyDigest: '💡 3 tips rápidos para tu local - GigantYA',
+    newChatMessage: '💬 Nuevo mensaje en tu chat - GigantYA',
   };
   return subjects[template] || 'Notificación de GigantYA';
 }
@@ -606,6 +645,22 @@ const WhatsAppTemplates = {
       String(pedido.id),
       String(pedido.cliente_nombre || 'Cliente'),
       String(pedido.motivo || 'Sin motivo especificado')
+    ]
+  },
+  // WhatsApp al RESTAURANTE cuando entra un mensaje nuevo al chat del
+  // local. La plantilla `chat_new_message` tiene que existir en Meta
+  // Business Manager (ver bloque al final del archivo). Mientras no
+  // esté aprobada, el envío falla silenciosamente (best-effort) y el
+  // email + notificación in-app siguen siendo el fallback.
+  //
+  // {{1}} = nombre del cliente
+  // {{2}} = preview del mensaje (recortado a 80 chars para que entre en
+  //         la preview de WhatsApp sin truncarse feo)
+  newChatMessage: {
+    template: 'chat_new_message',
+    params: ({ cliente, preview }) => [
+      String(cliente || 'un cliente'),
+      String((preview || '').substring(0, 80))
     ]
   }
 };
@@ -782,7 +837,7 @@ export async function notifyNewOrder({ pedido, restauranteEmail, restauranteTele
  * PLANTILLAS DE META BUSINESS MANAGER — WhatsApp Cloud API
  * ============================================================
  *
- * Hay que crear 8 plantillas aprobadas en Meta Business Manager
+ * Hay que crear 9 plantillas aprobadas en Meta Business Manager
  * (https://business.facebook.com/wa/manage/message-templates/):
  *
  *   1. order_confirmed      → cliente: pedido confirmado
@@ -792,7 +847,8 @@ export async function notifyNewOrder({ pedido, restauranteEmail, restauranteTele
  *   5. payment_approved     → cliente: pago aprobado
  *   6. payment_rejected     → cliente: pago rechazado
  *   7. order_cancelled      → restaurante: pedido cancelado
- *   8. new_order_restaurant → restaurante: NUEVO pedido recibido (esta)
+ *   8. new_order_restaurant → restaurante: NUEVO pedido recibido
+ *   9. chat_new_message     → restaurante: nuevo mensaje en el chat (esta)
  *
  * Categoría: TRANSACTIONAL (necesario porque la cuenta es de empresa).
  * Idioma: español (es).
@@ -842,6 +898,73 @@ export async function notifyNewOrder({ pedido, restauranteEmail, restauranteTele
  * El restaurante igual recibe la notificación in-app y el email.
  * ============================================================ */
 
+/**
+ * Notificar al dueño de un local que le llegó un mensaje nuevo en el chat
+ * (Fase 6 del piloto Fruver).
+ *
+ * Best-effort, igual que `notifyNewOrder`: cada canal (email/WhatsApp)
+ * es independiente. La notificación in-app se sigue creando en
+ * `chatService.notifyVendorNewMessage` (NotificationModel), este helper
+ * agrega email + WhatsApp por encima.
+ *
+ * Si el `conv` no tiene `cliente_telefono` o el dueño no tiene email,
+ * ese canal se salta. No falla el flujo.
+ *
+ * @param {object} params
+ * @param {object} params.conversacion  - Conv con cliente_nombre, cliente_telefono, restaurante_id, etc.
+ * @param {object} params.mensaje       - Mensaje con contenido
+ * @param {object} params.dueno         - { email, telefono, nombre } del dueño (de getRestaurantUser)
+ * @param {string} [params.link]        - URL absoluta al chat (default: gigantya.com/dashboard/chat)
+ */
+export async function notifyNewChatMessage({ conversacion, mensaje, dueno, link }) {
+  const results = { email: null, whatsapp: null };
+
+  if (!conversacion || !mensaje) {
+    return results;
+  }
+
+  const restauranteNombre = conversacion.restaurante_nombre || 'tu local';
+  const cliente = conversacion.cliente_nombre || 'Un cliente';
+  const preview = (mensaje.contenido || '').substring(0, 200);
+  const finalLink = link || process.env.CHAT_NOTIFICATION_LINK || 'https://gigantya.com/dashboard/chat';
+
+  // Email al dueño
+  if (dueno?.email) {
+    try {
+      results.email = await sendEmail({
+        to: dueno.email,
+        subject: '💬 Nuevo mensaje en tu chat - GigantYA',
+        html: EmailTemplates.newChatMessage({
+          nombre: dueno.nombre || 'equipo',
+          restaurante: restauranteNombre,
+          cliente,
+          preview,
+          link: finalLink,
+        }),
+      });
+    } catch (err) {
+      console.error('[notifyNewChatMessage] Error email:', err.message);
+      results.email = { sent: false, error: err.message };
+    }
+  }
+
+  // WhatsApp al dueño
+  if (dueno?.telefono) {
+    try {
+      results.whatsapp = await sendWhatsApp({
+        to: dueno.telefono,
+        template: 'chat_new_message',
+        parameters: [cliente, preview],
+      });
+    } catch (err) {
+      console.error('[notifyNewChatMessage] Error WhatsApp:', err.message);
+      results.whatsapp = { sent: false, error: err.message };
+    }
+  }
+
+  return results;
+}
+
 // ====================================================
 // EXPORTACIÓN DEFAULT
 // ====================================================
@@ -862,6 +985,7 @@ export default {
   // Funciones principales
   notifyOrderStatusChange,
   notifyNewOrder,
+  notifyNewChatMessage,
 
   // Plantillas (para personalización)
   EmailTemplates

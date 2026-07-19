@@ -83,6 +83,9 @@ const VALID_ESTADOS_PEDIDO = ['Pendiente', 'Preparando', 'Listo', 'Entregado', '
  * @param {string} orderData.canal              - 'web' | 'pos' | 'kiosko'
  * @param {number} [orderData.mesa_id]          - POS dine-in: id de la mesa
  * @param {number} [orderData.creado_por]       - POS: id del staff
+ * @param {string} [orderData.origen]           - 'web_self' (default) | 'web_asistido' | 'pos' | 'kiosko'.
+ *                                                'web_asistido' lo usa el chat del local 4 cuando
+ *                                                el vendedor arma el pedido. Default 'web_self'.
  *
  * @param {Object} [options]
  * @param {string} [options.clientSource]       - 'web' | 'pos' — para logs
@@ -112,7 +115,19 @@ export async function createOrderCore(orderData, options = {}) {
     canal = 'web',
     mesa_id = null,
     creado_por = null,
+    origen = 'web_self',
   } = orderData;
+
+  // Validar origen contra el ENUM de la columna. Si no matchea, default.
+  const VALID_ORIGENES = ['web_self', 'web_asistido', 'pos', 'kiosko'];
+  if (!VALID_ORIGENES.includes(origen)) {
+    throw createValidationError(`origen inválido: ${origen}`);
+  }
+  // Consistencia: si es POS, el origen debe ser 'pos' (no dejamos
+  // un pedido con canal='pos' y origen='web_asistido', es contradictorio).
+  if (canal === 'pos' && origen !== 'pos') {
+    origen = 'pos';
+  }
 
   // Validaciones tempranas (antes de pedir la conexión al pool).
   if (!restaurante_id) throw createValidationError('restaurante_id es requerido');
@@ -266,9 +281,9 @@ export async function createOrderCore(orderData, options = {}) {
          usuario_id, restaurante_id, total, costo_envio, estado, metodo_pago,
          estado_validacion_pago, cupon_id, notas, direccion_entrega, telefono_contacto,
          barrio_id, sector_id, latitud, longitud, direccion_formateada, place_id,
-         es_retiro_local, es_consumo_en_local, mesa_id, canal, creado_por,
+         es_retiro_local, es_consumo_en_local, mesa_id, canal, origen, creado_por,
          creado_en
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         usuario_id,
         restaurante_id,
@@ -291,6 +306,7 @@ export async function createOrderCore(orderData, options = {}) {
         esConsumoEnLocal ? 1 : 0,
         mesa_id ? Number(mesa_id) : null,
         canal,
+        origen,
         creado_por ? Number(creado_por) : null,
       ]
     );
