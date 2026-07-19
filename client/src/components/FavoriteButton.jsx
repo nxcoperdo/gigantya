@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { preferenceService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const FavoriteButton = ({ targetId, tipo }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // Invitado: NO consultamos favoritos (endpoint protegido → 401 → el
+    // interceptor global redirige a /login y rompería la página pública
+    // del restaurante). Mostramos el corazón vacío y al tocar invitamos
+    // a iniciar sesión.
+    if (!isAuthenticated) {
+      setIsFavorite(false);
+      setLoading(false);
+      return;
+    }
     const checkFavoriteStatus = async () => {
       try {
         const res = await preferenceService.getFavorites(tipo);
@@ -19,11 +32,17 @@ const FavoriteButton = ({ targetId, tipo }) => {
       }
     };
     checkFavoriteStatus();
-  }, [targetId, tipo]);
+  }, [targetId, tipo, isAuthenticated]);
 
   const toggleFavorite = async (e) => {
     e.preventDefault();
     if (loading) return;
+
+    // Invitado: lo llevamos a iniciar sesión para poder guardar favoritos.
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
 
     const previousState = isFavorite;
     setIsFavorite(!previousState); // Optimistic UI update
