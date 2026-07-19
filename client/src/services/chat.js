@@ -7,18 +7,9 @@
  * backend identifique al dueño de la conversación.
  */
 import axios from 'axios';
+import api from './api.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Instancia con token (la que inyecta el interceptor de api.js).
-// Se importa dinámicamente para evitar circular imports.
-let _api = null;
-async function getApi() {
-  if (!_api) {
-    _api = (await import('./api.js')).default;
-  }
-  return _api;
-}
 
 // Instancia SIN token — para endpoints anónimos.
 const apiAnon = axios.create({ baseURL: API_URL });
@@ -33,7 +24,6 @@ const isLoggedIn = () => !!localStorage.getItem('token');
  */
 async function getContext(chatIdentidad) {
   if (isLoggedIn()) {
-    const api = await getApi();
     return { instance: api, identifier: null };
   }
   if (!chatIdentidad?.telefono) {
@@ -51,7 +41,7 @@ export const chatService = {
    */
   ensureConversation: async ({ restaurante_id, cliente_nombre, cliente_telefono }) => {
     const useAnon = !isLoggedIn();
-    const instance = useAnon ? apiAnon : await getApi();
+    const instance = useAnon ? apiAnon : api;
     const res = await instance.post('/chat/conversaciones', {
       restaurante_id,
       cliente_nombre,
@@ -61,7 +51,7 @@ export const chatService = {
   },
 
   listMensajes: async (conversacion_id, chatIdentidad) => {
-    const { instance, identifier } = await getContext(chatIdentidad);
+    const { instance, identifier } = getContext(chatIdentidad);
     const config = identifier ? { params: { anon_identifier: identifier } } : {};
     const res = await instance.get(`/chat/conversaciones/${conversacion_id}/mensajes`, config);
     return res.data;
@@ -73,7 +63,7 @@ export const chatService = {
    * Backend exige al menos `contenido` no vacío.
    */
   sendMensaje: async (conversacion_id, { contenido, adjuntos = null }, chatIdentidad) => {
-    const { instance, identifier } = await getContext(chatIdentidad);
+    const { instance, identifier } = getContext(chatIdentidad);
     const body = { contenido, adjuntos };
     if (identifier) body.anon_identifier = identifier;
     const res = await instance.post(`/chat/conversaciones/${conversacion_id}/mensajes`, body);
@@ -81,7 +71,7 @@ export const chatService = {
   },
 
   markRead: async (conversacion_id, chatIdentidad) => {
-    const { instance, identifier } = await getContext(chatIdentidad);
+    const { instance, identifier } = getContext(chatIdentidad);
     const config = identifier ? { params: { anon_identifier: identifier } } : {};
     const res = await instance.post(`/chat/conversaciones/${conversacion_id}/leido`, {}, config);
     return res.data;
@@ -90,19 +80,16 @@ export const chatService = {
   // ========== Admin (vendedor) ==========
 
   adminListConversaciones: async ({ estado = 'abierta' } = {}) => {
-    const api = await getApi();
     const res = await api.get('/chat/admin/conversaciones', { params: { estado } });
     return res.data;
   },
 
   adminBuildDraft: async (conversacion_id) => {
-    const api = await getApi();
     const res = await api.get(`/chat/admin/conversaciones/${conversacion_id}/draft`);
     return res.data;
   },
 
   adminConvertToOrder: async (conversacion_id, pedidoDraft) => {
-    const api = await getApi();
     const res = await api.post(`/chat/admin/conversaciones/${conversacion_id}/draft-pedido`, pedidoDraft);
     return res.data;
   },
