@@ -36,12 +36,17 @@ export default function ChatLauncher() {
     setNoLeidos(ultDelVendedor);
   }, [panelOpen, conversacion, mensajes]);
 
+  // Lo posicionamos arriba del botón de ayuda (ClientHelpButton) que está
+  // en bottom-5 right-5 z-40. Si quedaran en la misma esquina se
+  // superponen y el chat queda debajo. Subimos a bottom-5 left-5 (esquina
+  // opuesta) para evitar el choque y respetar la convención de
+  // "mensajería abajo a la izquierda" (WhatsApp, Messenger).
   if (panelOpen) {
     return (
       <button
         onClick={closePanel}
         aria-label="Cerrar chat"
-        className="fixed bottom-4 right-4 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
+        className="fixed bottom-5 left-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
         style={{ backgroundColor: 'var(--color-primary)' }}
       >
         <X size={24} />
@@ -53,7 +58,7 @@ export default function ChatLauncher() {
     <button
       onClick={openPanel}
       aria-label="Abrir chat con el local"
-      className="fixed bottom-4 right-4 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
+      className="fixed bottom-5 left-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
       style={{ backgroundColor: 'var(--color-primary)' }}
     >
       <MessageCircle size={24} />
