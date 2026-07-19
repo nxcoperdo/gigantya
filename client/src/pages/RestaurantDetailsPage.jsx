@@ -275,6 +275,12 @@ export default function RestaurantDetailsPage() {
     };
   }, [restaurante]);
 
+  // useChat() debe ir ANTES de cualquier early return para cumplir la
+  // regla de hooks de React (mismo número y orden de hooks en cada
+  // render). Si el restaurante aún no cargó, los valores derivados
+  // quedan vacíos/null pero el hook ya se ejecutó.
+  const { initForRestaurante, sendProductToChat } = useChat();
+
   if (loading) return <Loading />;
 
   if (!restaurante) {
@@ -307,7 +313,6 @@ export default function RestaurantDetailsPage() {
    // mercados. Si en el futuro se quiere extender a otros tipos, agregar
    // un flag `restaurantes.acepta_chat` o un gate de plan (Premium+).
    const chatHabilitado = esMercadoAbarrotes;
-   const { initForRestaurante, sendProductToChat } = useChat();
 
    // Cuando carga el restaurante, abrimos (silenciosamente) la conversación
    // si ya hay identidad guardada para este local, o disparamos el modal
