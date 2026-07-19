@@ -14,7 +14,6 @@ import HelpButton from './components/help/HelpButton';
 import ClientHelpButton from './components/help/ClientHelpButton';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import CompleteProfileGate from './components/CompleteProfileGate';
-import ShareLinkButton from './components/ShareLinkButton';
 
 // Code splitting: cada página se carga solo cuando se necesita
 // Reduce el bundle inicial y mejora el time-to-interactive
@@ -220,11 +219,6 @@ export default function App() {
                 usa useAuth() para saber si hay un usuario logueado
                 y leer `user.otros_datos.onboarding.dashboard_tour_completed`. */}
             <HelpButton />
-
-            {/* Botón flotante para que el dueño comparta el enlace público de
-                su local con sus clientes (WhatsApp / copiar / share nativo).
-                Solo para rol 'restaurante' en /dashboard y /pos. */}
-            <ShareLinkButton />
 
             {/* Botón "?" para CLIENTES. Es el equivalente del HelpButton
                 del dueño, pero:

@@ -48,8 +48,10 @@ import {
   Store,
   Printer,
   CalendarDays,
+  Share2,
 } from 'lucide-react';
 import MenuDiaManager from '../components/MenuDiaManager';
+import ShareLocalModal from '../components/ShareLocalModal';
 import { getImageUrl } from '../utils/imageHelper';
 import { formatDate, formatDateTime, formatShortDate } from '../utils/dateHelper';
 
@@ -276,6 +278,7 @@ export default function RestaurantDashboardPage() {
   const [pendingProofsCount, setPendingProofsCount] = useState(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
+  const [shareOpen, setShareOpen] = useState(false); // modal "Compartir mi local"
   // Tour guiado: se dispara desde el banner o desde el FAB `?`.
   // Usamos un counter para forzar remontaje del modal cuando se
   // reabre (así el state interno de DashboardTour resetea a step 0).
@@ -700,6 +703,16 @@ export default function RestaurantDashboardPage() {
               <p className="text-[color:var(--text-secondary)] text-sm sm:text-base max-w-2xl">
                 Gestiona tu negocio de manera eficiente desde un solo lugar.
               </p>
+
+              {/* Compartir el enlace del local con los clientes */}
+              <button
+                type="button"
+                onClick={() => setShareOpen(true)}
+                className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-sm shadow-emerald-500/25 hover:bg-emerald-600 active:scale-95 transition-all"
+              >
+                <Share2 size={17} />
+                Compartir mi local
+              </button>
               {/* Item de menú "Activar ayuda de nuevo" — solo se muestra
                   si el dueño descartó el banner de ayuda en algún momento. */}
               <div className="mt-2">
@@ -1073,6 +1086,12 @@ export default function RestaurantDashboardPage() {
         product={selectedProduct}
         restaurantId={restaurant?.id}
         restaurante={restaurant}
+      />
+
+      <ShareLocalModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        restauranteId={restaurant?.id}
       />
 
       <RestaurantModal
