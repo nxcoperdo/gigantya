@@ -29,11 +29,15 @@ export function ChatProvider({ children }) {
   const [identityNeeded, setIdentityNeeded] = useState(false); // mostrar modal
   const [identity, setIdentity] = useState({ nombre: '', telefono: '' });
   const [restauranteIdActivo, setRestauranteIdActivo] = useState(null);
-  // restauranteIdRef + identityRef: refs para leer el estado actual desde
-  // callbacks async (sendMensaje, sendProductToChat) sin depender de él
-  // y causar re-renders o stale closures.
+  // restauranteIdRef + identityRef + identifierServerRef: refs para leer
+  // el estado actual desde callbacks async (sendMensaje, sendProductToChat)
+  // sin depender de él y causar re-renders o stale closures.
+  // `identifierServerRef` guarda el `cliente_identificador` que devolvió
+  // el server (autoritativo), necesario para que sendMensaje pueda mandar
+  // el `anon_identifier` correcto en cada request.
   const restauranteIdRef = useRef(null);
   const identityRef = useRef({ nombre: '', telefono: '' });
+  const identifierServerRef = useRef(null);
   useEffect(() => { restauranteIdRef.current = restauranteIdActivo; }, [restauranteIdActivo]);
   useEffect(() => { identityRef.current = identity; }, [identity]);
 
@@ -154,9 +158,21 @@ export function ChatProvider({ children }) {
         cliente_telefono: telefono,
       });
       setConversacion(conv);
-      // La identidad persistida sirve para autenticarnos como anónimo
-      // en los endpoints REST (enviar/leer mensajes cuando no hay JWT).
-      const chatIdentidad = { nombre, telefono };
+      // La identidad para autenticarnos como anónimo en los endpoints REST
+      // y en el socket SIEMPRE viene del server (cliente_identificador ya
+      // normalizado). Si la recalculamos localmente con el `telefono`
+      // que tipeó el cliente, podemos tener mismatch de formato (con/sin
+      // '+', espacios, etc.) y el server rechaza la autorización con
+      // "No autorizado para unirse a esta conversación".
+      const chatIdentidad = {
+        nombre,
+        telefono,
+        clienteIdentificadorServer: conv.cliente_identificador,
+      };
+      // Guardar el identificador del server en un ref para que
+      // sendMensaje (que se llama después sin acceso a `conversacion`
+      // actual) pueda mandar el anon_identifier correcto.
+      identifierServerRef.current = conv.cliente_identificador;
       // Cargar historial
       const hist = await chatService.listMensajes(conv.id, chatIdentidad);
       setMensajes(hist.mensajes || []);
@@ -182,7 +198,12 @@ export function ChatProvider({ children }) {
   async function sendMensajeInternal(conv_id, payload) {
     setSendingMensaje(true);
     try {
-      const chatIdentidad = identityRef.current;
+      const identidad = identityRef.current;
+      const chatIdentidad = {
+        nombre: identidad.nombre,
+        telefono: identidad.telefono,
+        clienteIdentificadorServer: identifierServerRef.current,
+      };
       const msg = await chatService.sendMensaje(conv_id, payload, chatIdentidad);
       // El socket va a recibirlo también (broadcast del server) y lo
       // agrega via onNewChatMessage. Para evitar duplicados, solo

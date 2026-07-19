@@ -19,18 +19,22 @@ const isLoggedIn = () => !!localStorage.getItem('token');
 /**
  * Devuelve { identifier, instance } para una conversación. Si hay
  * sesión, usa la instancia con token y no manda identifier. Si no,
- * usa apiAnon + el anon_identifier del localStorage que ChatContext
- * mantiene con la clave `chat_identity_<restaurante_id>`.
+ * usa apiAnon + el anon_identifier que el SERVER guardó en la BD
+ * (es el autoritativo — el cliente nunca debe reconstruirlo localmente
+ * porque cualquier diferencia de normalización rompe la auth del socket).
+ *
+ * El cliente pasa `clienteIdentificadorServer` (que vino en
+ * `conv.cliente_identificador` de ensureConversation) para evitar
+ * recalcular `anon:${tel}` con un formato distinto al que el server usó.
  */
-async function getContext(chatIdentidad) {
+function getContext(chatIdentidad) {
   if (isLoggedIn()) {
     return { instance: api, identifier: null };
   }
-  if (!chatIdentidad?.telefono) {
-    throw new Error('No hay identidad de chat guardada (nombre + teléfono)');
+  if (!chatIdentidad?.clienteIdentificadorServer) {
+    throw new Error('Falta clienteIdentificadorServer en chatIdentidad (anon:<tel> que devolvió el server)');
   }
-  const tel = String(chatIdentidad.telefono).replace(/[\s\-()]/g, '');
-  return { instance: apiAnon, identifier: `anon:${tel}` };
+  return { instance: apiAnon, identifier: chatIdentidad.clienteIdentificadorServer };
 }
 
 export const chatService = {
