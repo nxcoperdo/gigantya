@@ -281,6 +281,30 @@ export default function RestaurantDetailsPage() {
   // quedan vacíos/null pero el hook ya se ejecutó.
   const { initForRestaurante, sendProductToChat } = useChat();
 
+  // Piloto chat: gateado a locales de mercado/abarrotes. Es la condición
+  // natural porque el chat existe exactamente para evitar que el cliente
+  // tenga que pelearse con las presentaciones (libra/bloque/kilo) en
+  // mercados. Si en el futuro se quiere extender a otros tipos, agregar
+  // un flag `restaurantes.acepta_chat` o un gate de plan (Premium+).
+  // Calculado antes del early return para que el useEffect que lo usa
+  // (initForRestaurante) quede en el mismo orden de hooks siempre.
+  const esMercadoAbarrotes = Boolean(Number(restaurante?.es_mercado_abarrotes));
+  const chatHabilitado = esMercadoAbarrotes;
+
+  // Cuando carga el restaurante, abrimos (silenciosamente) la conversación
+  // si ya hay identidad guardada para este local, o disparamos el modal
+  // si no la hay. Solo si el chat está habilitado.
+  // Este useEffect tiene que estar ANTES de los early returns para que
+  // React vea la misma cantidad de hooks en cada render (regla de hooks).
+  // Si el restaurante aún no cargó, el `if (!restaurante) return` lo
+  // neutraliza sin haber llamado al hook.
+  useEffect(() => {
+    if (!chatHabilitado || !restaurante) return;
+    initForRestaurante(Number(id));
+    // initForRestaurante es estable por useCallback, pero por si acaso:
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatHabilitado, restaurante?.id]);
+
   if (loading) return <Loading />;
 
   if (!restaurante) {
@@ -301,28 +325,6 @@ export default function RestaurantDetailsPage() {
    const ofreceDomicilio = restaurante?.ofrece_domicilio === undefined
      ? true
      : Boolean(Number(restaurante.ofrece_domicilio));
-
-   // Solo los locales de mercado/abarrotes usan la lógica de "presentación"
-   // (libra/bloque/kilo…). El hint "Elige presentación" en las tarjetas se
-   // muestra únicamente para ellos.
-   const esMercadoAbarrotes = Boolean(Number(restaurante?.es_mercado_abarrotes));
-
-   // Piloto chat: gateado a locales de mercado/abarrotes. Es la condición
-   // natural porque el chat existe exactamente para evitar que el cliente
-   // tenga que pelearse con las presentaciones (libra/bloque/kilo) en
-   // mercados. Si en el futuro se quiere extender a otros tipos, agregar
-   // un flag `restaurantes.acepta_chat` o un gate de plan (Premium+).
-   const chatHabilitado = esMercadoAbarrotes;
-
-   // Cuando carga el restaurante, abrimos (silenciosamente) la conversación
-   // si ya hay identidad guardada para este local, o disparamos el modal
-   // si no la hay. Solo si el chat está habilitado.
-   useEffect(() => {
-     if (!chatHabilitado || !restaurante) return;
-     initForRestaurante(Number(id));
-     // initForRestaurante es estable por useCallback, pero por si acaso:
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [chatHabilitado, restaurante?.id]);
 
    return (
      <div
