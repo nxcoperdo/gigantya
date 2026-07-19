@@ -56,6 +56,37 @@ export default function ChatPanel({ restauranteNombre }) {
 
   if (!panelOpen) return null;
 
+  // Mientras la conversación no esté lista (cargando identidad por primera
+  // vez, por ejemplo), mostramos un placeholder en vez del chat vacío.
+  // Esto evita que el usuario pueda escribir y disparar sendMensaje con
+  // chatIdentidad vacía (que tira 'Cannot read properties of undefined
+  // (reading get)' en axios cuando apiAnon se llama sin teléfono).
+  if (!conversacion) {
+    return (
+      <div
+        role="dialog"
+        aria-label="Cargando chat"
+        className="fixed inset-x-0 bottom-20 left-3 right-3 sm:left-auto sm:right-5 sm:bottom-24 sm:w-96 sm:max-w-[calc(100vw-2rem)] z-40 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+        style={{ maxHeight: 'min(70vh, 540px)' }}
+      >
+        <div className="px-4 py-3 flex items-center justify-between text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm truncate">
+              {restauranteNombre || 'Chat con el local'}
+            </div>
+            <div className="text-xs opacity-90">conectando…</div>
+          </div>
+          <button onClick={closePanel} aria-label="Cerrar chat" className="p-1.5 hover:bg-white/10 rounded">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          {loadingConv ? 'Cargando conversación…' : 'Por esperá un momento…'}
+        </div>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim() || sendingMensaje) return;
