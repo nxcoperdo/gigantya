@@ -290,6 +290,11 @@ export default function RestaurantDetailsPage() {
      ? true
      : Boolean(Number(restaurante.ofrece_domicilio));
 
+   // Solo los locales de mercado/abarrotes usan la lógica de "presentación"
+   // (libra/bloque/kilo…). El hint "Elige presentación" en las tarjetas se
+   // muestra únicamente para ellos.
+   const esMercadoAbarrotes = Boolean(Number(restaurante?.es_mercado_abarrotes));
+
    return (
      <div
        className="min-h-screen bg-[color:var(--bg-subtle)]"
@@ -549,7 +554,7 @@ export default function RestaurantDetailsPage() {
                      {matches.length} {matches.length === 1 ? 'resultado' : 'resultados'} para «{searchQuery}»
                    </p>
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 sm:gap-6">
-                     {matches.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades))}
+                     {matches.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades, esMercadoAbarrotes))}
                    </div>
                  </div>
                );
@@ -573,7 +578,7 @@ export default function RestaurantDetailsPage() {
                      </div>
 
                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 sm:gap-6">
-                       {catData.productos.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades))}
+                       {catData.productos.map((producto, idx) => renderProductCard(producto, idx, isRestaurantOpenNow, ofreceDomicilio, handleAddToCart, openProductGallery, expandedDescs, toggleDescExpanded, cantidades, esMercadoAbarrotes))}
                      </div>
                    </div>
                  ))}
@@ -781,7 +786,8 @@ function renderProductCard(
   openProductGallery,
   expandedDescs,
   toggleDescExpanded,
-  cantidades
+  cantidades,
+  esMercadoAbarrotes = false
 ) {
   // Stagger suave solo en los primeros 6 productos del primer viewport
   // visible. El resto entra instantáneamente. Antes era idx*50ms sin
@@ -866,6 +872,14 @@ function renderProductCard(
           >
             {formatCurrency(producto.precio)}
           </p>
+          {/* Solo en locales de mercado/abarrotes: avisa que el producto se
+              vende por presentación (libra/bloque/kilo…) y que al tocar
+              "Agregar" se elige. En restaurantes no aplica. */}
+          {esMercadoAbarrotes && Number(producto.tiene_modificadores) === 1 && (
+            <span className="text-[11px] sm:text-xs font-semibold text-primary/80 whitespace-nowrap sm:mt-0.5 sm:block">
+              Elige presentación
+            </span>
+          )}
         </div>
 
         <button
