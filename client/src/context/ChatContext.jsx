@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import socketService from '../services/socket.js';
 import chatService from '../services/chat.js';
 
@@ -12,6 +12,12 @@ import chatService from '../services/chat.js';
  *  - "Escribiendo..." del otro lado (typing).
  *  - Apertura/cierre del panel.
  *
+ * Actualización de mensajes:
+ *  - Polling cada 6s cuando el panel está abierto (más simple y robusto
+ *    que socket para MVP — no necesitamos latencia sub-segundo en un chat
+ *    de mercado, y el socket estaba fallando por auth de anon_identifier).
+ *  - El socket sigue activo para typing/presence pero NO para mensajes.
+ *
  * NO maneja el lado del vendedor — eso lo hace la página /admin/chat
  * con su propio estado (sigue el mismo socket y los mismos endpoints).
  *
@@ -22,19 +28,20 @@ import chatService from '../services/chat.js';
 const ChatContext = createContext(null);
 
 const LS_IDENTITY_KEY = (restaurante_id) => `chat_identity_${restaurante_id}`;
+const POLL_INTERVAL_MS = 6000;       // 6s — buen balance entre "casi real-time" y batería
+const TYPING_DEBOUNCE_MS = 500;      // Evita flood de eventos typing en mobile (teclado)
+const TYPING_TIMEOUT_MS = 4000;      // Cuánto dura el indicador después del último typing
 
 export function ChatProvider({ children }) {
   // Estado de UI
   const [panelOpen, setPanelOpen] = useState(false);
-  const [identityNeeded, setIdentityNeeded] = useState(false); // mostrar modal
+  const [identityNeeded, setIdentityNeeded] = useState(false);
   const [identity, setIdentity] = useState({ nombre: '', telefono: '' });
   const [restauranteIdActivo, setRestauranteIdActivo] = useState(null);
+
   // restauranteIdRef + identityRef + identifierServerRef: refs para leer
   // el estado actual desde callbacks async (sendMensaje, sendProductToChat)
   // sin depender de él y causar re-renders o stale closures.
-  // `identifierServerRef` guarda el `cliente_identificador` que devolvió
-  // el server (autoritativo), necesario para que sendMensaje pueda mandar
-  // el `anon_identifier` correcto en cada request.
   const restauranteIdRef = useRef(null);
   const identityRef = useRef({ nombre: '', telefono: '' });
   const identifierServerRef = useRef(null);
@@ -52,9 +59,14 @@ export function ChatProvider({ children }) {
   const [otroEscribiendo, setOtroEscribiendo] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
 
-  // Refs para no recrear listeners en cada render
+  // Refs varios
   const typingTimeoutRef = useRef(null);
+  const pollRef = useRef(null);
   const convRef = useRef(null);
+  const convIdRef = useRef(null);            // para el polling
+  const chatIdentidadRef = useRef(null);     // para el polling
+  const typingDebounceRef = useRef(null);
+  const lastTypingSentRef = useRef(false);
   convRef.current = conversacion;
 
   // ============ API pública ============
@@ -74,11 +86,9 @@ export function ChatProvider({ children }) {
       try {
         const parsed = JSON.parse(raw);
         setIdentity({ nombre: parsed.nombre || '', telefono: parsed.telefono || '' });
-        // Abrir la conversación silenciosamente.
         await ensureConvInternal(restaurante_id, parsed.nombre, parsed.telefono);
         return;
       } catch {
-        // localStorage corrupto, lo limpiamos
         localStorage.removeItem(LS_IDENTITY_KEY(restaurante_id));
       }
     }
@@ -119,8 +129,7 @@ export function ChatProvider({ children }) {
 
   /**
    * Llamado por ProductQuickSend cuando el cliente hace "Enviar al chat"
-   * en un producto del catálogo. Garantiza que la conversación existe
-   * y luego manda el mensaje con adjuntos.
+   * en un producto del catálogo.
    */
   const sendProductToChat = useCallback(async (producto) => {
     if (!restauranteIdActivo) return;
@@ -158,33 +167,29 @@ export function ChatProvider({ children }) {
         cliente_telefono: telefono,
       });
       setConversacion(conv);
-      // La identidad para autenticarnos como anónimo en los endpoints REST
-      // y en el socket SIEMPRE viene del server (cliente_identificador ya
-      // normalizado). Si la recalculamos localmente con el `telefono`
-      // que tipeó el cliente, podemos tener mismatch de formato (con/sin
-      // '+', espacios, etc.) y el server rechaza la autorización con
-      // "No autorizado para unirse a esta conversación".
       const chatIdentidad = {
         nombre,
         telefono,
         clienteIdentificadorServer: conv.cliente_identificador,
       };
-      // Guardar el identificador del server en un ref para que
-      // sendMensaje (que se llama después sin acceso a `conversacion`
-      // actual) pueda mandar el anon_identifier correcto.
       identifierServerRef.current = conv.cliente_identificador;
+      convIdRef.current = conv.id;
+      chatIdentidadRef.current = chatIdentidad;
+
       // Cargar historial
       const hist = await chatService.listMensajes(conv.id, chatIdentidad);
       setMensajes(hist.mensajes || []);
-      // Unirse al room
+
+      // Unirse al room del socket (solo para typing/presence, no para mensajes)
       const anonIdentifier = conv.cliente_identificador.startsWith('anon:') ? conv.cliente_identificador : null;
       try {
         const ack = await socketService.joinConversation(conv.id, anonIdentifier);
         setOnlineCount(ack.online || 0);
       } catch (e) {
-        console.warn('[chat] joinConversation falló:', e.message);
+        console.warn('[chat] joinConversation falló (no bloquea el chat):', e.message);
       }
-      // Marcar como leído (los del vendedor que ya estaban)
+
+      // Marcar como leído
       try { await chatService.markRead(conv.id, chatIdentidad); } catch {}
       return conv;
     } catch (err) {
@@ -205,9 +210,6 @@ export function ChatProvider({ children }) {
         clienteIdentificadorServer: identifierServerRef.current,
       };
       const msg = await chatService.sendMensaje(conv_id, payload, chatIdentidad);
-      // El socket va a recibirlo también (broadcast del server) y lo
-      // agrega via onNewChatMessage. Para evitar duplicados, solo
-      // agregamos si el id no está ya.
       setMensajes((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
     } catch (err) {
       setError(err.message || 'No se pudo enviar el mensaje');
@@ -217,27 +219,83 @@ export function ChatProvider({ children }) {
     }
   }
 
-  // ============ Listeners de socket (mount una sola vez) ============
+  /**
+   * Refresca los mensajes del servidor. Llamado por el polling y al
+   * abrir el panel. Mergea por id, no reemplaza — los mensajes que el
+   * cliente ya tiene (los suyos propios) no se duplican.
+   */
+  const refrescarMensajes = useCallback(async () => {
+    const convId = convIdRef.current;
+    const chatIdentidad = chatIdentidadRef.current;
+    if (!convId || !chatIdentidad) return;
+    try {
+      const hist = await chatService.listMensajes(convId, chatIdentidad);
+      const nuevos = hist.mensajes || [];
+      setMensajes((prev) => {
+        if (prev.length === nuevos.length && prev.every((m, i) => m.id === nuevos[i].id)) {
+          return prev; // sin cambios — no re-render
+        }
+        // Merge: si hay mensajes nuevos, los appendeamos; si los del server
+        // tienen contenido más completo (ej: edited), actualizamos.
+        const prevById = new Map(prev.map((m) => [m.id, m]));
+        const merged = nuevos.map((m) => prevById.get(m.id) || m);
+        return merged;
+      });
+    } catch (err) {
+      console.warn('[chat] polling falló:', err.message);
+    }
+  }, []);
+
+  /**
+   * Notifica al server que el cliente está escribiendo. Debounce en mobile
+   * (el socket puede colapsar si mandamos 1 por keystroke). Solo emite
+   * el cambio de estado (true→false o false→true), no cada keystroke.
+   */
+  const sendTypingDebounced = useCallback((typing) => {
+    if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+    typingDebounceRef.current = setTimeout(() => {
+      const conv = convRef.current;
+      if (conv && typing !== lastTypingSentRef.current) {
+        socketService.sendTyping(conv.id, typing);
+        lastTypingSentRef.current = typing;
+      }
+    }, TYPING_DEBOUNCE_MS);
+  }, []);
+
+  // ============ Polling ============
+
+  // Polling SOLO cuando el panel está abierto Y hay conversación.
+  // Esto evita consumir batería cuando el cliente no está mirando el chat.
+  useEffect(() => {
+    if (!panelOpen || !convIdRef.current) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+    // Refrescar inmediatamente al abrir, después cada POLL_INTERVAL_MS.
+    refrescarMensajes();
+    pollRef.current = setInterval(refrescarMensajes, POLL_INTERVAL_MS);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [panelOpen, refrescarMensajes]);
+
+  // ============ Listeners de socket (typing/presence) ============
 
   useEffect(() => {
-    const handleNew = (payload) => {
-      if (!payload || !payload.mensaje) return;
-      const conv = convRef.current;
-      if (!conv || payload.conversacion_id !== conv.id) return;
-      setMensajes((prev) => {
-        if (prev.some((m) => m.id === payload.mensaje.id)) return prev;
-        return [...prev, payload.mensaje];
-      });
-    };
     const handleTyping = (payload) => {
       if (!payload) return;
       const conv = convRef.current;
       if (!conv || payload.conversacion_id !== conv.id) return;
-      // Si typing=true, mostrar el indicador; si false, ocultar.
       if (payload.typing) {
         setOtroEscribiendo(true);
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => setOtroEscribiendo(false), 3000);
+        typingTimeoutRef.current = setTimeout(() => setOtroEscribiendo(false), TYPING_TIMEOUT_MS);
       } else {
         setOtroEscribiendo(false);
       }
@@ -249,15 +307,14 @@ export function ChatProvider({ children }) {
       setOnlineCount(payload.online || 0);
     };
 
-    socketService.onNewChatMessage(handleNew);
     socketService.onChatTyping(handleTyping);
     socketService.onChatPresence(handlePresence);
 
     return () => {
-      socketService.offNewChatMessage(handleNew);
       socketService.offChatTyping(handleTyping);
       socketService.offChatPresence(handlePresence);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
     };
   }, []);
 
@@ -267,20 +324,22 @@ export function ChatProvider({ children }) {
       if (convRef.current) {
         socketService.leaveConversation(convRef.current.id);
       }
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [restauranteIdActivo]);
 
-  const value = {
-    // UI
+  // Memo del value para evitar re-renders innecesarios de consumers.
+  // Sin esto, el value se recrea en cada render y todos los useChat()
+  // consumers re-renderean. En mobile con React Native Web esto es
+  // un asesino de performance.
+  const value = useMemo(() => ({
     panelOpen,
     identityNeeded,
     openPanel: openPanelGuard,
     closePanel,
     setIdentityNeeded,
-    // identidad
     identity,
     saveIdentity,
-    // conversación
     conversacion,
     mensajes,
     loadingConv,
@@ -288,11 +347,12 @@ export function ChatProvider({ children }) {
     error,
     onlineCount,
     otroEscribiendo,
-    // acciones
     initForRestaurante,
     sendMensaje,
     sendProductToChat,
-  };
+    sendTypingDebounced,
+    refrescarMensajes,
+  }), [panelOpen, identityNeeded, openPanelGuard, closePanel, identity, saveIdentity, conversacion, mensajes, loadingConv, sendingMensaje, error, onlineCount, otroEscribiendo, initForRestaurante, sendMensaje, sendProductToChat, sendTypingDebounced, refrescarMensajes]);
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

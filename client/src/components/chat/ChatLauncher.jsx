@@ -1,72 +1,45 @@
-import { useState, useEffect } from 'react';
+import { memo } from 'react';
 import { useChat } from '../../context/ChatContext.jsx';
 import { MessageCircle, X } from 'lucide-react';
 
 /**
- * Botón flotante abajo a la derecha con badge de mensajes no leídos.
- * Solo se muestra cuando hay un restaurante activo (gated por
- * RestaurantDetailsPage) y hay identidad (después del modal).
- *
- * En mobile reemplaza a la MobileCartBar para el local 4 (gatillo
- * visual para el chat; el carrito queda accesible por un link dentro
- * del panel si el usuario está logueado).
+ * Botón flotante del chat. Se posiciona abajo-izquierda para no chocar
+ * con ClientHelpButton (abajo-derecha). Memoizado para no re-renderear
+ * cuando cambian otras partes del ChatContext.
  */
-export default function ChatLauncher() {
-  const { panelOpen, openPanel, closePanel, mensajes, conversacion } = useChat();
-  const [noLeidos, setNoLeidos] = useState(0);
+function ChatLauncherBase() {
+  const { panelOpen, openPanel, closePanel, conversacion, mensajes } = useChat();
 
   // Contar mensajes del vendedor (o sistema) que el cliente no ha leído.
-  // No tenemos un flag "leido_por_cliente" persistente todavía, así que
-  // usamos un proxy: contar mensajes del vendedor cuyo created_at es
-  // posterior a la última vez que el panel estuvo abierto.
-  // Para MVP, mostramos un dot pulsante si hay CUALQUIER mensaje del
-  // vendedor y el panel está cerrado.
-  useEffect(() => {
-    if (panelOpen) {
-      setNoLeidos(0);
-      return;
-    }
-    if (!conversacion) {
-      setNoLeidos(0);
-      return;
-    }
-    const ultDelVendedor = mensajes.filter(
+  // Para MVP: si hay cualquier mensaje del vendedor y el panel está
+  // cerrado, mostramos el dot pulsante.
+  let noLeidos = 0;
+  if (!panelOpen && conversacion) {
+    noLeidos = mensajes.filter(
       (m) => m.emisor_tipo === 'vendedor' || m.emisor_tipo === 'sistema'
     ).length;
-    setNoLeidos(ultDelVendedor);
-  }, [panelOpen, conversacion, mensajes]);
-
-  // Lo posicionamos arriba del botón de ayuda (ClientHelpButton) que está
-  // en bottom-5 right-5 z-40. Si quedaran en la misma esquina se
-  // superponen y el chat queda debajo. Subimos a bottom-5 left-5 (esquina
-  // opuesta) para evitar el choque y respetar la convención de
-  // "mensajería abajo a la izquierda" (WhatsApp, Messenger).
-  if (panelOpen) {
-    return (
-      <button
-        onClick={closePanel}
-        aria-label="Cerrar chat"
-        className="fixed bottom-5 left-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
-        style={{ backgroundColor: 'var(--color-primary)' }}
-      >
-        <X size={24} />
-      </button>
-    );
   }
+
+  const handleClick = panelOpen ? closePanel : openPanel;
+  const ariaLabel = panelOpen
+    ? 'Cerrar chat'
+    : noLeidos > 0
+      ? `Abrir chat con el local (${noLeidos} sin leer)`
+      : 'Abrir chat con el local';
 
   return (
     <button
-      onClick={openPanel}
-      aria-label="Abrir chat con el local"
-      className="fixed bottom-5 left-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
+      onClick={handleClick}
+      aria-label={ariaLabel}
+      className="fixed bottom-5 left-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95 touch-manipulation"
       style={{ backgroundColor: 'var(--color-primary)' }}
     >
-      <MessageCircle size={24} />
-      {noLeidos > 0 && (
+      {panelOpen ? <X size={24} /> : <MessageCircle size={24} />}
+      {!panelOpen && noLeidos > 0 && (
         <span
-          className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full text-xs font-bold flex items-center justify-center text-white"
+          className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full text-xs font-bold flex items-center justify-center text-white pointer-events-none"
           style={{ backgroundColor: '#ef4444' }}
-          aria-label={`${noLeidos} mensajes sin leer`}
+          aria-hidden="true"
         >
           {noLeidos > 9 ? '9+' : noLeidos}
         </span>
@@ -74,3 +47,8 @@ export default function ChatLauncher() {
     </button>
   );
 }
+
+// memo: solo re-renderea si panelOpen, conversacion, o mensajes cambian
+// de referencia (lo cual ya filtramos en el Context con useMemo).
+const ChatLauncher = memo(ChatLauncherBase);
+export default ChatLauncher;

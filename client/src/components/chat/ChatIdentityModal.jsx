@@ -36,26 +36,26 @@ export default function ChatIdentityModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50"
       onClick={() => setIdentityNeeded(false)}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-lg shadow-xl max-w-md w-full p-5 sm:p-6 pb-safe-bottom"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="flex items-start justify-between mb-4 gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
               Escríbenos al local
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
               Decinos qué necesitás y te armamos el pedido.
             </p>
           </div>
           <button
             onClick={() => setIdentityNeeded(false)}
             aria-label="Cerrar"
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-gray-400 hover:text-gray-600 flex-shrink-0"
           >
             <X size={20} />
           </button>
@@ -75,7 +75,7 @@ export default function ChatIdentityModal() {
               minLength={2}
               maxLength={100}
               placeholder="Cómo te llamamos"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base"
             />
           </div>
           <div>
@@ -89,7 +89,7 @@ export default function ChatIdentityModal() {
               required
               inputMode="tel"
               placeholder="3001234567"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white tabular-nums"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base tabular-nums"
             />
             <p className="text-xs text-gray-500 mt-1">
               Lo usa el local para avisarte cuando tu pedido esté listo.
@@ -103,7 +103,7 @@ export default function ChatIdentityModal() {
           <button
             type="submit"
             disabled={!puedeEnviar}
-            className="w-full py-2.5 rounded-md font-semibold text-white disabled:opacity-50 active:scale-95 transition-transform"
+            className="w-full py-3 rounded-md font-semibold text-white disabled:opacity-50 active:scale-[0.98] transition-transform touch-manipulation"
             style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {submitting ? 'Abriendo chat…' : 'Empezar a chatear'}
