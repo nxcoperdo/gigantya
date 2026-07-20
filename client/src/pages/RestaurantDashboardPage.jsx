@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService, orderService, productService, couponService, restaurantService, paymentService, exportService, userService } from '../services/api';
 import chatService from '../services/chat';
+import socketService from '../services/socket';
 import Loading from '../components/Loading';
 import ProductModal from '../components/ProductModal';
 import RestaurantModal from '../components/RestaurantModal';
@@ -491,6 +492,24 @@ export default function RestaurantDashboardPage() {
         clearInterval(ordersPollingRef.current);
         ordersPollingRef.current = null;
       }
+    };
+  }, [restaurant?.id]);
+
+  // Realtime: cuando un vendedor arma un pedido desde el chat (o cualquier
+  // pedido del canal web entra al sistema), el server emite `web:order_created`
+  // al room del restaurante. Refetcheamos el listado de pedidos para que
+  // la Recepción de Pedidos se actualice al instante, sin esperar al poll
+  // de 7s. La card del pedido se ve igual que un pedido cliente normal — no
+  // se muestra distinción visual de origen.
+  useEffect(() => {
+    if (!restaurant?.id) return undefined;
+    const onWebOrder = () => {
+      loadOrders({ silent: true });
+      loadPendingProofsCount();
+    };
+    socketService.onWebOrderCreated(onWebOrder);
+    return () => {
+      socketService.offWebOrderCreated(onWebOrder);
     };
   }, [restaurant?.id]);
 

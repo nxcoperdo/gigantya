@@ -346,6 +346,33 @@ export async function convertToOrder({ conversacion_id, pedidoDraft, creado_por_
     console.error('[chat] notificarNuevoPedido falló:', err.message)
   );
 
+  // Emitir socket `web:order_created` al room del restaurante para que
+  // el dashboard "Recepción de Pedidos" se entere en tiempo real y haga
+  // refetch (en vez de esperar al próximo poll de 7s). El evento se
+  // llama `web:order_created` y no `chat:order_created` porque
+  // semánticamente es un pedido del canal web — el medio (chat) no es
+  // relevante para el front, que ya lo muestra como un pedido cliente
+  // normal. Si el emit falla, la conversión ya está hecha: logueamos
+  // y seguimos.
+  try {
+    const pedidoCompleto = await query(
+      `SELECT p.*, u.nombre AS cliente_nombre
+         FROM pedidos p
+         LEFT JOIN usuarios u ON p.usuario_id = u.id
+        WHERE p.id = ?`,
+      [pedidoId]
+    );
+    emitToRestaurant(conv.restaurante_id, 'web:order_created', {
+      pedido_id: pedidoId,
+      canal: 'web',
+      origen: 'web_asistido',
+      total: pedidoCompleto[0]?.total,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (emitErr) {
+    console.error('[chat] emit web:order_created falló:', emitErr.message);
+  }
+
   return {
     conversacion: { ...conv, estado: 'convertida', pedido_id: pedidoId },
     pedido_id: pedidoId,

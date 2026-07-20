@@ -240,10 +240,12 @@ export async function createOrderCore(orderData, options = {}) {
       if (calc.envio_gratis_aplicado) resolvedCostoEnvio = 0;
     }
 
-    // 7) Determinar estado inicial.
+    // 7) Determinar estado inicial. Usamos OrderModel.ORDER_STATES para
+    // no divergir del enum interno (antes había un typo 'Comprobante_enviado'
+    // con guión bajo, que NO es un valor válido del ENUM de la BD).
     const estadoInicial = metodo_pago === 'contra_entrega'
-      ? 'Pendiente'
-      : 'Comprobante_enviado';
+      ? OrderModel.ORDER_STATES.PENDIENTE
+      : OrderModel.ORDER_STATES.COMPROBANTE_ENVIADO;
 
     // 8) Si es POS dine-in, RESERVAR la mesa (FOR UPDATE + UPDATE).
     if (mesa_id && esConsumoEnLocal) {

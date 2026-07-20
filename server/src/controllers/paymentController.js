@@ -171,6 +171,128 @@ export async function uploadPaymentProof(req, res) {
 }
 
 /**
+ * Subir comprobante de pago en nombre del cliente (uso del staff).
+ *
+ * Pensado para el flujo de Armar Pedido desde el chat: el vendedor arma
+ * el pedido y, si el método es Nequi/Daviplata/Bre-B, puede adjuntar el
+ * comprobante que el cliente le mandó por WhatsApp/DM en el mismo
+ * momento (en vez de esperar a que el cliente lo suba por su cuenta).
+ *
+ * Diferencias con `uploadPaymentProof` (versión cliente):
+ *   - Acepta staff (restaurante, cajero, mesero, cocina) en vez de solo cliente.
+ *   - Verifica que el pedido pertenezca al restaurante del staff (no
+ *     del cliente).
+ *   - Si ya hay comprobante aprobado, lo sobrescribe y vuelve a estado
+ *     'pendiente' (mismo comportamiento que la versión cliente, aunque
+ *     esta última en realidad rechaza la resubida).
+ *
+ * Mismo shape de body: { pedido_id, metodo_pago } + FormData('comprobante').
+ */
+export async function staffUploadPaymentProof(req, res) {
+  try {
+    const STAFF_TYPES = ['restaurante', 'cajero', 'mesero', 'cocina'];
+    if (!STAFF_TYPES.includes(req.user.tipo_usuario)) {
+      return res.status(403).json({
+        error: 'Solo el staff del local puede subir comprobantes en nombre del cliente'
+      });
+    }
+
+    const { pedido_id, metodo_pago } = req.body;
+
+    if (!pedido_id || !metodo_pago) {
+      return res.status(400).json({
+        error: 'pedido_id y metodo_pago son requeridos'
+      });
+    }
+
+    if (!['nequi', 'daviplata', 'bre_b'].includes(metodo_pago)) {
+      return res.status(400).json({
+        error: 'Método de pago no válido. Use: nequi, daviplata, bre_b'
+      });
+    }
+
+    // Verificar que el pedido existe y pertenece al restaurante del staff.
+    const pedido = await OrderModel.getOrderById(pedido_id);
+    if (!pedido) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
+    if (!restaurante || restaurante.id !== pedido.restaurante_id) {
+      return res.status(403).json({
+        error: 'No tienes permiso para subir comprobante de este pedido'
+      });
+    }
+
+    // Verificar archivo
+    if (!req.file) {
+      return res.status(400).json({ error: 'Debe subir un comprobante de pago' });
+    }
+
+    const url_imagen = `/uploads/payment-proofs/${req.file.filename}`;
+
+    // Si ya existe un comprobante, lo sobrescribimos (mismo criterio que
+    // un cliente resubiendo). Mismo filename puede chocar si se sube en
+    // el mismo segundo, pero multer ya agrega timestamp al filename.
+    const existingProof = await PaymentProofModel.getProofByOrderId(pedido_id);
+    if (existingProof) {
+      // Borramos el archivo viejo del FS para no dejar basura en
+      // uploads/payment-proofs/. No rompemos si falla el borrado.
+      try {
+        const { default: fs } = await import('fs/promises');
+        const { default: path } = await import('path');
+        const oldPath = path.join(process.cwd(), 'uploads', existingProof.url_imagen.replace(/^\/uploads\//, ''));
+        await fs.unlink(oldPath);
+      } catch {
+        // best-effort
+      }
+      await PaymentProofModel.updateProofStatus(existingProof.id, 'pendiente', null, null);
+      // Reemplazamos la URL por la nueva imagen.
+      const { query } = await import('../config/database.js');
+      await query(
+        `UPDATE comprobantes_pago SET url_imagen = ?, metodo_pago = ?, fecha_subida = NOW() WHERE id = ?`,
+        [url_imagen, metodo_pago, existingProof.id]
+      );
+    } else {
+      await PaymentProofModel.createProof({
+        pedido_id,
+        url_imagen,
+        metodo_pago,
+      });
+    }
+
+    // El pedido pasa a estado "Comprobante Enviado" (o vuelve si ya
+    // estaba aprobado y se resubió).
+    await OrderModel.updateOrderStatus(pedido_id, OrderModel.ORDER_STATES.COMPROBANTE_ENVIADO);
+
+    // Notificar al restaurante (mismo flujo que la versión cliente).
+    try {
+      await NotificationModel.createNotification({
+        usuario_id: restaurante.usuario_id,
+        tipo: 'pago',
+        titulo: 'Comprobante adjunto por el staff',
+        mensaje: `Se adjuntó un comprobante de pago por ${metodo_pago} al pedido #${pedido_id}`,
+        data: { pedido_id }
+      });
+    } catch (notifError) {
+      console.error('Error enviando notificación de comprobante (staff):', notifError);
+    }
+
+    res.status(201).json({
+      mensaje: 'Comprobante subido exitosamente',
+      pedido_id,
+      url_imagen,
+    });
+  } catch (error) {
+    console.error('Error subiendo comprobante (staff):', error);
+    res.status(500).json({
+      error: 'Error subiendo comprobante de pago',
+      detalles: error.message
+    });
+  }
+}
+
+/**
  * Obtener comprobante de un pedido
  */
 export async function getPaymentProof(req, res) {
@@ -443,6 +565,7 @@ export default {
   getPaymentConfig,
   updatePaymentConfig,
   uploadPaymentProof,
+  staffUploadPaymentProof,
   getPaymentProof,
   getPendingProofs,
   getProofsByRestaurant,

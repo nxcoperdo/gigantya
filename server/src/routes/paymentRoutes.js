@@ -1,9 +1,18 @@
 import express from 'express';
 import * as paymentController from '../controllers/paymentController.js';
-import { verifyToken } from '../middleware/authMiddleware.js';
+import { verifyToken, requireStaff } from '../middleware/authMiddleware.js';
 import { createUploader } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
+
+// Comprobantes van a uploads/payment-proofs/ para mantener backups
+// separados. Mismo uploader para la versión cliente y la staff: misma
+// carpeta, mismas reglas de tamaño/tipo.
+const uploadPaymentProof = createUploader({
+  subdir: 'payment-proofs',
+  allowedTypes: /jpeg|jpg|png|webp|svg/,
+  maxSize: 5 * 1024 * 1024,
+});
 
 /**
  * @route   GET /api/payments/config/:restaurante_id
@@ -24,13 +33,22 @@ router.put('/config', verifyToken, paymentController.updatePaymentConfig);
  * @desc    Subir comprobante de pago (Nequi/Daviplata)
  * @access  Private - Client
  */
-// Comprobantes van a uploads/payment-proofs/ para mantener backups separados.
-const uploadPaymentProof = createUploader({
-  subdir: 'payment-proofs',
-  allowedTypes: /jpeg|jpg|png|webp|svg/,
-  maxSize: 5 * 1024 * 1024,
-});
 router.post('/proof', verifyToken, uploadPaymentProof.single('comprobante'), paymentController.uploadPaymentProof);
+
+/**
+ * @route   POST /api/payments/proof/staff
+ * @desc    Subir comprobante de pago en nombre del cliente (uso del staff
+ *          desde el flujo de Armar Pedido del chat). El staff debe ser del
+ *          mismo restaurante del pedido.
+ * @access  Private - Staff
+ */
+router.post(
+  '/proof/staff',
+  verifyToken,
+  requireStaff,
+  uploadPaymentProof.single('comprobante'),
+  paymentController.staffUploadPaymentProof
+);
 
 /**
  * @route   GET /api/payments/proof/:pedido_id

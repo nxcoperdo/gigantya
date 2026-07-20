@@ -28,13 +28,27 @@ httpServer.headersTimeout = 66000; // Debe ser mayor a keepAliveTimeout
 httpServer.requestTimeout = 300000;
 httpServer.timeout = 300000;
 
+// CORS_ORIGIN admite un único origin o lista separada por comas (ver
+// la validación completa en app.js). Acá solo la parseamos para que el
+// handshake de Socket.IO refleje el origin del request cuando hay
+// varios permitidos.
+const RAW_CORS_ORIGIN_SOCK = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const CORS_ORIGIN_LIST_SOCK = RAW_CORS_ORIGIN_SOCK.split(',').map((o) => o.trim()).filter(Boolean);
+
 const io = new SocketServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
+    // Función para reflejar el origin del handshake (mismo criterio que
+    // en app.js, así un origin válido en HTTP también es válido en WS).
+    origin: (requestOrigin, callback) => {
+      if (!requestOrigin) return callback(null, true);
+      if (CORS_ORIGIN_LIST_SOCK.includes(requestOrigin)) return callback(null, true);
+      return callback(new Error(`Origin "${requestOrigin}" no está en CORS_ORIGIN whitelist`));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
   },
   // Configuración optimizada de Socket.IO
-  pingTimeout: 60000, // 60s<
+  pingTimeout: 60000, // 60s
   pingInterval: 25000, // 25s
   // Limitar tamaño de mensaje
   maxHttpBufferSize: 1e6, // 1MB
@@ -58,7 +72,7 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[server] Servidor ejecutándose en http://0.0.0.0:${PORT}`);
     console.log(`[server] Modo: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`[server] CORS habilitado para: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+    console.log(`[server] CORS habilitado para: ${CORS_ORIGIN_LIST_SOCK.join(', ')}`);
 });
 
 // ========== GRACEFUL SHUTDOWN ==========

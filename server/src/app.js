@@ -90,30 +90,43 @@ app.use(helmet({
 }));
 
 // CORS
-// Assert temprano: CORS_ORIGIN debe ser un único origin (no '*' ni lista
-// separada por comas). Express solo permite un origin cuando se usa
-// `credentials: true`; cualquier otro valor hace que el navegador ignore
-// la respuesta CORS y termina rompiendo auth en silencio. Si la validación
-// falla, NO arrancamos el server (fail-fast en vez de inseguro-por-defecto).
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
-if (CORS_ORIGIN === '*' || CORS_ORIGIN.trim() === '') {
-  throw new Error('CORS_ORIGIN no puede ser "*" ni estar vacío. Definí un único origin (ej: https://gigantya.com)');
+// CORS_ORIGIN puede ser:
+//   - Un único origin:  https://gigantya.com
+//   - Una lista separada por comas:  https://gigantya.com,https://www.gigantya.com
+//   - (Local dev default)  http://localhost:5173
+// No se permite '*' (rompe credentials), ni string vacío. Si la
+// validación falla, NO arrancamos el server (fail-fast en vez de
+// inseguro-por-defecto).
+const RAW_CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+if (RAW_CORS_ORIGIN === '*' || RAW_CORS_ORIGIN.trim() === '') {
+  throw new Error('CORS_ORIGIN no puede ser "*" ni estar vacío. Definí uno o varios origins separados por coma (ej: https://gigantya.com,https://www.gigantya.com)');
 }
-if (CORS_ORIGIN.includes(',')) {
-  throw new Error(`CORS_ORIGIN debe ser un único origin, no una lista separada por comas. Recibido: "${CORS_ORIGIN}"`);
+const CORS_ORIGIN_LIST = RAW_CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+if (CORS_ORIGIN_LIST.length === 0) {
+  throw new Error(`CORS_ORIGIN no contiene origins válidos: "${RAW_CORS_ORIGIN}"`);
 }
-// Validar que parezca una URL http(s) — defensa contra typos en .env
-try {
-  const parsed = new URL(CORS_ORIGIN);
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error('protocol no es http/https');
+// Validar que cada entry parezca una URL http(s) — defensa contra typos.
+for (const origin of CORS_ORIGIN_LIST) {
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('protocol no es http/https');
+    }
+  } catch (e) {
+    throw new Error(`CORS_ORIGIN contiene un origin inválido: "${origin}" (${e.message})`);
   }
-} catch (e) {
-  throw new Error(`CORS_ORIGIN no es una URL válida: "${CORS_ORIGIN}" (${e.message})`);
 }
 
 app.use(cors({
-  origin: CORS_ORIGIN,
+  // Función para que el header `Access-Control-Allow-Origin` refleje el
+  // origin exacto del request (necesario cuando hay varios origins
+  // permitidos y se usa `credentials: true`).
+  origin: (requestOrigin, callback) => {
+    // Permitir requests sin origin (curl, server-to-server, health checks).
+    if (!requestOrigin) return callback(null, true);
+    if (CORS_ORIGIN_LIST.includes(requestOrigin)) return callback(null, true);
+    return callback(new Error(`Origin "${requestOrigin}" no está en CORS_ORIGIN whitelist`));
+  },
   credentials: true,
   // Reducir overhead de CORS preflight
   maxAge: 86400 // Cache preflight 24h

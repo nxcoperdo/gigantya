@@ -141,6 +141,24 @@ export const socketService = {
     socket.on('pos:order_created', callback);
   },
 
+  /**
+   * Notifica al dashboard "Recepción de Pedidos" del local que hay un
+   * pedido nuevo del canal web. Se dispara cuando un vendedor arma un
+   * pedido desde el chat del cliente (`canal='web'`, `origen='web_asistido'`).
+   *
+   * El handler debe hacer un refetch del listado de pedidos. La card del
+   * pedido se ve igual que un pedido web normal — el origen (chat o
+   * cliente directo) no se muestra al usuario.
+   */
+  onWebOrderCreated: (callback) => {
+    const socket = socketService.connectOrders();
+    socket.on('web:order_created', callback);
+  },
+
+  offWebOrderCreated: (callback) => {
+    if (ordersSocket) ordersSocket.off('web:order_created', callback);
+  },
+
   onKitchenTicketReady: (callback) => {
     const socket = socketService.connectOrders();
     socket.on('pos:kitchen_ticket_ready', callback);

@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Plus, Trash2, ShoppingCart, AlertCircle, Search } from 'lucide-react';
+import { X, Plus, Trash2, ShoppingCart, AlertCircle, Search, Image as ImageIcon, Receipt } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatHelper';
 import chatService from '../../services/chat.js';
-import { productService } from '../../services/api.js';
+import { productService, paymentService } from '../../services/api.js';
 
 /**
  * Modal de "Armar pedido" desde el chat.
@@ -28,6 +28,14 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Comprobante opcional de pago digital (Nequi / Daviplata / Bre-B).
+  // Si el cliente mandó la captura por WhatsApp, el local puede adjuntarla
+  // acá mismo. Se sube DESPUÉS de crear el pedido, con un endpoint
+  // dedicado del staff (`paymentService.uploadProofAsStaff`).
+  const [comprobanteFile, setComprobanteFile] = useState(null);
+  const [comprobantePreview, setComprobantePreview] = useState(null);
+  const [comprobanteError, setComprobanteError] = useState(null);
 
   // Picker del catálogo (para agregar productos que el cliente no clickeó)
   const [pickerAbierto, setPickerAbierto] = useState(false);
@@ -120,6 +128,7 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
     e.preventDefault();
     if (!puedeConfirmar) return;
     setError(null);
+    setComprobanteError(null);
     setSubmitting(true);
     try {
       const draft = {
@@ -142,13 +151,77 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
         // con su nombre + teléfono.
       };
       const res = await chatService.adminConvertToOrder(conversacion.id, draft);
-      onCreated(res.pedido_id);
+      const pedidoId = res.pedido_id;
+
+      // Si hay comprobante adjunto, lo subimos en nombre del cliente.
+      // Si la subida falla, NO cancelamos la creación del pedido (el
+      // comprobante se puede subir después desde la Recepción). Solo
+      // informamos al staff.
+      if (comprobanteFile && ['nequi', 'daviplata', 'bre_b'].includes(metodoPago)) {
+        try {
+          await paymentService.uploadProofAsStaff(pedidoId, metodoPago, comprobanteFile);
+        } catch (proofErr) {
+          console.error('[ArmarPedidoModal] Error subiendo comprobante:', proofErr);
+          setComprobanteError(
+            'Pedido creado, pero no se pudo subir el comprobante. Podés adjuntarlo después desde la Recepción.'
+          );
+          // Igual notificamos al padre para que refresque; el toast va aparte.
+          onCreated(pedidoId);
+          return;
+        }
+      }
+
+      onCreated(pedidoId);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'No se pudo crear el pedido');
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Cuando el modal se cierra, liberamos el object URL del preview para
+  // no leakear memoria.
+  useEffect(() => {
+    return () => {
+      if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+    };
+  }, [comprobantePreview]);
+
+  // Si cambia el método de pago a contra_entrega o cambia de uno digital
+  // a otro, limpiamos el comprobante adjunto (no aplica).
+  useEffect(() => {
+    if (metodoPago === 'contra_entrega' && comprobanteFile) {
+      setComprobanteFile(null);
+      if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+      setComprobantePreview(null);
+    }
+  }, [metodoPago]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelectComprobante = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setComprobanteError('El comprobante tiene que ser una imagen (JPG, PNG, WebP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setComprobanteError('La imagen no puede pesar más de 5 MB.');
+      return;
+    }
+    setComprobanteError(null);
+    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+    setComprobanteFile(file);
+    setComprobantePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveComprobante = () => {
+    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+    setComprobanteFile(null);
+    setComprobantePreview(null);
+    setComprobanteError(null);
+  };
+
+  const metodoDigital = ['nequi', 'daviplata', 'bre_b'].includes(metodoPago);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
@@ -373,6 +446,68 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
               <option value="bre_b">Bre-B</option>
             </select>
           </div>
+
+          {/* Comprobante opcional — solo para pagos digitales. El staff
+              puede adjuntar la captura que el cliente le mandó por WhatsApp. */}
+          {metodoDigital && (
+            <div className="p-3 rounded-md bg-[color:var(--bg-subtle)] border border-[color:var(--border-subtle)] space-y-2">
+              <div className="flex items-start gap-2 text-xs text-[color:var(--text-secondary)]">
+                <Receipt size={14} className="flex-shrink-0 mt-0.5 text-[var(--color-primary)]" />
+                <span>
+                  Pedile al cliente el comprobante de la transferencia para
+                  adjuntarlo al pedido. Si todavía no te lo mandó, podés
+                  adjuntarlo después desde la Recepción.
+                </span>
+              </div>
+
+              {comprobantePreview ? (
+                <div className="flex items-center gap-3">
+                  <div className="relative w-20 h-20 rounded-md overflow-hidden border border-[color:var(--border-subtle)] bg-[color:var(--bg-elevated)] flex-shrink-0">
+                    <img
+                      src={comprobantePreview}
+                      alt="Vista previa del comprobante"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-[color:var(--text-primary)] truncate">
+                      {comprobanteFile.name}
+                    </p>
+                    <p className="text-[11px] text-[color:var(--text-muted)]">
+                      {(comprobanteFile.size / 1024).toFixed(0)} KB
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRemoveComprobante}
+                      className="mt-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 w-full px-3 py-3 rounded-md border-2 border-dashed border-[color:var(--border-subtle)] bg-[color:var(--bg-elevated)] hover:border-[var(--color-primary)]/50 cursor-pointer transition-colors">
+                  <ImageIcon size={16} className="text-[color:var(--text-muted)]" />
+                  <span className="text-sm font-medium text-[color:var(--text-primary)]">
+                    Adjuntar comprobante
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelectComprobante}
+                    className="sr-only"
+                  />
+                </label>
+              )}
+
+              {comprobanteError && (
+                <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                  <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
+                  <span>{comprobanteError}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-[color:var(--text-primary)] mb-1">

@@ -341,6 +341,18 @@ export const paymentService = {
   getPaymentConfig: (restaurante_id) => api.get(`/payments/config/${restaurante_id}`),
   updatePaymentConfig: (data) => api.put('/payments/config', data),
   uploadProof: (formData) => api.post('/payments/proof', formData),
+  /**
+   * Subir comprobante de pago en nombre del cliente (uso del staff
+   * desde Armar Pedido del chat). Arma el FormData internamente para
+   * que el caller no se preocupe por los headers multipart.
+   */
+  uploadProofAsStaff: (pedido_id, metodo_pago, file) => {
+    const form = new FormData();
+    form.append('comprobante', file);
+    form.append('pedido_id', pedido_id);
+    form.append('metodo_pago', metodo_pago);
+    return api.post('/payments/proof/staff', form);
+  },
   getProof: (pedido_id) => api.get(`/payments/proof/${pedido_id}`),
   getPendingProofs: () => api.get('/payments/pending'),
   getProofsHistory: (estado) => api.get('/payments/history', { params: { estado } }),
