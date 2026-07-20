@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Menu, X, ShoppingCart, User, Bell, Sun, Moon } from 'lucide-react';
+import { Menu, X, ShoppingCart, User, Bell, Sun, Moon, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -214,6 +214,16 @@ const Header = memo(function Header() {
                   </Link>
                 )}
 
+                {user?.tipo_usuario === 'cliente' && (
+                  <Link
+                    to="/chats"
+                    className="text-[color:var(--text-secondary)] hover:text-primary font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    <MessageSquare size={16} />
+                    Chats
+                  </Link>
+                )}
+
                 {user?.tipo_usuario === 'restaurante' && (
                   <Link to="/dashboard" className="text-[color:var(--text-secondary)] hover:text-primary font-medium transition-colors">
                     Dashboard
@@ -373,6 +383,14 @@ const Header = memo(function Header() {
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         📦 Mis Pedidos
+                      </Link>
+                      <Link
+                        to="/chats"
+                        className="text-[color:var(--text-secondary)] font-medium py-3 px-4 hover:bg-[color:var(--bg-muted)] hover:text-primary transition-colors rounded-lg flex items-center gap-3 active:scale-95 touch-feedback"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <MessageSquare size={18} />
+                        Chats
                       </Link>
                     </>
                   )}

@@ -9,7 +9,15 @@ export const socketService = {
   // Conectar al namespace de órdenes
   connectOrders: () => {
     if (!ordersSocket) {
+      // Si hay token en localStorage, lo pasamos en el handshake del socket
+      // para que el server pueda auth en eventos como `chat:join` (el chat
+      // del cliente logueado usa el room de /orders). El POS no rompe
+      // porque el server solo exige auth para `chat:join`, no para
+      // `join_restaurant` ni `join_order`.
+      const token = localStorage.getItem('token') || null;
+
       ordersSocket = io(`${SOCKET_URL}/orders`, {
+        auth: token ? { token } : {},
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,

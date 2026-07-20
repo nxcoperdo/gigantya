@@ -131,6 +131,43 @@ export async function listByRestaurante(restaurante_id, { estado = 'abierta', li
 }
 
 /**
+ * Lista las conversaciones del cliente (logueado o anónimo) con todos los
+ * locales que tengan chat habilitado. Hace JOIN con `restaurantes` para
+ * devolver nombre + imagen del local, y subqueries para traer el preview
+ * del último mensaje y el conteo de mensajes NO leídos POR EL CLIENTE
+ * (es decir, los del vendedor con `leido_en IS NULL`).
+ *
+ * Usado por `GET /api/chat/cliente/conversaciones` para alimentar la página
+ * `/chats` del cliente.
+ *
+ * @param {string} cliente_identificador  "user:<id>" o "anon:<tel>"
+ * @param {Object} [options]
+ * @param {number} [options.limit=50]
+ * @param {number} [options.offset=0]
+ */
+export async function listByCliente(cliente_identificador, { limit = 50, offset = 0 } = {}) {
+  const sql = `
+    SELECT
+      c.*,
+      r.nombre AS restaurante_nombre,
+      r.imagen_url AS restaurante_imagen,
+      (SELECT contenido FROM mensajes m
+        WHERE m.conversacion_id = c.id
+        ORDER BY m.created_at DESC LIMIT 1) AS ultimo_mensaje_preview,
+      (SELECT COUNT(*) FROM mensajes m
+        WHERE m.conversacion_id = c.id
+          AND m.emisor_tipo = 'vendedor'
+          AND m.leido_en IS NULL) AS no_leidos
+    FROM conversaciones c
+    INNER JOIN restaurantes r ON r.id = c.restaurante_id
+    WHERE c.cliente_identificador = ?
+    ORDER BY c.ultimo_mensaje_en DESC, c.id DESC
+    LIMIT ? OFFSET ?
+  `;
+  return await query(sql, [cliente_identificador, parseInt(limit), parseInt(offset)]);
+}
+
+/**
  * Actualiza `ultimo_mensaje_en` cuando se inserta un mensaje nuevo.
  * Helper usado por chatService para mantener el orden de la lista del admin
  * por actividad, no por fecha de creación.
@@ -187,6 +224,7 @@ export default {
   getById,
   getOrCreateForClient,
   listByRestaurante,
+  listByCliente,
   touchUltimo,
   markConvertida,
   markCerrada,
