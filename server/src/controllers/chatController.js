@@ -1,3 +1,4 @@
+import fs from 'fs';
 import * as ChatService from '../services/chatService.js';
 import * as Conversacion from '../models/Conversacion.js';
 import * as Mensaje from '../models/Mensaje.js';
@@ -133,6 +134,81 @@ export async function postMensaje(req, res) {
 }
 
 /**
+ * POST /api/chat/conversaciones/:id/imagen
+ * Multipart: campo `imagen` (archivo) + opcional `contenido` (texto que
+ * acompaña la foto) + `anon_identifier` (para clientes sin cuenta).
+ * Auth: verifyToken (cliente logueado o staff del local) o anónimo.
+ *
+ * Guarda la imagen en uploads/chat/ y crea un mensaje cuyo adjuntos_json
+ * es { tipo:'imagen', url, mime, nombre }. La authz es idéntica a postMensaje.
+ */
+export async function postImagen(req, res) {
+  // Si rechazamos después de que multer ya escribió el archivo, lo borramos
+  // para no dejar huérfanos en disco (best-effort).
+  const rejectFile = (status, error) => {
+    if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(status).json({ error });
+  };
+
+  try {
+    const { id } = req.params;
+    const { contenido, anon_identifier } = req.body || {};
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibió ninguna imagen' });
+    }
+
+    const conv = await Conversacion.getById(id);
+    if (!conv) return rejectFile(404, 'Conversación no encontrada');
+
+    // Determinar emisor_tipo según el user (logueado o anónimo). Mismo
+    // criterio que postMensaje.
+    let emisor_tipo, emisor_usuario_id = null;
+    if (req.user) {
+      if (req.user.tipo_usuario === 'cliente') {
+        const expected = `user:${req.user.id}`;
+        if (conv.cliente_identificador !== expected) {
+          return rejectFile(403, 'No puedes escribir en esta conversación');
+        }
+        emisor_tipo = 'cliente';
+      } else if (['restaurante', 'cajero', 'mesero', 'cocina', 'admin'].includes(req.user.tipo_usuario)) {
+        if (req.user.tipo_usuario !== 'admin' &&
+            (!req.user.restaurante_id || Number(req.user.restaurante_id) !== Number(conv.restaurante_id))) {
+          return rejectFile(403, 'No puedes escribir en esta conversación');
+        }
+        emisor_tipo = 'vendedor';
+        emisor_usuario_id = req.user.id;
+      } else {
+        return rejectFile(403, 'Tipo de usuario no permitido');
+      }
+    } else {
+      if (!anon_identifier) {
+        return rejectFile(401, 'Identificador anónimo requerido');
+      }
+      if (conv.cliente_identificador !== anon_identifier) {
+        return rejectFile(403, 'No puedes escribir en esta conversación');
+      }
+      emisor_tipo = 'cliente';
+    }
+
+    const url = `/uploads/chat/${req.file.filename}`;
+    const caption = (contenido || '').trim();
+    const msg = await ChatService.appendMensaje({
+      conversacion_id: Number(id),
+      emisor_tipo,
+      emisor_usuario_id,
+      // contenido no puede ir vacío (lo valida el service): si no hay
+      // caption, usamos un placeholder que la UI oculta para imágenes.
+      contenido: caption || '📷 Foto',
+      adjuntos: { tipo: 'imagen', url, mime: req.file.mimetype, nombre: req.file.originalname },
+    });
+    res.status(201).json({ mensaje: msg });
+  } catch (err) {
+    rejectFile(err.statusCode || 500, err.message);
+  }
+}
+
+/**
  * POST /api/chat/conversaciones/:id/leido
  * Auth: verifyToken. Marca como leídos los del emisor opuesto.
  */
@@ -157,6 +233,33 @@ export async function markRead(req, res) {
 
     await ChatService.markRead({ conversacion_id: Number(id), emisor_tipo_lector: lector });
     res.json({ ok: true });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+}
+
+// ============ Endpoints CLIENTE (logueado) ============
+
+/**
+ * GET /api/chat/cliente/conversaciones
+ * Auth: verifyToken (cliente logueado).
+ *
+ * Lista las conversaciones del cliente logueado con todos los locales
+ * que tengan chat habilitado. El backend identifica al cliente por su
+ * id de usuario (`cliente_identificador = 'user:<id>'`), por lo que un
+ * cliente solo ve SUS conversaciones.
+ *
+ * Devuelve el nombre e imagen del local, el preview del último mensaje
+ * y el conteo de mensajes del vendedor que el cliente todavía no leyó.
+ */
+export async function clienteListConversaciones(req, res) {
+  try {
+    if (req.user?.tipo_usuario !== 'cliente') {
+      return res.status(403).json({ error: 'Solo clientes pueden listar sus chats' });
+    }
+    const identificador = `user:${req.user.id}`;
+    const conversaciones = await Conversacion.listByCliente(identificador);
+    res.json({ conversaciones });
   } catch (err) {
     res.status(err.statusCode || 500).json({ error: err.message });
   }

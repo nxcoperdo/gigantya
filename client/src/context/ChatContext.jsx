@@ -155,6 +155,41 @@ export function ChatProvider({ children }) {
     await sendMensajeInternal(conv.id, { contenido: contenido.trim(), adjuntos: null });
   }, []);
 
+  /**
+   * Sube una imagen al chat. `file` es un File del input; `caption` es
+   * texto opcional. Valida tamaño/tipo del lado del cliente antes de subir
+   * (el server igual re-valida). Optimista: appendea el mensaje devuelto.
+   */
+  const sendImagen = useCallback(async (file, caption) => {
+    const conv = convRef.current;
+    if (!conv || !file) return;
+    if (!/^image\/(jpe?g|png|webp)$/.test(file.type)) {
+      setError('Solo se permiten imágenes JPG, PNG o WebP');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError('La imagen supera el tamaño máximo (8MB)');
+      return;
+    }
+    setSendingMensaje(true);
+    setError(null);
+    try {
+      const identidad = identityRef.current;
+      const chatIdentidad = {
+        nombre: identidad.nombre,
+        telefono: identidad.telefono,
+        clienteIdentificadorServer: identifierServerRef.current,
+      };
+      const msg = await chatService.sendImagen(conv.id, file, caption, chatIdentidad);
+      setMensajes((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'No se pudo enviar la imagen');
+      throw err;
+    } finally {
+      setSendingMensaje(false);
+    }
+  }, []);
+
   // ============ Internals ============
 
   async function ensureConvInternal(restaurante_id, nombre, telefono) {
@@ -349,10 +384,11 @@ export function ChatProvider({ children }) {
     otroEscribiendo,
     initForRestaurante,
     sendMensaje,
+    sendImagen,
     sendProductToChat,
     sendTypingDebounced,
     refrescarMensajes,
-  }), [panelOpen, identityNeeded, openPanelGuard, closePanel, identity, saveIdentity, conversacion, mensajes, loadingConv, sendingMensaje, error, onlineCount, otroEscribiendo, initForRestaurante, sendMensaje, sendProductToChat, sendTypingDebounced, refrescarMensajes]);
+  }), [panelOpen, identityNeeded, openPanelGuard, closePanel, identity, saveIdentity, conversacion, mensajes, loadingConv, sendingMensaje, error, onlineCount, otroEscribiendo, initForRestaurante, sendMensaje, sendImagen, sendProductToChat, sendTypingDebounced, refrescarMensajes]);
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

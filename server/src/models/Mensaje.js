@@ -139,6 +139,20 @@ export async function countUnread(conversacion_id, emisor_tipo_lector) {
   return row?.total ?? 0;
 }
 
+/**
+ * Cuenta mensajes por emisor_tipo en una conversación.
+ * Usado para detectar la "primera respuesta del vendedor" (countByEmisor
+ * === 1 después de insertar un mensaje del vendedor).
+ */
+export async function countByEmisor(conversacion_id, emisor_tipo) {
+  const row = await queryOne(
+    `SELECT COUNT(*) AS total FROM mensajes
+     WHERE conversacion_id = ? AND emisor_tipo = ?`,
+    [conversacion_id, emisor_tipo]
+  );
+  return row?.total ?? 0;
+}
+
 export default {
   EMISOR_TIPOS,
   append,
@@ -146,4 +160,5 @@ export default {
   listByConversacion,
   markReadByOther,
   countUnread,
+  countByEmisor,
 };

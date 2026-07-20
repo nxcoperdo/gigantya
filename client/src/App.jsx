@@ -29,6 +29,11 @@ const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrdersHistoryPage = lazy(() => import('./pages/OrdersHistoryPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+// Páginas del chat del cliente (logueado): lista de conversaciones y
+// vista de un chat. El chat del VENDEDOR vive en /dashboard/chat más
+// abajo (es la ChatAdminPage).
+const ChatsListPage = lazy(() => import('./pages/ChatsListPage'));
+const ChatDetailPage = lazy(() => import('./pages/ChatDetailPage'));
 const RestaurantDashboardPage = lazy(() => import('./pages/RestaurantDashboardPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const HomeMediaPage = lazy(() => import('./pages/admin/HomeMediaPage'));
@@ -107,6 +112,22 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRole="cliente">
                         <OrdersHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chats"
+                    element={
+                      <ProtectedRoute requiredRole="cliente">
+                        <ChatsListPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chats/:id"
+                    element={
+                      <ProtectedRoute requiredRole="cliente">
+                        <ChatDetailPage />
                       </ProtectedRoute>
                     }
                   />

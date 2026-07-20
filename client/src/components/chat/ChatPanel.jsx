@@ -1,7 +1,8 @@
-import { memo, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChat } from '../../context/ChatContext.jsx';
-import { Send, ShoppingBag, X, Wifi, WifiOff } from 'lucide-react';
+import { Send, ShoppingBag, X, Wifi, WifiOff, ImagePlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ChatMessage from './ChatMessage.jsx';
 
 /**
  * Panel del chat del lado del cliente. Se renderiza como un panel
@@ -21,60 +22,6 @@ import { Link } from 'react-router-dom';
  *    porque el panel ya ocupa el bottom).
  */
 
-function formatearHora(iso) {
-  try {
-    return new Date(iso).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Burbuja memoizada. Re-renderea solo si cambia el mensaje o su
- * conversación (en la práctica: cuando llega un mensaje nuevo).
- */
-const BurbujaMensaje = memo(function BurbujaMensaje({ m, conversacionId }) {
-  const esMio = m.emisor_tipo === 'cliente';
-  const esSistema = m.emisor_tipo === 'sistema';
-
-  if (esSistema) {
-    return (
-      <div className="text-center text-xs text-gray-500 dark:text-gray-400 py-1 px-2">
-        {m.contenido}
-      </div>
-    );
-  }
-
-  const tieneAdjunto = m.adjuntos_json && typeof m.adjuntos_json === 'object' && m.adjuntos_json.nombre;
-
-  return (
-    <div className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={[
-          'max-w-[80%] px-3 py-2 rounded-lg text-sm shadow-sm',
-          esMio
-            ? 'bg-[var(--color-primary)] text-white rounded-br-sm'
-            : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-bl-sm',
-        ].join(' ')}
-      >
-        {tieneAdjunto && (
-          <div className="text-xs opacity-80 italic mb-0.5">
-            📦 {m.adjuntos_json.nombre}
-          </div>
-        )}
-        <div className="whitespace-pre-wrap break-words">{m.contenido}</div>
-        <div className="text-[10px] opacity-60 mt-0.5 text-right flex items-center justify-end gap-1">
-          <span>{formatearHora(m.created_at)}</span>
-          {esMio && <span aria-label="Enviado">✓</span>}
-        </div>
-      </div>
-    </div>
-  );
-}, (prev, next) => prev.m === next.m && prev.conversacionId === next.conversacionId);
-
 export default function ChatPanel({ restauranteNombre }) {
   const {
     panelOpen,
@@ -87,12 +34,14 @@ export default function ChatPanel({ restauranteNombre }) {
     onlineCount,
     otroEscribiendo,
     sendMensaje,
+    sendImagen,
     sendTypingDebounced,
   } = useChat();
 
   const [input, setInput] = useState('');
   const listRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const stickToBottomRef = useRef(true);   // ¿el user está abajo del todo?
   const prevMensajesLenRef = useRef(0);
 
@@ -170,6 +119,25 @@ export default function ChatPanel({ restauranteNombre }) {
     }
   }, [handleSubmit]);
 
+  // Adjuntar foto: abre el selector de archivos (o cámara en mobile).
+  const handlePickImage = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelect = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // resetea para poder re-elegir la misma foto
+    if (!file) return;
+    const caption = input;      // el texto actual se manda como pie de foto
+    setInput('');
+    stickToBottomRef.current = true;
+    try {
+      await sendImagen(file, caption);
+    } catch {
+      setInput(caption);        // restaura el texto si falló
+    }
+  }, [input, sendImagen]);
+
   // Estilo del contenedor, memoizado.
   // Mobile: bottom-24 para dejar el ChatLauncher (bottom-5) y la nav
   // del browser visible. z-40 para estar encima del catálogo
@@ -207,7 +175,7 @@ export default function ChatPanel({ restauranteNombre }) {
           </button>
         </div>
         <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400 flex-1 flex items-center justify-center">
-          {loadingConv ? 'Cargando conversación…' : 'Por esperá un momento…'}
+          {loadingConv ? 'Cargando conversación…' : 'Espera un momento…'}
         </div>
       </div>
     );
@@ -270,16 +238,16 @@ export default function ChatPanel({ restauranteNombre }) {
               ¡Hola! 👋
             </p>
             <p className="mt-1">
-              Escribinos qué necesitás y te armamos el pedido.
+              Escríbenos qué necesitas y te armamos el pedido.
             </p>
             <p className="text-xs mt-3 opacity-70">
-              También podés tocar el botón "Enviar al chat" en cualquier
-              producto del catálogo.
+              También puedes enviarnos una foto 📷 o tocar "Enviar al chat"
+              en cualquier producto del catálogo.
             </p>
           </div>
         )}
         {mensajes.map((m) => (
-          <BurbujaMensaje key={m.id} m={m} conversacionId={conversacion.id} />
+          <ChatMessage key={m.id} m={m} conversacionId={conversacion.id} />
         ))}
         {otroEscribiendo && (
           <div className="flex justify-start">
@@ -304,8 +272,26 @@ export default function ChatPanel({ restauranteNombre }) {
       {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="border-t border-gray-200 dark:border-gray-700 p-2 flex gap-2 bg-white dark:bg-gray-800 flex-shrink-0"
+        className="border-t border-gray-200 dark:border-gray-700 p-2 flex items-end gap-1.5 bg-white dark:bg-gray-800 flex-shrink-0"
       >
+        {/* Input de archivo oculto: en mobile ofrece cámara + galería */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={handlePickImage}
+          disabled={sendingMensaje}
+          className="flex-shrink-0 w-11 h-11 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center touch-manipulation active:scale-95 transition-transform"
+          aria-label="Enviar una foto"
+          title="Enviar una foto"
+        >
+          <ImagePlus size={20} />
+        </button>
         <textarea
           ref={inputRef}
           value={input}
@@ -313,15 +299,15 @@ export default function ChatPanel({ restauranteNombre }) {
           onKeyDown={handleKeyDown}
           rows={1}
           maxLength={500}
-          placeholder="Escribí tu mensaje…"
+          placeholder="Escribe tu mensaje…"
           aria-label="Mensaje"
-          className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base resize-none"
+          className="flex-1 min-w-0 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-2xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/40 focus:border-transparent"
           style={{ maxHeight: '120px' }}
         />
         <button
           type="submit"
           disabled={!input.trim() || sendingMensaje}
-          className="flex-shrink-0 min-h-[44px] min-w-[52px] rounded-md text-white disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center touch-manipulation"
+          className="flex-shrink-0 w-11 h-11 rounded-full text-white disabled:opacity-40 active:scale-95 transition-transform flex items-center justify-center touch-manipulation"
           style={{ backgroundColor: 'var(--color-primary)' }}
           aria-label="Enviar mensaje"
         >

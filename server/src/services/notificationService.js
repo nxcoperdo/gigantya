@@ -426,6 +426,42 @@ const EmailTemplates = {
   `,
 
   /**
+   * CLIENTE: el local le respondió por primera vez en el chat.
+   * Params: { nombre, restaurante, preview, link }
+   *   - nombre: nombre del cliente (para "Hola X")
+   *   - restaurante: nombre del local
+   *   - preview: primeros 200 chars de la respuesta del local
+   *   - link: URL absoluta al chat (ej: https://gigantya.com/restaurant/4)
+   *
+   * Se manda UNA SOLA VEZ por conversación (cuando el vendedor responde
+   * por primera vez). Las respuestas siguientes NO generan este email.
+   */
+  clientChatFirstReply: ({ nombre, restaurante, preview, link }) => `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #1f2937; font-size: 20px; margin: 0 0 8px;">
+        💬 ${escapeHtml(restaurante || 'El local')} te respondió
+      </h1>
+      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
+        Hola ${escapeHtml(String(nombre || '').split(' ')[0] || '')}, el local te respondió en el chat:
+      </p>
+      <div style="background: #f3f4f6; border-left: 4px solid #FF6B00; padding: 14px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0; color: #1f2937; font-size: 14px; line-height: 1.5; font-style: italic;">
+          "${escapeHtml(preview || '')}"
+        </p>
+      </div>
+      <p style="margin-top: 24px; text-align: center;">
+        <a href="${escapeHtml(link || 'https://gigantya.com')}"
+           style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Abrir el chat
+        </a>
+      </p>
+      <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+        Recibiste este email porque iniciaste una conversación con este local en GigantYA.
+      </p>
+    </div>
+  `,
+
+  /**
    * Dueño de local: repaso semanal con tips contextuales.
    * Se manda solo si el dueño no entró al dashboard en 7+ días
    * (ver `weeklyDigestCron.js`).
@@ -516,6 +552,7 @@ function getSubjectForTemplate(template, pedido) {
     orderCancelledByClient: `❌ Pedido #${pedido.id} cancelado por el cliente - GigantYA`,
     weeklyDigest: '💡 3 tips rápidos para tu local - GigantYA',
     newChatMessage: '💬 Nuevo mensaje en tu chat - GigantYA',
+    clientChatFirstReply: '💬 El local te respondió - GigantYA',
   };
   return subjects[template] || 'Notificación de GigantYA';
 }
@@ -660,6 +697,19 @@ const WhatsAppTemplates = {
     template: 'chat_new_message',
     params: ({ cliente, preview }) => [
       String(cliente || 'un cliente'),
+      String((preview || '').substring(0, 80))
+    ]
+  },
+  // WhatsApp al CLIENTE cuando el local le responde por primera vez.
+  // Solo se manda UNA vez por conversación (la primera respuesta del
+  // vendedor) para no spamear.
+  //
+  // {{1}} = nombre del restaurante (para "Hola, {restaurante} te respondió")
+  // {{2}} = preview del mensaje del local (recortado a 80 chars)
+  clientChatFirstReply: {
+    template: 'chat_first_reply',
+    params: ({ restaurante, preview }) => [
+      String(restaurante || 'El local'),
       String((preview || '').substring(0, 80))
     ]
   }
@@ -837,7 +887,7 @@ export async function notifyNewOrder({ pedido, restauranteEmail, restauranteTele
  * PLANTILLAS DE META BUSINESS MANAGER — WhatsApp Cloud API
  * ============================================================
  *
- * Hay que crear 9 plantillas aprobadas en Meta Business Manager
+ * Hay que crear 10 plantillas aprobadas en Meta Business Manager
  * (https://business.facebook.com/wa/manage/message-templates/):
  *
  *   1. order_confirmed      → cliente: pedido confirmado
@@ -848,7 +898,8 @@ export async function notifyNewOrder({ pedido, restauranteEmail, restauranteTele
  *   6. payment_rejected     → cliente: pago rechazado
  *   7. order_cancelled      → restaurante: pedido cancelado
  *   8. new_order_restaurant → restaurante: NUEVO pedido recibido
- *   9. chat_new_message     → restaurante: nuevo mensaje en el chat (esta)
+ *   9. chat_new_message     → restaurante: nuevo mensaje en el chat
+ *  10. chat_first_reply     → cliente: el local le respondió por primera vez
  *
  * Categoría: TRANSACTIONAL (necesario porque la cuenta es de empresa).
  * Idioma: español (es).
@@ -965,6 +1016,102 @@ export async function notifyNewChatMessage({ conversacion, mensaje, dueno, link 
   return results;
 }
 
+/**
+ * Notifica al CLIENTE que el local le respondió por primera vez en el chat.
+ *
+ * Se llama desde `chatService.appendMensaje` SOLO cuando el emisor del
+ * mensaje es el vendedor Y es su primera respuesta en esta conversación
+ * (countByEmisor === 1). Esto evita spamear al cliente con cada respuesta
+ * del chat — solo recibe UNA notificación por conversación.
+ *
+ * Canales (best-effort, independientes):
+ *  - WhatsApp al teléfono del cliente:
+ *    - Anónimo: el teléfono que dejó en el modal
+ *    - Logueado: el teléfono de su user (si tiene)
+ *  - Email al cliente (solo si está logueado y tiene email)
+ *  - NotificationModel in-app (solo si está logueado) — para que aparezca
+ *    el toast en su NotificationCenter cuando esté logueado en la web
+ *
+ * Si el cliente es anónimo y solo dejó teléfono → va solo WhatsApp.
+ * Si la plantilla `chat_first_reply` no está aprobada en Meta todavía,
+ * el WhatsApp falla silenciosamente y el resto del flujo sigue.
+ *
+ * @param {object} params
+ * @param {object} [params.cliente]            - { id, nombre, email, telefono } del usuario logueado (o null si anónimo)
+ * @param {object} [params.clienteAnonimo]    - { telefono, nombre } si es anónimo
+ * @param {object} params.conversacion         - Conv con id, restaurante_id, restaurante_nombre, etc.
+ * @param {object} params.mensaje              - Mensaje del vendedor con contenido
+ * @param {string} [params.link]              - URL al chat (default: gigantya.com/restaurant/{restaurante_id})
+ */
+export async function notifyClientFirstChatReply({ cliente = null, clienteAnonimo = null, conversacion, mensaje, link }) {
+  const results = { email: null, whatsapp: null, inApp: null };
+
+  if (!conversacion || !mensaje) {
+    return results;
+  }
+
+  const restauranteNombre = conversacion.restaurante_nombre || 'el local';
+  const preview = (mensaje.contenido || '').substring(0, 200);
+  const restauranteId = conversacion.restaurante_id;
+  const finalLink = link || process.env.CHAT_CLIENT_LINK || `https://gigantya.com/restaurant/${restauranteId}`;
+
+  // Determinar el teléfono destino para WhatsApp
+  const clienteTelefono = cliente?.telefono || clienteAnonimo?.telefono;
+  const clienteNombre = cliente?.nombre || clienteAnonimo?.nombre || 'Hola';
+
+  // WhatsApp al cliente
+  if (clienteTelefono) {
+    try {
+      results.whatsapp = await sendWhatsApp({
+        to: clienteTelefono,
+        template: 'chat_first_reply',
+        parameters: [restauranteNombre, preview],
+      });
+    } catch (err) {
+      console.error('[notifyClientFirstChatReply] Error WhatsApp:', err.message);
+      results.whatsapp = { sent: false, error: err.message };
+    }
+  }
+
+  // Email al cliente (solo si está logueado y tiene email)
+  if (cliente?.email) {
+    try {
+      results.email = await sendEmail({
+        to: cliente.email,
+        subject: '💬 El local te respondió - GigantYA',
+        html: EmailTemplates.clientChatFirstReply({
+          nombre: clienteNombre,
+          restaurante: restauranteNombre,
+          preview,
+          link: finalLink,
+        }),
+      });
+    } catch (err) {
+      console.error('[notifyClientFirstChatReply] Error email:', err.message);
+      results.email = { sent: false, error: err.message };
+    }
+  }
+
+  // NotificationModel in-app (solo logueado)
+  if (cliente?.id) {
+    try {
+      const { createNotification } = await import('../models/Notification.js');
+      await createNotification({
+        usuario_id: cliente.id,
+        tipo: 'chat_respuesta',
+        titulo: `${restauranteNombre} te respondió`,
+        mensaje: preview,
+        data: { conversacion_id: conversacion.id, mensaje_id: mensaje.id, restaurante_id: restauranteId },
+      });
+    } catch (err) {
+      console.error('[notifyClientFirstChatReply] Error NotificationModel:', err.message);
+      results.inApp = { sent: false, error: err.message };
+    }
+  }
+
+  return results;
+}
+
 // ====================================================
 // EXPORTACIÓN DEFAULT
 // ====================================================
@@ -986,6 +1133,7 @@ export default {
   notifyOrderStatusChange,
   notifyNewOrder,
   notifyNewChatMessage,
+  notifyClientFirstChatReply,
 
   // Plantillas (para personalización)
   EmailTemplates

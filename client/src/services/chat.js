@@ -74,10 +74,39 @@ export const chatService = {
     return res.data.mensaje;
   },
 
+  /**
+   * Sube una imagen al chat (multipart). `file` es un File del input.
+   * `caption` es texto opcional que acompaña la foto. El browser setea
+   * el Content-Type multipart con boundary automáticamente al pasar
+   * un FormData — NO seteamos el header a mano.
+   */
+  sendImagen: async (conversacion_id, file, caption, chatIdentidad) => {
+    const { instance, identifier } = getContext(chatIdentidad);
+    const form = new FormData();
+    form.append('imagen', file);
+    if (caption && caption.trim()) form.append('contenido', caption.trim());
+    if (identifier) form.append('anon_identifier', identifier);
+    const res = await instance.post(`/chat/conversaciones/${conversacion_id}/imagen`, form);
+    return res.data.mensaje;
+  },
+
   markRead: async (conversacion_id, chatIdentidad) => {
     const { instance, identifier } = getContext(chatIdentidad);
     const config = identifier ? { params: { anon_identifier: identifier } } : {};
     const res = await instance.post(`/chat/conversaciones/${conversacion_id}/leido`, {}, config);
+    return res.data;
+  },
+
+  /**
+   * Lista las conversaciones del cliente logueado con todos los locales
+   * que tengan chat habilitado. Solo clientes (no anónimos): la página
+   * `/chats` está protegida por ProtectedRoute requiredRole='cliente'.
+   *
+   * Devuelve { conversaciones: [{ id, restaurante_id, restaurante_nombre,
+   * restaurante_imagen, ultimo_mensaje_preview, no_leidos, estado, ... }] }.
+   */
+  clienteListConversaciones: async () => {
+    const res = await api.get('/chat/cliente/conversaciones');
     return res.data;
   },
 

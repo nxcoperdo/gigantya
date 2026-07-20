@@ -142,6 +142,27 @@ export async function appendMensaje({ conversacion_id, emisor_tipo, contenido, e
     );
   }
 
+  // Si el mensaje es del VENDEDOR y es su PRIMERA respuesta de esta
+  // conversación, mandamos una notificación al cliente (WhatsApp al
+  // teléfono del chat o email si está logueado) avisándole que el
+  // local le respondió. Solo la primera para no spamear — las
+  // respuestas siguientes el cliente las ve en el panel cuando lo
+  // abra.
+  if (emisor_tipo === 'vendedor' && conv.estado === 'abierta') {
+    try {
+      const countVendedor = await Mensaje.countByEmisor(conversacion_id, 'vendedor');
+      // countVendedor incluye el mensaje que acabamos de insertar.
+      // Si es 1, es la primera respuesta → notificar al cliente.
+      if (countVendedor === 1) {
+        notifyClientFirstReply(conv, msg).catch(err =>
+          console.error('[chat] notifyClientFirstReply falló:', err.message)
+        );
+      }
+    } catch (err) {
+      console.error('[chat] countByEmisor falló:', err.message);
+    }
+  }
+
   return msg;
 }
 
@@ -420,6 +441,70 @@ async function notifyVendorNewMessage(conv, mensaje) {
     });
   } catch (err) {
     console.error('[chat] notifyVendorNewMessage email/whatsapp:', err.message);
+  }
+}
+
+/**
+ * Notifica al CLIENTE que el local le respondió por primera vez en esta
+ * conversación. Solo se dispara en la primera respuesta del vendedor
+ * (llamado desde appendMensaje con countVendedor === 1), para no
+ * spamear con cada respuesta del chat.
+ *
+ * Canales:
+ *  - WhatsApp al teléfono del cliente (anon: el de la conv, logueado: el de su user)
+ *  - Email si el cliente es un usuario logueado con email cargado
+ *  - NotificationModel in-app si es usuario logueado (toast en su NotificationCenter)
+ *
+ * Si el cliente es anónimo y solo dejó teléfono, va solo WhatsApp.
+ * Si el cliente es logueado y tiene ambos, va WhatsApp + email + in-app.
+ */
+async function notifyClientFirstReply(conv, mensaje) {
+  // Resolver datos del cliente
+  let cliente = null;
+  if (conv.cliente_identificador && conv.cliente_identificador.startsWith('user:')) {
+    const userId = Number(conv.cliente_identificador.slice(5));
+    if (userId) {
+      const rows = await query(
+        `SELECT id, nombre, email, telefono FROM usuarios WHERE id = ? LIMIT 1`,
+        [userId]
+      );
+      cliente = rows[0] || null;
+    }
+  }
+
+  // Si el cliente es anónimo, el único canal es WhatsApp al teléfono que dejó.
+  if (!cliente) {
+    if (conv.cliente_telefono) {
+      try {
+        let restauranteNombre = conv.restaurante_nombre;
+        if (!restauranteNombre) {
+          const restRow = await query(
+            `SELECT nombre FROM restaurantes WHERE id = ? LIMIT 1`,
+            [conv.restaurante_id]
+          );
+          restauranteNombre = restRow[0]?.nombre || 'el local';
+        }
+        await notificationService.notifyClientFirstChatReply({
+          clienteAnonimo: { telefono: conv.cliente_telefono, nombre: conv.cliente_nombre },
+          conversacion: { ...conv, restaurante_nombre: restauranteNombre },
+          mensaje,
+        });
+      } catch (err) {
+        console.error('[chat] notifyClientFirstReply WhatsApp anónimo falló:', err.message);
+      }
+    }
+    return;
+  }
+
+  // Cliente logueado: email + in-app + (WhatsApp si tiene teléfono distinto al anon)
+  try {
+    await notificationService.notifyClientFirstChatReply({
+      cliente,
+      conversacion: conv,
+      mensaje,
+    });
+  } catch (err) {
+    console.error('[chat] notifyClientFirstReply (logueado) falló:', err.message);
   }
 }
 

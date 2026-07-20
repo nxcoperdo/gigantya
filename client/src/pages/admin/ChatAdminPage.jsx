@@ -2,9 +2,13 @@ import { memo, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import chatService from '../../services/chat.js';
 import socketService from '../../services/socket.js';
-import { MessageCircle, Send, ArrowLeft, ShoppingCart, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { MessageCircle, Send, ArrowLeft, ShoppingCart, Search, RefreshCw, Loader2, ImagePlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ArmarPedidoModal from './ArmarPedidoModal.jsx';
+import { getImageUrl } from '../../utils/imageHelper.js';
+
+// Placeholder que usa el backend para una foto sin caption; la UI lo oculta.
+const IMG_PLACEHOLDER = '📷 Foto';
 
 /**
  * Página del chat del lado del VENDEDOR.
@@ -66,22 +70,47 @@ const BurbujaMensaje = memo(function BurbujaMensaje({ m }) {
       </div>
     );
   }
-  const tieneAdjunto = m.adjuntos_json && typeof m.adjuntos_json === 'object' && m.adjuntos_json.nombre;
+  const adj = (m.adjuntos_json && typeof m.adjuntos_json === 'object') ? m.adjuntos_json : null;
+  const esImagen = adj?.tipo === 'imagen' && adj.url;
+  const tieneProducto = adj?.nombre && !esImagen;
+  const mostrarTexto = m.contenido && !(esImagen && m.contenido === IMG_PLACEHOLDER);
   return (
     <div className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
       <div
         className={[
-          'max-w-[80%] px-3 py-2 rounded-lg text-sm shadow-sm',
+          'max-w-[80%] rounded-2xl text-sm shadow-sm overflow-hidden',
+          esImagen ? 'p-1' : 'px-3 py-2',
           esMio
-            ? 'bg-[var(--color-primary)] text-white rounded-br-sm'
-            : 'bg-white dark:bg-gray-700 text-[color:var(--text-primary)] border border-[color:var(--border-subtle)] rounded-bl-sm',
+            ? 'bg-[var(--color-primary)] text-white rounded-br-md'
+            : 'bg-white dark:bg-gray-700 text-[color:var(--text-primary)] border border-[color:var(--border-subtle)] rounded-bl-md',
         ].join(' ')}
       >
-        {tieneAdjunto && (
-          <div className="text-xs opacity-80 italic mb-0.5">📦 {m.adjuntos_json.nombre}</div>
+        {tieneProducto && (
+          <div className="text-xs opacity-80 italic mb-0.5 px-1">📦 {adj.nombre}</div>
         )}
-        <div className="whitespace-pre-wrap break-words">{m.contenido}</div>
-        <div className="text-[10px] opacity-60 mt-0.5 text-right">
+        {esImagen && (
+          <a
+            href={getImageUrl(adj.url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+            aria-label="Ver imagen completa"
+          >
+            <img
+              src={getImageUrl(adj.url)}
+              alt="Imagen del chat"
+              loading="lazy"
+              decoding="async"
+              className="rounded-xl max-h-72 w-full object-cover"
+            />
+          </a>
+        )}
+        {mostrarTexto && (
+          <div className={`whitespace-pre-wrap break-words ${esImagen ? 'px-2 pt-1.5' : ''}`}>
+            {m.contenido}
+          </div>
+        )}
+        <div className={`text-[10px] opacity-60 mt-0.5 text-right ${esImagen ? 'px-2 pb-0.5' : ''}`}>
           {formatearHoraCorta(m.created_at)}
         </div>
       </div>
@@ -147,6 +176,7 @@ export default function ChatAdminPage() {
 
   const listRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const convActivaIdRef = useRef(null);
   const convActivaRef = useRef(null);
   const stickToBottomRef = useRef(true);
@@ -348,6 +378,37 @@ export default function ChatAdminPage() {
     }
   };
 
+  // ============ Enviar imagen ============
+
+  const pickImage = () => fileInputRef.current?.click();
+
+  const enviarImagen = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permitir re-elegir la misma foto
+    if (!file || !convActivaId) return;
+    if (!/^image\/(jpe?g|png|webp)$/.test(file.type)) {
+      setError('Solo se permiten imágenes JPG, PNG o WebP');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError('La imagen supera el tamaño máximo (8MB)');
+      return;
+    }
+    const caption = input;
+    setInput('');
+    setSending(true);
+    stickToBottomRef.current = true;
+    try {
+      const msg = await chatService.sendImagen(convActivaId, file, caption);
+      setMensajes((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'No se pudo enviar la imagen');
+      setInput(caption);
+    } finally {
+      setSending(false);
+    }
+  };
+
   // Typing (sin debounce en admin — es menos frecuente que el cliente)
   useEffect(() => {
     if (convActivaId) {
@@ -491,7 +552,7 @@ export default function ChatAdminPage() {
             <div className="flex-1 flex items-center justify-center text-[color:var(--text-muted)]">
               <div className="text-center px-4">
                 <MessageCircle size={48} className="mx-auto opacity-30 mb-3" />
-                <p className="text-sm">Elegí una conversación para empezar</p>
+                <p className="text-sm">Elige una conversación para empezar</p>
               </div>
             </div>
           )}
@@ -546,7 +607,7 @@ export default function ChatAdminPage() {
               >
                 {mensajes.length === 0 && (
                   <div className="text-center text-sm text-[color:var(--text-muted)] py-8">
-                    Sin mensajes todavía. ¡Escribíle al cliente!
+                    Sin mensajes todavía. ¡Escríbele al cliente!
                   </div>
                 )}
                 {mensajes.map((m) => (
@@ -568,8 +629,25 @@ export default function ChatAdminPage() {
               {/* Input */}
               <form
                 onSubmit={enviarMensaje}
-                className="border-t border-[color:var(--border-subtle)] p-2 flex gap-2 bg-[color:var(--bg-elevated)] flex-shrink-0"
+                className="border-t border-[color:var(--border-subtle)] p-2 flex items-end gap-1.5 bg-[color:var(--bg-elevated)] flex-shrink-0"
               >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={enviarImagen}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={pickImage}
+                  disabled={sending}
+                  className="flex-shrink-0 w-11 h-11 rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--bg-subtle)] disabled:opacity-50 flex items-center justify-center touch-manipulation active:scale-95 transition-transform"
+                  aria-label="Enviar una foto"
+                  title="Enviar una foto"
+                >
+                  <ImagePlus size={20} />
+                </button>
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -577,14 +655,14 @@ export default function ChatAdminPage() {
                   onKeyDown={handleKeyDown}
                   rows={1}
                   maxLength={500}
-                  placeholder="Escribí un mensaje…"
-                  className="flex-1 px-3 py-2.5 border border-[color:var(--border-subtle)] rounded-md bg-[color:var(--bg-subtle)] text-[color:var(--text-primary)] text-sm resize-none"
+                  placeholder="Escribe un mensaje…"
+                  className="flex-1 px-4 py-2.5 border border-[color:var(--border-subtle)] rounded-2xl bg-[color:var(--bg-subtle)] text-[color:var(--text-primary)] text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/40"
                   style={{ maxHeight: '100px' }}
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || sending}
-                  className="px-3 min-w-[44px] rounded-md text-white disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center touch-manipulation"
+                  className="flex-shrink-0 w-11 h-11 rounded-full text-white disabled:opacity-40 active:scale-95 transition-transform flex items-center justify-center touch-manipulation"
                   style={{ backgroundColor: 'var(--color-primary)' }}
                   aria-label="Enviar mensaje"
                 >
