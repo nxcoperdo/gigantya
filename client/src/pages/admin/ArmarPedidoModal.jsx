@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Plus, Trash2, ShoppingCart, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, ShoppingCart, AlertCircle, Search } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatHelper';
 import chatService from '../../services/chat.js';
+import { productService } from '../../services/api.js';
 
 /**
  * Modal de "Armar pedido" desde el chat.
@@ -27,6 +28,12 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Picker del catálogo (para agregar productos que el cliente no clickeó)
+  const [pickerAbierto, setPickerAbierto] = useState(false);
+  const [catalogo, setCatalogo] = useState([]);
+  const [catalogoLoading, setCatalogoLoading] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
 
   // Cargar items sugeridos desde el backend (los adjuntos de los mensajes)
   useEffect(() => {
@@ -69,6 +76,45 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
   const eliminarItem = (idx) => {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   };
+
+  // Abre el picker y carga el catálogo del local una sola vez (lazy).
+  const abrirPicker = async () => {
+    setPickerAbierto((v) => !v);
+    if (catalogo.length > 0 || catalogoLoading) return;
+    setCatalogoLoading(true);
+    try {
+      const res = await productService.getByRestaurant(conversacion.restaurante_id);
+      setCatalogo(res.data.productos || []);
+    } catch {
+      // No rompemos el modal si falla el catálogo; el vendedor puede
+      // seguir con los items sugeridos o reintentar.
+      setCatalogo([]);
+    } finally {
+      setCatalogoLoading(false);
+    }
+  };
+
+  // Agrega un producto del catálogo. Si ya está en la lista, suma 1 a la cantidad.
+  const agregarProducto = (prod) => {
+    setItems((prev) => {
+      const idx = prev.findIndex((it) => it.producto_id === prod.id);
+      if (idx >= 0) {
+        return prev.map((it, i) => i === idx ? { ...it, cantidad: Number(it.cantidad) + 1 } : it);
+      }
+      return [...prev, {
+        producto_id: prod.id,
+        cantidad: 1,
+        precio_unitario: Number(prod.precio) || 0,
+        nombre: prod.nombre || `Producto #${prod.id}`,
+      }];
+    });
+  };
+
+  const catalogoFiltrado = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return catalogo;
+    return catalogo.filter((p) => (p.nombre || '').toLowerCase().includes(q));
+  }, [catalogo, busqueda]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -134,9 +180,9 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
             {loading ? (
               <div className="text-sm text-[color:var(--text-muted)] py-4 text-center">Cargando items sugeridos…</div>
             ) : items.length === 0 ? (
-              <div className="text-sm text-[color:var(--text-muted)] py-4 text-center bg-[color:var(--bg-subtle)] rounded-md">
-                El cliente no clickeó productos en el catálogo. Escribile
-                para que te diga qué necesita.
+              <div className="text-sm text-[color:var(--text-muted)] py-4 px-3 text-center bg-[color:var(--bg-subtle)] rounded-md">
+                El cliente no seleccionó productos en el catálogo. Agrégalos
+                con el botón de abajo, o escríbele para que te diga qué necesita.
               </div>
             ) : (
               <div className="space-y-2">
@@ -192,8 +238,54 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
                 ))}
               </div>
             )}
-            {/* Nota: el botón "+ Agregar producto" lo dejamos para fase
-                futura (requiere un picker del catálogo completo). */}
+            {/* Picker del catálogo: permite armar el pedido aunque el
+                cliente no haya clickeado productos en el chat. */}
+            <button
+              type="button"
+              onClick={abrirPicker}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-dashed border-[color:var(--border-subtle)] text-sm font-medium text-[color:var(--text-primary)] hover:bg-[color:var(--bg-subtle)]"
+            >
+              <Plus size={16} />
+              {pickerAbierto ? 'Cerrar catálogo' : 'Agregar producto del catálogo'}
+            </button>
+
+            {pickerAbierto && (
+              <div className="mt-2 border border-[color:var(--border-subtle)] rounded-md overflow-hidden">
+                <div className="flex items-center gap-2 px-2 py-1.5 border-b border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)]">
+                  <Search size={15} className="text-[color:var(--text-muted)] flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    placeholder="Buscar producto…"
+                    autoFocus
+                    className="flex-1 bg-transparent text-sm outline-none text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)]"
+                  />
+                </div>
+                <div className="max-h-52 overflow-y-auto">
+                  {catalogoLoading ? (
+                    <div className="text-sm text-[color:var(--text-muted)] py-4 text-center">Cargando catálogo…</div>
+                  ) : catalogoFiltrado.length === 0 ? (
+                    <div className="text-sm text-[color:var(--text-muted)] py-4 text-center">
+                      {catalogo.length === 0 ? 'Este local no tiene productos cargados.' : 'Sin resultados.'}
+                    </div>
+                  ) : (
+                    catalogoFiltrado.map((prod) => (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        onClick={() => agregarProducto(prod)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[color:var(--bg-subtle)] border-b border-[color:var(--border-subtle)] last:border-b-0"
+                      >
+                        <span className="flex-1 min-w-0 text-sm text-[color:var(--text-primary)] truncate">{prod.nombre}</span>
+                        <span className="text-xs text-[color:var(--text-muted)] tabular-nums">{formatCurrency(Number(prod.precio) || 0)}</span>
+                        <Plus size={15} className="text-[var(--color-primary)] flex-shrink-0" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Modalidad */}
