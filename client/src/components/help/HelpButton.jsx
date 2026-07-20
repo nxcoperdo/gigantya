@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { HelpCircle, RotateCcw } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { HelpCircle, RotateCcw, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/api';
 import DashboardTour from './DashboardTour';
@@ -19,6 +19,11 @@ import DashboardTour from './DashboardTour';
  *
  * El aria-label también cambia para que el screen reader anuncie el
  * estado correcto ("Ver tour de ayuda" vs "Ver tour de ayuda de nuevo").
+ *
+ * Al lado del FAB de ayuda va un FAB más pequeño (Download) que
+ * lleva directo a /ayuda/instalar-app. Es la puerta de entrada al
+ * tutorial de instalación de la PWA. Mismo posicionamiento bottom-right
+ * para que sea discoverable pero no compita con el "?" principal.
  */
 export default function HelpButton() {
   const { user } = useAuth();
@@ -44,6 +49,18 @@ export default function HelpButton() {
 
   return (
     <>
+      {/* FAB "Cómo instalar la app" — más chico, a la izquierda del "?"
+          para no competir. Va a /ayuda/instalar-app (página pública). */}
+      <Link
+        to="/ayuda/instalar-app"
+        data-tour="dashboard-fab-install"
+        aria-label="Cómo instalar Gigantya en tu pantalla"
+        title="Cómo instalar Gigantya"
+        className="fixed bottom-5 right-20 sm:right-24 z-40 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-primary border-2 border-primary shadow-lg hover:scale-105 active:scale-95 transition-transform flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-primary/30"
+      >
+        <Download className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+      </Link>
+
       {/* Botón flotante. Posición: bottom-right, encima de cualquier modal
           del layout (z-40) pero por debajo del tour (z-110) para que el
           spotlight del tour lo cubra limpiamente. El `data-tour` lo

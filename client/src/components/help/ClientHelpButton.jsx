@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { HelpCircle, RotateCcw } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { HelpCircle, RotateCcw, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/api';
 import ClientTour from './ClientTour';
@@ -15,6 +15,10 @@ import ClientTour from './ClientTour';
  * Cambia su ícono según el estado:
  *   - HelpCircle  → tour no completado (default)
  *   - RotateCcw   → tour ya completado
+ *
+ * Al lado del FAB va un FAB más pequeño (Download) que lleva a
+ * /ayuda/instalar-app (página de ayuda para instalar la PWA). Mismo
+ * patrón que HelpButton para mantener consistencia.
  */
 export default function ClientHelpButton() {
   const { user } = useAuth();
@@ -42,6 +46,17 @@ export default function ClientHelpButton() {
 
   return (
     <>
+      {/* FAB "Cómo instalar Gigantya" — más chico, a la izquierda del "?". */}
+      <Link
+        to="/ayuda/instalar-app"
+        data-tour="home-fab-install"
+        aria-label="Cómo instalar Gigantya en tu pantalla"
+        title="Cómo instalar Gigantya"
+        className="fixed bottom-5 right-20 sm:right-24 z-40 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-primary border-2 border-primary shadow-lg hover:scale-105 active:scale-95 transition-transform flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-primary/30"
+      >
+        <Download className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+      </Link>
+
       <button
         type="button"
         onClick={() => setOpen(true)}

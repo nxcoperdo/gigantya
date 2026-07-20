@@ -14,6 +14,7 @@ import LegalGate from './components/legal/LegalGate';
 import HelpButton from './components/help/HelpButton';
 import ClientHelpButton from './components/help/ClientHelpButton';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import CompleteProfileGate from './components/CompleteProfileGate';
 
 // Code splitting: cada página se carga solo cuando se necesita
@@ -47,6 +48,10 @@ const TerminosPage = lazy(() => import('./pages/legal/TerminosPage'));
 const PrivacidadPage = lazy(() => import('./pages/legal/PrivacidadPage'));
 const CookiesPage = lazy(() => import('./pages/legal/CookiesPage'));
 const MerchantAgreementPage = lazy(() => import('./pages/legal/MerchantAgreementPage'));
+
+// Página de ayuda: cómo instalar la PWA. Pública para que un local
+// pueda mandarle el link a un cliente por WhatsApp.
+const AyudaInstalarAppPage = lazy(() => import('./pages/AyudaInstalarAppPage'));
 
 // POS (Fase 1+)
 const POSLayout = lazy(() => import('./components/pos/POSLayout'));
@@ -188,6 +193,10 @@ export default function App() {
                       firma del botón "Acepto" requiere auth del dueño. */}
                   <Route path="/legal/restaurante" element={<MerchantAgreementPage />} />
 
+                  {/* Ayuda pública: cómo instalar la PWA. Accesible sin
+                      auth para que un local pueda compartir el link. */}
+                  <Route path="/ayuda/instalar-app" element={<AyudaInstalarAppPage />} />
+
                   {/* POS (Fase 1+): personal del restaurante. Cubre cualquier
                       rol staff (cajero/mesero/cocina/restaurante/admin). */}
                   <Route
@@ -281,6 +290,14 @@ export default function App() {
             {/* Toast "nueva versión disponible" de la PWA (service worker en
                 modo prompt). Invisible salvo cuando hay un update esperando. */}
             <PWAUpdatePrompt />
+
+            {/* Banner in-app "Instalá Gigantya en tu pantalla".
+                Escucha `beforeinstallprompt` y muestra el prompt nativo
+                cuando el browser lo permite. En iOS muestra instrucciones
+                inline (no hay prompt nativo en Safari). z-9998, justo
+                por debajo del PWAUpdatePrompt (z-9999) para que el
+                toast de update siempre tenga prioridad visual. */}
+            <PWAInstallPrompt />
           </div>
           </ChatProvider>
         </CartProvider>
