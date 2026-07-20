@@ -1574,3 +1574,85 @@ button, a, [role="button"] {
 .legal-prose td { padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; }
 .legal-prose code { background: #f3f4f6; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875em; font-family: ui-monospace, monospace; }
 .legal-prose blockquote { border-left: 4px solid #6366f1; background: #eef2ff; padding: 0.75rem 1rem; margin: 1rem 0; color: #1e1b4b; }
+
+/* ============================================
+   CHAT — animaciones mobile-first
+   - chat-list-item: stagger al cargar la lista
+   - chat-msg-in/out: entrada/salida de mensajes
+   - chat-typing-dot: indicador "escribiendo…"
+   ============================================ */
+.chat-list-item {
+  animation: chatListItem 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes chatListItem {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-msg-in-mine {
+  animation: chatMsgInMine 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.chat-msg-in-theirs {
+  animation: chatMsgInTheirs 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes chatMsgInMine {
+  from {
+    opacity: 0;
+    transform: translateX(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes chatMsgInTheirs {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.chat-typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  opacity: 0.4;
+  animation: chatTypingBounce 1.2s ease-in-out infinite;
+}
+.chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes chatTypingBounce {
+  0%, 60%, 100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-list-item,
+  .chat-msg-in-mine,
+  .chat-msg-in-theirs,
+  .chat-typing-dot {
+    animation: none !important;
+  }
+}

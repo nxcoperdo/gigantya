@@ -59,14 +59,19 @@ const ChatMessage = memo(function ChatMessage({ m, conversacionId }) {
   const mostrarTexto = m.contenido && !(esImagen && m.contenido === IMG_PLACEHOLDER);
 
   return (
-    <div className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
+    <div
+      className={[
+        'flex',
+        esMio ? 'justify-end chat-msg-in-mine' : 'justify-start chat-msg-in-theirs',
+      ].join(' ')}
+    >
       <div
         className={[
           'max-w-[80%] rounded-2xl text-sm shadow-sm overflow-hidden',
           esImagen ? 'p-1' : 'px-3 py-2',
           esMio
             ? 'bg-[var(--color-primary)] text-white rounded-br-md'
-            : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-bl-md',
+            : 'bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] border border-[color:var(--border-subtle)] rounded-bl-md',
         ].join(' ')}
       >
         {tieneProducto && (
