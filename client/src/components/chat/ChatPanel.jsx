@@ -170,11 +170,18 @@ export default function ChatPanel({ restauranteNombre }) {
     }
   }, [handleSubmit]);
 
-  // Estilo del contenedor, memoizado
+  // Estilo del contenedor, memoizado.
+  // Mobile: bottom-24 para dejar el ChatLauncher (bottom-5) y la nav
+  // del browser visible. z-40 para estar encima del catálogo
+  // (que tiene z-30 con transform/filter en algunos componentes).
+  // En desktop, esquina derecha como antes.
   const panelClass = useMemo(() => (
-    'fixed inset-x-0 bottom-0 z-30 sm:inset-auto sm:bottom-20 sm:right-4 sm:w-96 sm:max-h-[600px] ' +
-    'bg-white dark:bg-gray-800 sm:rounded-lg shadow-2xl flex flex-col overflow-hidden ' +
-    'border-t sm:border border-gray-200 dark:border-gray-700'
+    'fixed z-40 ' +
+    'inset-x-2 bottom-24 ' +
+    'sm:inset-auto sm:bottom-20 sm:right-4 sm:w-96 ' +
+    'bg-white dark:bg-gray-800 rounded-2xl sm:rounded-lg ' +
+    'shadow-2xl flex flex-col overflow-hidden ' +
+    'border border-gray-200 dark:border-gray-700'
   ), []);
 
   if (!panelOpen) return null;
@@ -185,8 +192,8 @@ export default function ChatPanel({ restauranteNombre }) {
       <div
         role="dialog"
         aria-label="Cargando chat"
-        className="fixed inset-x-0 bottom-0 z-30 sm:inset-auto sm:bottom-20 sm:right-4 sm:w-96 sm:max-h-[600px] bg-white dark:bg-gray-800 sm:rounded-lg shadow-2xl flex flex-col overflow-hidden"
-        style={{ height: 'min(85vh, 600px)' }}
+        className="fixed z-40 inset-x-2 bottom-24 sm:inset-auto sm:bottom-20 sm:right-4 sm:w-96 bg-white dark:bg-gray-800 rounded-2xl sm:rounded-lg shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
+        style={{ maxHeight: 'calc(100vh - 9rem)' }}
       >
         <div className="px-4 py-3 flex items-center justify-between text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
           <div className="min-w-0">
@@ -213,7 +220,11 @@ export default function ChatPanel({ restauranteNombre }) {
       role="dialog"
       aria-label={`Chat con ${restauranteNombre || 'el local'}`}
       className={panelClass}
-      style={{ height: 'min(85vh, 600px)' }}
+      style={{
+        // En mobile la altura la limita el viewport considerando el bottom-24
+        // (deja el ChatLauncher visible). En sm+ queda top-auto y usa max-h.
+        maxHeight: 'calc(100vh - 9rem)',
+      }}
     >
       {/* Header */}
       <div
@@ -247,7 +258,8 @@ export default function ChatPanel({ restauranteNombre }) {
       <div
         ref={listRef}
         onScroll={onScroll}
-        className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50 dark:bg-gray-900 overscroll-contain"
+        className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 bg-gray-50 overscroll-contain"
+        style={{ backgroundColor: '#f9fafb' }}
       >
         {loadingConv && mensajes.length === 0 && (
           <div className="text-center text-sm text-gray-500 py-4">Cargando…</div>
@@ -303,13 +315,13 @@ export default function ChatPanel({ restauranteNombre }) {
           maxLength={500}
           placeholder="Escribí tu mensaje…"
           aria-label="Mensaje"
-          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
-          style={{ maxHeight: '100px' }}
+          className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base resize-none"
+          style={{ maxHeight: '120px' }}
         />
         <button
           type="submit"
           disabled={!input.trim() || sendingMensaje}
-          className="px-3 min-w-[44px] rounded-md text-white disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center"
+          className="flex-shrink-0 min-h-[44px] min-w-[52px] rounded-md text-white disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center touch-manipulation"
           style={{ backgroundColor: 'var(--color-primary)' }}
           aria-label="Enviar mensaje"
         >
@@ -317,9 +329,11 @@ export default function ChatPanel({ restauranteNombre }) {
         </button>
       </form>
 
-      {/* Footer con link a carrito */}
-      <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-between text-xs flex-shrink-0">
-        <span className="text-gray-500">
+      {/* Footer con link a carrito — en mobile lo mostramos más compacto
+          (sin el texto "Conversación con el local" para ganar ~24px) y
+          solo el link a carrito. En desktop sí va el texto. */}
+      <div className="px-3 py-1 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-end text-xs flex-shrink-0">
+        <span className="hidden sm:inline text-gray-500 mr-auto">
           Conversación con el local
         </span>
         <Link
