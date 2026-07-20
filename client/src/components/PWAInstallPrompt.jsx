@@ -8,7 +8,7 @@ import { userService } from '../services/api';
  * Banner in-app para sugerir instalar la PWA.
  *
  * Eventos distintos que NO mezclar con PWAUpdatePrompt (esos son los
- * "nueva versión disponible" del service worker; este es el de "podés
+ * "nueva versión disponible" del service worker; este es el de "puedes
  * tener un ícono en tu pantalla de inicio"). Ver vite.config.js para
  * la config de `registerType: 'prompt'`.
  *
@@ -287,7 +287,7 @@ export default function PWAInstallPrompt() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-heading font-bold text-[color:var(--text-primary,#111827)]">
-            Instalá Gigantya en tu pantalla
+            Instala Gigantya en tu pantalla
           </p>
           <p className="text-sm text-[color:var(--text-secondary,#6b7280)] mt-0.5">
             Acceso en 1 toque, notificaciones de tus pedidos y chat.
@@ -326,12 +326,12 @@ export default function PWAInstallPrompt() {
                 <ol className="text-xs text-[color:var(--text-secondary,#6b7280)] space-y-1 list-decimal list-inside bg-[color:var(--bg-muted,#f3f4f6)] rounded-lg p-2.5">
                   <li className="flex items-start gap-1.5">
                     <span className="flex-1">
-                      Tocá el botón <Share size={11} className="inline -mt-0.5" aria-hidden="true" /> Compartir abajo.
+                      Toca el botón <Share size={11} className="inline -mt-0.5" aria-hidden="true" /> Compartir abajo.
                     </span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="flex-1">
-                      Elegí <Plus size={11} className="inline -mt-0.5" aria-hidden="true" /> &ldquo;Agregar a pantalla de inicio&rdquo;.
+                      Elige <Plus size={11} className="inline -mt-0.5" aria-hidden="true" /> &ldquo;Agregar a pantalla de inicio&rdquo;.
                     </span>
                   </li>
                 </ol>
