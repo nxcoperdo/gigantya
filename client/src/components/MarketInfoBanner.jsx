@@ -171,7 +171,7 @@ export default function MarketInfoBanner({ restauranteId }) {
             </span>
           </p>
 
-          {/* Tip visual: ícono de chat + label */}
+          {/* Call to action: ícono de chat + label */}
           <div
             className="mt-4 flex items-center gap-3 px-3 py-2.5 rounded-lg
                        bg-[color:var(--bg-subtle)]
@@ -182,9 +182,14 @@ export default function MarketInfoBanner({ restauranteId }) {
               className="flex-shrink-0 text-[color:var(--color-primary)]"
               aria-hidden="true"
             />
-            <span className="text-xs text-[color:var(--text-secondary)]">
-              Busca el botón de chat en la página del local para escribirle directo.
-            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[color:var(--text-primary)]">
+                Escríbenos al local
+              </p>
+              <p className="text-xs text-[color:var(--text-secondary)]">
+                Cuéntanos qué necesitas y te armamos el pedido.
+              </p>
+            </div>
           </div>
 
           {/* Botón principal de acción */}
