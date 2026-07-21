@@ -19,6 +19,7 @@ import ScrollToTopButton from '../components/ScrollToTopButton';
 import MobileCartBar from '../components/MobileCartBar';
 import MenuDeHoy from '../components/MenuDeHoy';
 import { menuDiaService } from '../services/api';
+import MarketInfoBanner from '../components/MarketInfoBanner';
 // Piloto chat (Fase 4 — solo local 4 / fruver)
 import { useChat } from '../context/ChatContext.jsx';
 import ChatIdentityModal from '../components/chat/ChatIdentityModal.jsx';
@@ -359,6 +360,15 @@ export default function RestaurantDetailsPage() {
          images={galleryModal.images}
          productName={galleryModal.name}
        />
+
+       {/* Banner informativo para locales de mercado / abarrotes. Solo
+           se muestra si el local tiene es_mercado_abarrotes=1. Es sticky
+           y se queda arriba al hacer scroll. El cliente puede cerrarlo
+           con la X; queda recordada la dismissal en sessionStorage por
+           restaurante_id. Ver componente para más detalle. */}
+       {esMercadoAbarrotes && (
+         <MarketInfoBanner restauranteId={restaurante?.id} />
+       )}
 
        {/* Hero Section */}
        <div className="relative h-56 sm:h-64 md:h-80 bg-gradient-warm overflow-hidden">
