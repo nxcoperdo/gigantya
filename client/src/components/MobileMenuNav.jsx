@@ -131,17 +131,10 @@ export default function MobileMenuNav({ categories, productos, onSearchChange })
     <nav
       // md:hidden — solo mobile. z-40 está debajo del modal (z-50) y de
       // los toasts pero encima del contenido. top-[var(--header-height)]
-      // usa la CSS var que emite el Header (L167 de Header.jsx). Si el
-      // MarketInfoBanner está visible (locales de mercado), su altura
-      // se publica en --market-banner-height y la sumamos al top para
-      // que la sticky-nav de categorías quede justo debajo del banner
-      // sin solapar.
-      className="md:hidden sticky z-40
+      // usa la CSS var que emite el Header (L167 de Header.jsx).
+      className="md:hidden sticky top-[var(--header-height,60px)] z-40
                  bg-[color:var(--bg-elevated)] border-b border-[color:var(--border-subtle)]
                  backdrop-blur-md"
-      style={{
-        top: 'calc(var(--header-height, 60px) + var(--market-banner-height, 0px))',
-      }}
       aria-label="Navegación del menú"
     >
       {/* Buscador (solo si hay +12 productos) */}

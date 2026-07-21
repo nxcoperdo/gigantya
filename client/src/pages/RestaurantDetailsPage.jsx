@@ -361,12 +361,12 @@ export default function RestaurantDetailsPage() {
          productName={galleryModal.name}
        />
 
-       {/* Banner informativo para locales de mercado / abarrotes. Solo
-           se muestra si el local tiene es_mercado_abarrotes=1. Va fixed
-           debajo del header y NO se mueve al hacer scroll (queda visible
-           durante toda la navegación del menú). El cliente puede cerrarlo
-           con la X; queda recordada la dismissal en sessionStorage por
-           restaurante_id. Ver componente para más detalle. */}
+       {/* Modal informativo para locales de mercado / abarrotes. Solo
+           se muestra si el local tiene es_mercado_abarrotes=1. Aparece
+           como modal centrado la primera vez; el cliente puede cerrarlo
+           con la X, el botón "Entendido" o el backdrop. La dismissal
+           queda recordada en sessionStorage por restaurante_id. Ver
+           componente para más detalle. */}
        {esMercadoAbarrotes && (
          <MarketInfoBanner restauranteId={restaurante?.id} />
        )}
