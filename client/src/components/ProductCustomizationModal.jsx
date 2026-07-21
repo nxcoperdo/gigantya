@@ -190,6 +190,29 @@ export default function ProductCustomizationModal({
     }, 0);
   }, [todasAdiciones, adicionesQty]);
 
+  // ===== Fase 10: estado por grupo + puedeAgregar =====
+  // gruposConEstado = cada grupo con su config normalizada, las
+  // adiciones que le pertenecen, count y completado. puedeAgregar =
+  // todos los grupos están completos. El backend re-valida.
+  //
+  // IMPORTANTE: este useMemo DEBE estar declarado ANTES que
+  // `sumaPerUnidad` (línea ~197) porque ese otro useMemo lo
+  // referencia dentro de su closure. Declararlos en otro orden
+  // provoca "Cannot access 'y' before initialization" (TDZ) en
+  // el bundle minificado, exactamente lo que pasó cuando se
+  // activó el flujo perUnidad del menú del día con cantidad > 1.
+  const gruposConEstado = useMemo(() => {
+    return grupos.map((g) => {
+      const cfg = getGrupoConfig(g, cantidad);
+      const adicionesDelGrupo = todasAdiciones.filter(
+        (a) => Number(a.grupo_id) === Number(g.id)
+      );
+      const count = getGrupoCount(cfg, adicionesQty, todasAdiciones, selPorUnidad, cantidad);
+      const completado = isGrupoCompleto(cfg, count, cantidad);
+      return { ...cfg, adicionesDelGrupo, count, completado };
+    });
+  }, [grupos, todasAdiciones, adicionesQty, selPorUnidad, cantidad]);
+
   // Suma de las selecciones perUnidad (precio_extra × veces que se eligió
   // cada adición en el array selPorUnidad). Necesario para que el subtotal
   // del modal refleje el costo de las opciones perUnidad elegidas, ya que
@@ -228,22 +251,6 @@ export default function ProductCustomizationModal({
   }, [selPorUnidad]);
   const hayRemovidos = removidos.size > 0;
   const hayNota = nota.trim().length > 0;
-
-  // ===== Fase 10: estado por grupo + puedeAgregar =====
-  // gruposConEstado = cada grupo con su config normalizada, las
-  // adiciones que le pertenecen, count y completado. puedeAgregar =
-  // todos los grupos están completos. El backend re-valida.
-  const gruposConEstado = useMemo(() => {
-    return grupos.map((g) => {
-      const cfg = getGrupoConfig(g, cantidad);
-      const adicionesDelGrupo = todasAdiciones.filter(
-        (a) => Number(a.grupo_id) === Number(g.id)
-      );
-      const count = getGrupoCount(cfg, adicionesQty, todasAdiciones, selPorUnidad, cantidad);
-      const completado = isGrupoCompleto(cfg, count, cantidad);
-      return { ...cfg, adicionesDelGrupo, count, completado };
-    });
-  }, [grupos, todasAdiciones, adicionesQty, selPorUnidad, cantidad]);
 
   const puedeAgregar = useMemo(
     () => gruposConEstado.every((g) => g.completado),
