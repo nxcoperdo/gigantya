@@ -484,7 +484,7 @@ export default function ChatDetailPage() {
         </div>
       )}
 
-      {/* Input o mensaje de "no podés escribir" */}
+      {/* Input o mensaje de "no puedes escribir" */}
       {puedeEscribir ? (
         <form
           onSubmit={handleSubmit}
@@ -560,7 +560,7 @@ export default function ChatDetailPage() {
           ) : isCerrada ? (
             'Esta conversación está cerrada.'
           ) : (
-            'No podés escribir en esta conversación.'
+            'No puedes escribir en esta conversación.'
           )}
         </div>
       )}

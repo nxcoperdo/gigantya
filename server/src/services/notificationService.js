@@ -484,7 +484,7 @@ const EmailTemplates = {
         <a href="${escapeHtml(link)}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Abrir mi dashboard</a>
       </p>
       <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
-        Recibiste este email porque sos dueño de un local en GigantYA. Si querés dejar de recibirlo, podés escribirnos a <a href="mailto:coderepairtech@gmail.com" style="color: #9ca3af; text-decoration: underline;">coderepairtech@gmail.com</a>.
+        Recibiste este email porque eres dueño de un local en GigantYA. Si quieres dejar de recibirlo, puedes escribirnos a <a href="mailto:coderepairtech@gmail.com" style="color: #9ca3af; text-decoration: underline;">coderepairtech@gmail.com</a>.
       </p>
     </div>
   `,

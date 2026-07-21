@@ -239,8 +239,8 @@ export default function CashierPage() {
           title="¿Cómo abro la caja?"
           steps={[
             'Hacé click en "Abrir caja"',
-            'Poné el fondo inicial (lo que hay en la registradora al empezar el día)',
-            'Confirmá — ya podés empezar a cobrar los pedidos pendientes',
+            'Pon el fondo inicial (lo que hay en la registradora al empezar el día)',
+            'Confirma — ya puedes empezar a cobrar los pedidos pendientes',
           ]}
           action={!showOpenModal ? { label: 'Abrir caja ahora', onClick: () => setShowOpenModal(true) } : undefined}
         />

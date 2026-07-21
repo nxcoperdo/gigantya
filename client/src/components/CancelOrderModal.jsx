@@ -127,7 +127,7 @@ export default function CancelOrderModal({ isOpen, onClose, order, onConfirm }) 
               htmlFor="cancel-motivo"
               className="text-sm font-medium text-[color:var(--text-secondary)] block"
             >
-              ¿Por qué querés cancelar? <span className="text-red-500" aria-hidden="true">*</span>
+              ¿Por qué quieres cancelar? <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <textarea
               id="cancel-motivo"

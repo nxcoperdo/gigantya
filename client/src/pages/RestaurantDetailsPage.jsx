@@ -306,6 +306,57 @@ export default function RestaurantDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatHabilitado, restaurante?.id]);
 
+  // Altura del MarketInfoBanner para empujar el contenido cuando está
+  // visible. Como el banner usa `position: fixed`, queda fuera del flujo
+  // y necesitamos padding-top dinámico. MarketInfoBanner publica la
+  // altura vía window.__marketBannerHeight + un evento custom
+  // 'market-banner-resize' (ver el componente para más detalle).
+  // Solo aplicamos offset si el local es de mercado/abarrotes.
+  const [marketBannerHeight, setMarketBannerHeight] = useState(0);
+  useEffect(() => {
+    if (!esMercadoAbarrotes) return undefined;
+    const onResize = (e) => setMarketBannerHeight(e.detail?.height || 0);
+    // Sync inicial por si el banner ya estaba montado y publicó altura
+    // antes de que este effect se ejecutara.
+    if (typeof window !== 'undefined' && window.__marketBannerHeight) {
+      setMarketBannerHeight(window.__marketBannerHeight);
+    }
+    window.addEventListener('market-banner-resize', onResize);
+    return () => window.removeEventListener('market-banner-resize', onResize);
+  }, [esMercadoAbarrotes]);
+
+  // Altura de la nav mobile de categorías (MobileMenuNav). Mismo patrón
+  // que el market banner: la nav es `position: fixed` y publica su
+  // altura vía window.__mobileMenuHeight + evento 'mobile-menu-resize'.
+  // En desktop el componente no se monta (md:hidden) y la altura
+  // queda en 0, así que es seguro tenerlo siempre activo.
+  const [mobileMenuHeight, setMobileMenuHeight] = useState(0);
+  useEffect(() => {
+    const onResize = (e) => setMobileMenuHeight(e.detail?.height || 0);
+    if (typeof window !== 'undefined' && window.__mobileMenuHeight) {
+      setMobileMenuHeight(window.__mobileMenuHeight);
+    }
+    window.addEventListener('mobile-menu-resize', onResize);
+    return () => window.removeEventListener('mobile-menu-resize', onResize);
+  }, []);
+
+  // Suma de alturas sticky en mobile. La publicamos como CSS var
+  // --sticky-mobile-offset para que el contenedor raíz la use en su
+  // paddingTop / marginTop. Solo en mobile (en desktop mobileMenuHeight=0
+  // y marketBannerHeight=0, así que el offset es 0). Para escritorio
+  // forzamos 0 explícitamente con el media query abajo.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const update = () => {
+      const isMobile = window.matchMedia('(max-width: 767px)').matches;
+      const total = isMobile ? (marketBannerHeight + mobileMenuHeight) : 0;
+      document.documentElement.style.setProperty('--sticky-mobile-offset', `${total}px`);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [marketBannerHeight, mobileMenuHeight]);
+
   if (loading) return <Loading />;
 
   if (!restaurante) {
@@ -332,7 +383,20 @@ export default function RestaurantDetailsPage() {
        className="min-h-screen bg-[color:var(--bg-subtle)]"
        style={{
          ...dynamicStyles,
-         fontFamily: 'var(--font-family), sans-serif'
+         fontFamily: 'var(--font-family), sans-serif',
+         // Empuja el contenido hacia abajo para que las barras fijas
+         // mobile (MarketInfoBanner + MobileMenuNav) no tapen el hero
+         // ni el card de info. En desktop ambas son 0 (md:hidden) y el
+         // padding queda en 0, sin afectar el layout.
+         // El total es la suma de las dos alturas. Usamos CSS var
+         // --sticky-mobile-offset que el padre recalcula dinámicamente
+         // vía los listeners 'market-banner-resize' y 'mobile-menu-resize'
+         // (ver useEffects arriba).
+         paddingTop: 'var(--sticky-mobile-offset, 0px)',
+         // Compensa el padding con margen negativo para que min-h-screen
+         // siga cubriendo toda la ventana (sino aparece una franja vacía
+         // al hacer scroll rápido al fondo).
+         marginTop: 'calc(var(--sticky-mobile-offset, 0px) * -1)',
        }}
      >
        {/* Modal de Confirmación */}
@@ -510,6 +574,7 @@ export default function RestaurantDetailsPage() {
              categories={sortedCategories.map(([id, cat]) => ({ id, nombre: cat.nombre }))}
              productos={productos}
              onSearchChange={setSearchQuery}
+             marketBannerHeight={marketBannerHeight}
            />
          )}
 
@@ -827,7 +892,7 @@ function DescripcionProducto({ texto, expandido, onToggle }) {
  *     legibilidad — eliminar la feature sería una regresión.
  *   - Botón "+" se vuelve circular compacto en mobile (full-width en sm+).
  *   - Si el counter `cantidades[id] > 0`, el botón muestra un counter
- *     `+/N/+` (estado futuro si querés sumar/restar sin abrir modal).
+ *     `+/N/+` (estado futuro si quieres sumar/restar sin abrir modal).
  *   - Imagen oculta si `!imagen_url` (no mostramos el 🍽️ de 160px en
  *     mobile porque en 80x80 queda horrible).
  */

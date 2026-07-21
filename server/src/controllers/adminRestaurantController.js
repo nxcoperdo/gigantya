@@ -80,7 +80,7 @@ export async function updateRestaurant(req, res) {
     // Si el cliente mandó custom_config u otros campos prohibidos,
     // los descartamos SIN error (UX: el form no debería mandarlos,
     // pero si los manda por error, no rompemos la request).
-    // Si querés ser estricto y devolver 400, acá iría un check de
+    // Si quieres ser estricto y devolver 400, acá iría un check de
     // "campos no permitidos".
 
     if (Object.keys(updateData).length === 0 && !imagenFile && !bannerFile) {

@@ -74,7 +74,7 @@ export default function FeaturedBannersDownloadButton({ className = '' }) {
       } else if (err.response?.status === 401) {
         setError('Tu sesión expiró. Volvé a iniciar sesión.');
       } else if (err.response?.status === 403) {
-        setError('No tenés permisos para descargar.');
+        setError('No tienes permisos para descargar.');
       } else {
         setError(err.message || 'Error al descargar el ZIP.');
       }

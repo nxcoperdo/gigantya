@@ -455,7 +455,7 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
                 <Receipt size={14} className="flex-shrink-0 mt-0.5 text-[var(--color-primary)]" />
                 <span>
                   Pedile al cliente el comprobante de la transferencia para
-                  adjuntarlo al pedido. Si todavía no te lo mandó, podés
+                  adjuntarlo al pedido. Si todavía no te lo mandó, puedes
                   adjuntarlo después desde la Recepción.
                 </span>
               </div>

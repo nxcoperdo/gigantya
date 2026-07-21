@@ -40,7 +40,7 @@ function getHorarios(custom_config) {
 export async function getWeeklyMenu(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
-    if (!restaurante) return res.status(404).json({ error: 'No tenés un local asociado' });
+    if (!restaurante) return res.status(404).json({ error: 'No tienes un local asociado' });
 
     const [weekly, combos] = await Promise.all([
       MenuSemanal.getWeeklyByRestaurant(restaurante.id),
@@ -66,7 +66,7 @@ export async function getWeeklyMenu(req, res) {
 export async function setMenuCell(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
-    if (!restaurante) return res.status(404).json({ error: 'No tenés un local asociado' });
+    if (!restaurante) return res.status(404).json({ error: 'No tienes un local asociado' });
 
     const { tipo_comida, producto_id, activo } = req.body;
     const dia_semana = Number(req.body.dia_semana);
@@ -109,7 +109,7 @@ export async function setMenuCell(req, res) {
 export async function deleteMenuCell(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
-    if (!restaurante) return res.status(404).json({ error: 'No tenés un local asociado' });
+    if (!restaurante) return res.status(404).json({ error: 'No tienes un local asociado' });
 
     const tipo_comida = req.body.tipo_comida || req.query.tipo_comida;
     const dia_semana = Number(req.body.dia_semana ?? req.query.dia_semana);
@@ -134,7 +134,7 @@ export async function deleteMenuCell(req, res) {
 export async function setHorarios(req, res) {
   try {
     const restaurante = await RestaurantModel.getRestaurantByUserId(req.user.id);
-    if (!restaurante) return res.status(404).json({ error: 'No tenés un local asociado' });
+    if (!restaurante) return res.status(404).json({ error: 'No tienes un local asociado' });
 
     const body = req.body || {};
     const horarios = {

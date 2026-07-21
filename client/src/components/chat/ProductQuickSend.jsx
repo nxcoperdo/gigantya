@@ -66,7 +66,7 @@ export default function ProductQuickSend({ producto, onAddToCart, onSendToChat }
           >
             <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                ¿Cómo querés pedir <span className="font-semibold">{producto.nombre}</span>?
+                ¿Cómo quieres pedir <span className="font-semibold">{producto.nombre}</span>?
               </p>
             </div>
             <button
@@ -95,7 +95,7 @@ export default function ProductQuickSend({ producto, onAddToCart, onSendToChat }
               <span>
                 <span className="font-medium block">Agregar al carrito</span>
                 <span className="text-xs text-gray-500 block">
-                  Pedís vos, pagás online
+                  Pides tú, pagas online
                 </span>
               </span>
             </button>
