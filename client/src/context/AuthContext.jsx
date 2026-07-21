@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
 
   // Completa el login con Google por REDIRECT: la página de callback
   // (GoogleOAuthCallbackPage) ya recibió token+refreshToken del backend
-  // (flujo Authorization Code, usado cuando la PWA corre instalada). Acá
+  // (flujo Authorization Code, usado cuando la PWA corre instalada). Aquí
   // solo falta guardar las credenciales y traer el `usuario` con /me,
   // porque ese endpoint no devuelve el usuario en el redirect (solo los
   // tokens, para no exponer datos de perfil en la URL).

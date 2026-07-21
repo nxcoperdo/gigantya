@@ -120,7 +120,7 @@ export async function updateAdicion(id, { grupo_id, nombre, precio_extra, orden,
   // COALESCE permite PATCH parcial: si no se manda un campo, queda igual.
   // Para grupo_id, precio_extra y activo necesitamos distinguir "no mandado"
   // de "mandado como null" — usamos IFNULL con un sentinela (-1) solo si
-  // hace falta. Como acá el PUT reemplaza el paquete entero (no es PATCH),
+  // hace falta. Como aquí el PUT reemplaza el paquete entero (no es PATCH),
   // no se llama esta función en flujo normal. Se deja por completitud.
   const sql = `
     UPDATE producto_adiciones

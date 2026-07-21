@@ -287,7 +287,7 @@ export async function getUserProfile(id) {
  * Devuelve `true` si la fila fue afectada, `false` si no se encontró.
  *
  * El path que llega ya está validado (alfanumérico + puntos) en el
- * controller; acá lo partimos en `keys` para hacer el merge en JS.
+ * controller; aquí lo partimos en `keys` para hacer el merge en JS.
  */
 export async function setOtrosDatosPath(userId, dotPath, value) {
   // Defensa: no permitir paths que no sean alfanuméricos con puntos.

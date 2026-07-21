@@ -94,7 +94,7 @@ export async function up(knex) {
   // FK de pagos → caja_sesion_id (no la puse arriba porque al crear
   // la tabla en el mismo run, la segunda FK no se valida; Knex Schema
   // API igual las procesa en orden). Si por algo el orden falla, la
-  // creo acá con un guard de hasColumn.
+  // creo aquí con un guard de hasColumn.
   const hasCajaFk = await knex.raw(
     `SELECT 1 FROM information_schema.table_constraints
       WHERE constraint_schema = DATABASE()

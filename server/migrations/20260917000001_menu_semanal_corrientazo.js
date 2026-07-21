@@ -7,7 +7,7 @@
 //    producto-combo de ese día. Un combo por celda (UNIQUE). La app muestra
 //    solo el del día actual (calculado en America/Bogota).
 //
-// Las franjas horarias (desayuno AM / almuerzo mediodía) NO van acá: viven en
+// Las franjas horarias (desayuno AM / almuerzo mediodía) NO van aquí: viven en
 // restaurantes.custom_config.menu_dia_horarios (JSON), sin costo de esquema.
 export async function up(knex) {
   await knex.schema.alterTable('productos', (t) => {

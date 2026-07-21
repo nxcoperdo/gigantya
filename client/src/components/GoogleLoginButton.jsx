@@ -53,7 +53,7 @@ export default function GoogleLoginButton({ onError, redirectTo = '/' }) {
   const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const wrapRef = useRef(null);   // mide el ancho disponible (full-width)
-  const btnRef = useRef(null);    // Google inyecta el botón acá (React lo deja vacío)
+  const btnRef = useRef(null);    // Google inyecta el botón aquí (React lo deja vacío)
   const lastWidthRef = useRef(0);
   const [ready, setReady] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -146,7 +146,7 @@ export default function GoogleLoginButton({ onError, redirectTo = '/' }) {
 
   return (
     <div ref={wrapRef} className="w-full">
-      {/* Google inyecta su botón acá */}
+      {/* Google inyecta su botón aquí */}
       <div ref={btnRef} className="flex justify-center" />
       {/* Skeleton mientras carga GIS: evita el salto de layout */}
       {!ready && (

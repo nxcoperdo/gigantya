@@ -259,7 +259,7 @@ function CellEditorModal({ editing, combos, dias, tipos, onClose, onAssign, onCr
     if (!window.confirm(`¿Eliminar el combo "${c.nombre}"? Se quitará de todos los días.`)) return;
     setDeletingId(c.id);
     setError('');
-    // 1) El borrado en sí. Si falla acá, sí mostramos error.
+    // 1) El borrado en sí. Si falla aquí, sí mostramos error.
     try {
       await productService.delete(c.id);
     } catch (err) {

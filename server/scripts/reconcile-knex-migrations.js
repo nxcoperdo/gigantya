@@ -21,7 +21,7 @@
  * Idempotente: usa INSERT ... WHERE NOT EXISTS para no duplicar.
  *
  * Importante: revisá la lista `MIGRATIONS` abajo. Si agregás migraciones
- * nuevas, NO las pongas acá — déjalas para que las corra Knex normalmente.
+ * nuevas, NO las pongas aquí — déjalas para que las corra Knex normalmente.
  */
 
 import 'dotenv/config';

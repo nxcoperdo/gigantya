@@ -94,7 +94,7 @@ const STEPS = [
   {
     target: '[data-tour="dashboard-tab-pagos"]',
     title: '💰 Pestaña Pagos',
-    description: 'Acá tienes dos cosas: la sub-pestaña "Validación de Comprobantes" donde apruebas o rechazas los comprobantes que te mandan los clientes, y "Configuración de Pagos" donde escribes tu número de Nequi, Daviplata o BRE-B para que el cliente los vea al pedir y pueda transferirte directo.',
+    description: 'Aquí tienes dos cosas: la sub-pestaña "Validación de Comprobantes" donde apruebas o rechazas los comprobantes que te mandan los clientes, y "Configuración de Pagos" donde escribes tu número de Nequi, Daviplata o BRE-B para que el cliente los vea al pedir y pueda transferirte directo.',
     side: 'bottom',
     activateTab: 'payments',
   },

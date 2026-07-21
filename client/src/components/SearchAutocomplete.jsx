@@ -337,7 +337,7 @@ export default function SearchAutocomplete({
 
   // Si el input está vacío, mostramos el historial de búsquedas recientes
   // (reutiliza el componente existente sin cambios). RecentSearches ya
-  // devuelve null si no hay términos, así que no duplicamos ese check acá.
+  // devuelve null si no hay términos, así que no duplicamos ese check aquí.
   const trimmed = searchTerm.trim();
   const showRecent = trimmed.length === 0;
 

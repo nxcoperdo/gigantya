@@ -262,7 +262,7 @@ export default function LegalModal({ open, onClose, docs = [], onAccepted }) {
    Textos legales embebidos.
    Son una copia "lite" del texto completo de las páginas
    /terminos, /privacidad y /legal/restaurante. La fuente de
-   verdad sigue siendo el JSX de esas páginas; acá va una
+   verdad sigue siendo el JSX de esas páginas; aquí va una
    versión reducida que cabe bien en un modal con scroll.
    El abogado puede pedir ajustes a cualquiera de las dos.
    ============================================================ */

@@ -373,7 +373,7 @@ export default function RestaurantDashboardPage() {
   // que el tour le tape la pantalla).
   //
   // La condición se evalúa 1 sola vez por mount del dashboard. Si el
-  // user navega a /pos y vuelve, vuelve a entrar acá — pero para ese
+  // user navega a /pos y vuelve, vuelve a entrar aquí — pero para ese
   // momento el banner ya cambió a 'active' (se setea al clickear
   // "Iniciar tour" o al cerrar el tour) y no se vuelve a abrir solo.
   const autoTourFiredRef = useRef(false);

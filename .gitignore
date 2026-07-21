@@ -38,7 +38,7 @@ server/uploads/*
 # Excepción: los banners de la home SÍ se commitean (assets versionados).
 # Esto garantiza que después de `git pull` en el VPS la home tenga
 # los banners. El admin puede subir más desde /admin/home-media, y
-# esos también se commitean. Si querés ignorar alguno, agregalo
+# esos también se commitean. Si quieres ignorar alguno, agregalo
 # puntualmente a este .gitignore.
 !server/uploads/home-media-uploaded/
 !server/uploads/home-media-uploaded/*

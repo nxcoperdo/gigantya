@@ -20,7 +20,7 @@
  *     La aceptación queda como log de auditoría pero no se usa para
  *     condicionar nada crítico (las cookies siguen bloqueadas en el
  *     cliente por la preferencia local).
- *   - Validamos `tipo` contra whitelist en el modelo, pero también acá
+ *   - Validamos `tipo` contra whitelist en el modelo, pero también aquí
  *     para devolver 400 con mensaje claro antes de tocar la DB.
  */
 import * as LegalModel from '../models/LegalAcceptance.js';
@@ -94,7 +94,7 @@ export async function getEstado(req, res) {
     }
 
     // 1. Listar locales donde el usuario es dueño (no staff).
-    //    Un cliente nunca aparece acá. Un dueño puede tener varios locales
+    //    Un cliente nunca aparece aquí. Un dueño puede tener varios locales
     //    (en el futuro); un admin también.
     let restauranteIds = [];
     if (userTipo === 'restaurante' || userTipo === 'admin') {

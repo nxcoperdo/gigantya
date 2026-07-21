@@ -12,7 +12,7 @@
  * NOTA: la unicidad es a nivel de la tabla `usuarios`, que ya tiene UNIQUE
  * KEY sobre `email`. Como el email es fake (`walkin_<ts>@local.gigantya`)
  * el constraint de email no previene duplicados por teléfono. Por eso
- * hacemos la verificación explícita acá antes de INSERTAR.
+ * hacemos la verificación explícita aquí antes de INSERTAR.
  */
 import { query } from '../config/database.js';
 

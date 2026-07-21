@@ -15,7 +15,7 @@
  *
  * Estilos: usa las CSS vars ya definidas en el resto del dashboard
  * (--bg-elevated, --border, --text, --text-muted). El color de relleno por
- * estado se mantiene acá para que sea fácil de tunear.
+ * estado se mantiene aquí para que sea fácil de tunear.
  */
 import { Rnd } from 'react-rnd';
 import { Armchair, Users } from 'lucide-react';

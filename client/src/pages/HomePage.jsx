@@ -29,7 +29,7 @@ import ClientTour from '../components/help/ClientTour';
 
 // Whitelist de iconos soportados (Fase 12d). Tiene que matchear la
 // whitelist del backend (adminHomeHeroController.ALLOWED_ICONS). NO
-// importar más iconos de lucide acá — cada import suma al bundle.
+// importar más iconos de lucide aquí — cada import suma al bundle.
 const HERO_ICON_MAP = {
   MessageCircle, MapPin, Store, Phone, ExternalLink,
   ShoppingBag, Coffee, ChevronRight, Send,
@@ -671,7 +671,7 @@ export default function HomePage() {
   // Handler que se invoca cuando el usuario elige un resultado del
   // dropdown (con teclado Enter+highlight, o click). El componente
   // `SearchAutocomplete` ya hace `navigate` + `onClose` por su cuenta;
-  // acá solo guardamos el término y refrescamos el state local del
+  // aquí solo guardamos el término y refrescamos el state local del
   // historial para feedback inmediato.
   const handleSelectResult = useCallback(
     (_item) => {
@@ -1655,7 +1655,7 @@ export default function HomePage() {
                       'El punto verde a la izquierda significa que el local está abierto',
                       'El rojo significa que está cerrado — no podrás pedir',
                       'Los locales cerrados aparecen atenuados en la lista',
-                      'Si un local está cerrado, esperá a que abra o elegí otro',
+                      'Si un local está cerrado, espera a que abra o elige otro',
                     ]}
                   />
                 )}

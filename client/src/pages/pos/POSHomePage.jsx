@@ -11,7 +11,7 @@ import Loading from '../../components/Loading';
  *   - cajero  → /pos/caja
  *   - restaurante / admin → /pos/mesas (puede cambiar desde la sidebar)
  *
- * Si es cliente → /  (defensa, no debería llegar acá por ProtectedRoute).
+ * Si es cliente → /  (defensa, no debería llegar aquí por ProtectedRoute).
  * Si no hay restaurante asociado (cliente o staff huérfano) → no se puede
  * usar el POS, mostramos mensaje.
  *

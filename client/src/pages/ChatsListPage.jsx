@@ -421,7 +421,7 @@ export default function ChatsListPage() {
               Aún no tienes chats
             </h2>
             <p className="text-sm sm:text-base text-[color:var(--text-secondary)] mb-6 max-w-sm mx-auto leading-relaxed">
-              Cuando hables con un local, la conversación va a aparecer acá. Podés chatear desde
+              Cuando hables con un local, la conversación va a aparecer aquí. Puedes chatear desde
               la página de cualquier local.
             </p>
             <Link

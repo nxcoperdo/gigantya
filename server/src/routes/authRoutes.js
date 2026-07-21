@@ -36,7 +36,7 @@ router.get('/google/start', authController.googleOAuthStart);
 
 /**
  * @route   GET /api/auth/google/callback
- * @desc    Paso 2: Google vuelve acá con el code. Lo canjea, resuelve el
+ * @desc    Paso 2: Google vuelve aquí con el code. Lo canjea, resuelve el
  *          usuario y redirige al frontend con el JWT en el fragment.
  * @access  Public
  */

@@ -43,7 +43,7 @@ export async function up(knex) {
     table.text('notas');
     table.boolean('es_default').defaultTo(false);
     // barrio_id se llena en la migration 1800001 con FK a barrios.
-    // Acá lo creamos sin FK (la 1800001 la agrega) porque la tabla
+    // Aquí lo creamos sin FK (la 1800001 la agrega) porque la tabla
     // `barrios` no existe todavía al correr esta migration. El
     // allowNull es suficiente para que el modelo funcione antes de
     // que sectores/barrios estén poblados.

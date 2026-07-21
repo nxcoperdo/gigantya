@@ -7,7 +7,7 @@
  *   - stock_actual (number, solo al crear)
  *   - stock_minimo (number, ambos casos)
  *
- * Al editar, stock_actual NO se edita desde acá (cambia solo por
+ * Al editar, stock_actual NO se edita desde aquí (cambia solo por
  * movimientos en el kardex). El backend ignora stock_actual en PUT.
  */
 import { useEffect, useState } from 'react';

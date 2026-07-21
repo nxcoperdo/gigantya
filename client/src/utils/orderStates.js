@@ -1,7 +1,7 @@
 /**
  * Estados de pedido y sus etiquetas legibles — espejo del servidor.
  *
- * Si cambias algo acá, replica en server/src/utils/orderStates.js
+ * Si cambias algo aquí, replica en server/src/utils/orderStates.js
  * (y viceversa). Por ahora no hay un solo source of truth: mantenemos
  * el contrato sincronizado manualmente.
  */

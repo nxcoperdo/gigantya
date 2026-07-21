@@ -201,7 +201,7 @@ export default function RestaurantDetailsPage() {
      // El cliente puede agregar productos al carrito incluso si el local
      // es "solo retiro en mostrador" (ofrece_domicilio=0). El checkout
      // y el backend se encargan de forzar nulls en dirección/barrio/sector
-     // y costo_envio=0 en ese caso. Ya no bloqueamos acá.
+     // y costo_envio=0 en ese caso. Ya no bloqueamos aquí.
 
      // Auto-detección de modificadores: si el producto tiene
      // adiciones o removibles configurados, abrimos el modal
@@ -362,8 +362,9 @@ export default function RestaurantDetailsPage() {
        />
 
        {/* Banner informativo para locales de mercado / abarrotes. Solo
-           se muestra si el local tiene es_mercado_abarrotes=1. Es sticky
-           y se queda arriba al hacer scroll. El cliente puede cerrarlo
+           se muestra si el local tiene es_mercado_abarrotes=1. Va fixed
+           debajo del header y NO se mueve al hacer scroll (queda visible
+           durante toda la navegación del menú). El cliente puede cerrarlo
            con la X; queda recordada la dismissal en sessionStorage por
            restaurante_id. Ver componente para más detalle. */}
        {esMercadoAbarrotes && (
@@ -827,7 +828,7 @@ function DescripcionProducto({ texto, expandido, onToggle }) {
  *     legibilidad — eliminar la feature sería una regresión.
  *   - Botón "+" se vuelve circular compacto en mobile (full-width en sm+).
  *   - Si el counter `cantidades[id] > 0`, el botón muestra un counter
- *     `+/N/+` (estado futuro si querés sumar/restar sin abrir modal).
+ *     `+/N/+` (estado futuro si quieres sumar/restar sin abrir modal).
  *   - Imagen oculta si `!imagen_url` (no mostramos el 🍽️ de 160px en
  *     mobile porque en 80x80 queda horrible).
  */

@@ -24,7 +24,7 @@ const router = express.Router();
  * Si en el futuro se agrega un endpoint público bajo /api/admin (ej: un
  * healthcheck), MONTARLO EN UN ROUTER APARTE y registrarlo antes en
  * app.js — nunca豁 esta regla agregando un `router.get('/public', ...)`
- * acá, porque Express respeta el orden de los `use` y quedaría un hueco
+ * aquí, porque Express respeta el orden de los `use` y quedaría un hueco
  * de seguridad.
  */
 router.use(verifyToken, requireAdmin);

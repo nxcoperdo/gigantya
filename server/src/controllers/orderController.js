@@ -10,7 +10,7 @@ import pool from '../config/database.js';
  * Crear nuevo pedido (cliente web).
  *
  * El grueso de la lógica (validar items, snapshot de adiciones, INSERT en
- * transacción) vive en `orderService.createOrderCore`. Acá solo:
+ * transacción) vive en `orderService.createOrderCore`. Aquí solo:
  *   1) Validamos que el caller sea un cliente.
  *   2) Resolvemos la modalidad (`es_retiro_local` / `es_consumo_en_local`)
  *      según los flags del local y la elección del cliente.

@@ -83,7 +83,7 @@ export default function POSLayout() {
   const [restauranteLoading, setRestauranteLoading] = useState(true);
 
   // Hidratar el restaurante solo para dueños (admin/staff no necesitan
-  // el plan acá: el backend ya los deja pasar). Para admin, `restaurante`
+  // el plan aquí: el backend ya los deja pasar). Para admin, `restaurante`
   // queda en null y la lógica de gate abajo los deja pasar.
   useEffect(() => {
     let cancelled = false;
@@ -114,7 +114,7 @@ export default function POSLayout() {
   if (!user) return <Navigate to="/login" replace />;
 
   // Cualquiera que NO sea cliente pasa el filtro del ProtectedRoute padre,
-  // pero por seguridad validamos acá también.
+  // pero por seguridad validamos aquí también.
   if (user.tipo_usuario === 'cliente') return <Navigate to="/" replace />;
 
   // Gate de plan Golden Plus (solo para dueños):
@@ -223,7 +223,7 @@ export default function POSLayout() {
                     return [
                       base,
                       'bg-primary text-white shadow-sm',
-                      // Indicador lateral de "estás acá"
+                      // Indicador lateral de "estás aquí"
                       'relative',
                     ].join(' ');
                   }
@@ -297,7 +297,7 @@ export default function POSLayout() {
             // para dueños (ellos están vinculados via
             // `restaurantes.usuario_id`, no `usuarios.restaurante_id`):
             // el POSLayout ya hizo el fetch via `/api/restaurants/me`,
-            // y las páginas pueden leerlo de acá en vez de fallar.
+            // y las páginas pueden leerlo de aquí en vez de fallar.
             <Outlet context={{ restaurante, user }} />
           ) : (
             <div className="space-y-4 max-w-4xl mx-auto animate-fadeIn">

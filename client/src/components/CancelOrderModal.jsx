@@ -56,7 +56,7 @@ export default function CancelOrderModal({ isOpen, onClose, order, onConfirm }) 
     try {
       await onConfirm(trimmed);
       // Si el confirm fue OK, el padre cierra el modal. Si tira error,
-      // lo mostramos acá.
+      // lo mostramos aquí.
       onClose();
     } catch (err) {
       setError(err?.response?.data?.error || 'No pudimos cancelar el pedido. Intenta de nuevo.');

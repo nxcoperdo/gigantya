@@ -15,7 +15,7 @@
  *  - Modo edición solo para rol `restaurante` o `admin` (los demás solo ven).
  *
  * Coordenadas y tamaños: el backend guarda pixeles absolutos sobre un
- * canvas virtual. Acá mostramos un canvas de 1200x700 px (con scroll si
+ * canvas virtual. Aquí mostramos un canvas de 1200x700 px (con scroll si
  * hace falta) que es cómodo para la mayoría de locales. El zoom se aplica
  * via CSS transform sobre el wrapper interno.
  */
@@ -319,7 +319,7 @@ export default function FloorPlanPage() {
                   <Armchair className="w-10 h-10 mx-auto mb-2 opacity-40" aria-hidden="true" />
                   <p className="text-base font-semibold mb-1">No hay mesas todavía</p>
                   {editable && (
-                    <p className="text-sm">Entrá en modo edición y creá la primera.</p>
+                    <p className="text-sm">Entra en modo edición y crea la primera.</p>
                   )}
                 </div>
               </div>

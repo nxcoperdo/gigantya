@@ -555,7 +555,7 @@ export default function ChatDetailPage() {
               >
                 pedido #{conversacion.pedido_id}
               </Link>
-              . No se pueden enviar más mensajes por acá.
+              . No se pueden enviar más mensajes por aquí.
             </>
           ) : isCerrada ? (
             'Esta conversación está cerrada.'

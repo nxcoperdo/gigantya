@@ -11,7 +11,7 @@ import GoogleLoginButton from '../components/GoogleLoginButton';
 // El consentimiento legal (TyC + Privacidad) se gestiona en
 // <LegalGate />, que se monta globalmente en App.jsx y se activa cuando
 // el AuthContext reconoce un usuario nuevo sin aceptaciones. NO se
-// pide el consentimiento acá en el form — el modal bloqueante lo hace
+// pide el consentimiento aquí en el form — el modal bloqueante lo hace
 // con scroll-to-bottom obligatorio y queda como log legal consistente
 // con el flujo de usuarios ya registrados.
 
@@ -144,7 +144,7 @@ export default function RegisterPage() {
         place_id: null,
       };
       await register(payload);
-      // No mandamos aceptaciones legales desde acá: el <LegalGate />
+      // No mandamos aceptaciones legales desde aquí: el <LegalGate />
       // global se activa cuando el AuthContext reconoce al nuevo usuario
       // y abre el modal bloqueante de TyC+Privacidad con scroll obligatorio.
       navigate('/');
@@ -405,7 +405,7 @@ export default function RegisterPage() {
           {/* Aceptaciones legales: el gate real está en <LegalGate /> (App.jsx),
               que se activa con el AuthContext apenas el usuario queda logueado
               y muestra un modal bloqueante con scroll-to-bottom. No se duplica
-              acá para evitar dos lugares de aceptación inconsistentes.
+              aquí para evitar dos lugares de aceptación inconsistentes.
 
               Igual dejamos visibles los links a los 2 documentos para que el
               usuario pueda leerlos ANTES de registrarse (defensa legal: que

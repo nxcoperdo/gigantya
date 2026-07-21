@@ -2,7 +2,7 @@
  * Service de Configuración POS (Fase 8).
  *
  * Capa delgada sobre el modelo `RestauranteConfig`. No toca
- * conexiones — eso lo hace el modelo. Acá solo validamos el patch
+ * conexiones — eso lo hace el modelo. Aquí solo validamos el patch
  * y disparamos auditoría + socket.
  *
  * Auth:

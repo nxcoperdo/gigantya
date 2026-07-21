@@ -15,7 +15,7 @@ Si las 3 consultas devuelven resultado (tabla/columna existe), **ya está aplica
 
 ## 2. Crear el archivo SQL en el VPS
 
-El archivo NO está en el repo (`.gitignore` ignora `*.sql`), así que tenés que crearlo a mano. Corré este bloque en el VPS:
+El archivo NO está en el repo (`.gitignore` ignora `*.sql`), así que tienes que crearlo a mano. Corre este bloque en el VPS:
 
 ```bash
 cat > /var/www/gigantya/database/migrations_manuales/20260719000001_chat_fruver.sql <<'MIGRATION_EOF'
@@ -126,7 +126,7 @@ Después de aplicar la migración y que el backend se haya reiniciado (ya hecho 
 1. Abrí `https://gigantya.com/restaurant/4` en modo incógnito (sin login)
 2. Debería aparecer el modal pidiendo nombre + teléfono
 3. Llenalo, escribí un mensaje, mandalo
-4. En otra pestaña, logueate como el dueño del local 4 y andá a `https://gigantya.com/dashboard/chat`
+4. En otra pestaña, logueate como el dueño del local 4 y ve a `https://gigantya.com/dashboard/chat`
 5. Debería aparecer la conversación con el mensaje que mandaste
 
 Si el botón "Chat" no aparece en `/restaurant/4`, el local 4 no tiene `es_mercado_abarrotes = 1` (volvé al paso 5).

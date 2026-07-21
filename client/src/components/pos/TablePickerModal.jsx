@@ -8,7 +8,7 @@
  *   - Domicilio (delivery): requiere dirección (se pide después con
  *     `direccion_entrega`).
  *
- * La dirección de delivery NO se pide acá: este modal es de selección de
+ * La dirección de delivery NO se pide aquí: este modal es de selección de
  * "tipo + mesa". Si el flujo posterior la requiere, el caller (TakeOrder)
  * muestra un campo aparte antes de enviar.
  */

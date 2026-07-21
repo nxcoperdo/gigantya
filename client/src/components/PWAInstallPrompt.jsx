@@ -169,7 +169,7 @@ export default function PWAInstallPrompt() {
   // iOS Safari nunca lo dispara, Firefox tampoco.
   useEffect(() => {
     const onBeforeInstallPrompt = (e) => {
-      // El browser sugiere por su cuenta pero acá lo "atrapamos" para
+      // El browser sugiere por su cuenta pero aquí lo "atrapamos" para
       // mostrar NUESTRO banner en vez del prompt nativo inmediato.
       e.preventDefault();
       setDeferredPrompt(e);

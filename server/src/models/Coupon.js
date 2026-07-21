@@ -386,7 +386,7 @@ export async function updateCoupon(id, updateData) {
  *   - limit, offset: paginación
  *
  * Nota: pedidos cuyo cupón fue eliminado (cupon_id → SET NULL) NO
- * aparecen acá porque la query hace `JOIN cupones`, que excluye filas
+ * aparecen aquí porque la query hace `JOIN cupones`, que excluye filas
  * con cupon_id NULL. Es el comportamiento correcto: un cupón borrado
  * no tiene "usos" visibles para el admin.
  */

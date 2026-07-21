@@ -69,7 +69,7 @@ export default function CartPage() {
   // - Envío: SIEMPRE 0 en el carrito. El costo real se calcula en el
   //   checkout cuando ya sabemos la dirección del cliente (y, si el
   //   local tiene envíos por sector, el barrio elegido). Mostrar el
-  //   `costo_fijo` global acá generaba confusión: el cliente veía un
+  //   `costo_fijo` global aquí generaba confusión: el cliente veía un
   //   número y al pasar al checkout (con su barrio/sector) le aparecía
   //   otro, distinto, dependiendo del sector. Por eso la línea de
   //   "Envío" en el cart dice "Gratis (se calcula en el checkout)"
@@ -84,7 +84,7 @@ export default function CartPage() {
 
   // En el cart no sabemos todavía si el cliente va a elegir envío,
   // retiro o consumo en el local. Como en cualquier caso el cálculo
-  // final del envío pasa en el checkout, acá siempre mostramos 0.
+  // final del envío pasa en el checkout, aquí siempre mostramos 0.
   const shippingAmount = 0;
 
   const taxAmount = useMemo(() => {

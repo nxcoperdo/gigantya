@@ -9,7 +9,7 @@
  *                           la columna nunca se aplicó en esta BD (las
  *                           migraciones de julio 2026 quedaron registradas
  *                           en `knex_migrations` pero no impactaron la BD).
- *                           Re-asegurar la columna acá no rompe nada si ya
+ *                           Re-asegurar la columna aquí no rompe nada si ya
  *                           existe.
  *
  *   - `es_consumo_en_local` BOOLEAN  (default 0) — misma idea que arriba
@@ -99,7 +99,7 @@ export async function up(knex) {
   // creó `items_pedido` sin esa columna. La migración 20260708000001 la
   // documenta como "ya existía" pero no la crea. Resultado: cualquier pedido
   // nuevo del cliente web FALLA con `Unknown column 'especificaciones'`.
-  // Acá la creamos idempotentemente.
+  // Aquí la creamos idempotentemente.
   await ensureColumn(knex, 'items_pedido', 'especificaciones', (table) => {
     table.text('especificaciones').nullable();
   });
@@ -108,7 +108,7 @@ export async function up(knex) {
 export async function down(knex) {
   // El `down` deja la BD en el estado pre-Fase-3. NO dropeamos
   // `es_retiro_local` ni `es_consumo_en_local` porque son columnas que
-  // ya estaban pensadas en migraciones previas; si llegamos hasta acá
+  // ya estaban pensadas en migraciones previas; si llegamos hasta aquí
   // es porque esas migraciones no impactaron la BD, así que dropearlas
   // podría romper código que ya las usa. Dejamos esas 2 columnas y
   // solo revertimos lo nuevo de Fase 3.

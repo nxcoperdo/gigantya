@@ -163,7 +163,7 @@ export default function BOMEditor({ productoId, onClose, onSaved }) {
                 No tienes ingredientes cargados
               </p>
               <p className="text-xs text-[color:var(--text-muted)] mt-1 mb-3">
-                Primero creá los ingredientes en Inventario.
+                Primero crea los ingredientes en Inventario.
               </p>
               <Link
                 to="/pos/inventario"

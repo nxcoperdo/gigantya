@@ -87,7 +87,7 @@ export function normalizeOrderItems(items) {
     // Acepta el shape "liviano" (id solo) que viene del cliente y el
     // shape "completo" (con nombre) que ya usamos en otros lugares.
     // El nombre lo resolvemos más abajo (en createOrderWithItems)
-    // contra la tabla producto_ingredientes_removibles, porque acá
+    // contra la tabla producto_ingredientes_removibles, porque aquí
     // todavía no sabemos el producto_id del item.
     const removidosRaw = Array.isArray(item.removidos_ids)
       ? item.removidos_ids.map((r) => ({ id: Number(r) }))
@@ -338,7 +338,7 @@ export async function createOrderWithItems(orderData) {
 
       const precioBase = Number(product.precio);
       // El subtotal y la suma de adiciones se aplican DESPUÉS de
-      // validar las adiciones (abajo). Acá solo dejamos el precio
+      // validar las adiciones (abajo). Aquí solo dejamos el precio
       // base para mantener el shape compatible con calculateOrderTotal.
       return {
         ...item,

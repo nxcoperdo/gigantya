@@ -19,7 +19,7 @@
  *     (3 valores) aplicada en el controller. Esto previene que el admin
  *     inyecte strings raros y mantiene el bundle chico.
  *   - Whitelist de campos en `patch` (BUTTON_ALLOWED) se delega al
- *     modelo, no se duplica acá.
+ *     modelo, no se duplica aquí.
  *   - Validación de URL: regex simple `^(https?:\/\/|\/[^/]|\/\/[^/])`
  *     que acepta http(s) absoluto, path interno (ej: /admin) y
  *     protocol-relative (//cdn.example.com/...). Rechaza `javascript:`

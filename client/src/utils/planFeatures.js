@@ -7,7 +7,7 @@
  * preguntar el plan actual del user sin round-trip al backend en cada
  * render (ej: mostrar/ocultar `<PosLockedScreen />` según `user.plan`).
  *
- * Si agregás un plan nuevo al backend, agregalo también acá.
+ * Si agregas un plan nuevo al backend, agregalo también aquí.
  */
 
 export const PLANES = ['free', 'basico', 'profesional', 'premium', 'golden_plus'];

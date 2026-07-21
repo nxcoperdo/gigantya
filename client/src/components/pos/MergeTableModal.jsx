@@ -142,7 +142,7 @@ export default function MergeTableModal({ mesaInicial, onClose, onMerged }) {
                   <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
                     {candidatosDestino.length === 0 ? (
                       <p className="text-xs text-[color:var(--text-muted)] p-2 italic">
-                        Seleccioná primero un origen distinto.
+                        Selecciona primero un origen distinto.
                       </p>
                     ) : (
                       candidatosDestino.map((m) => (

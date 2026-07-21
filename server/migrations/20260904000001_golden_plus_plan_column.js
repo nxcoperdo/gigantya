@@ -60,7 +60,7 @@ async function widenPlanColumn(knex, tableName, columnName, newLength) {
 
   const { DATA_TYPE, CHARACTER_MAXIMUM_LENGTH } = rows[0];
   // Solo actuamos si es VARCHAR (o CHAR) y la longitud actual es menor.
-  // Si es ENUM, no tocamos (no aplica acá pero defensivo).
+  // Si es ENUM, no tocamos (no aplica aquí pero defensivo).
   if (DATA_TYPE !== 'varchar' && DATA_TYPE !== 'char') return;
   if (Number(CHARACTER_MAXIMUM_LENGTH) >= Number(newLength)) return;
 

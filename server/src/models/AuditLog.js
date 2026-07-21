@@ -137,7 +137,7 @@ export async function getLogs(filters = {}) {
   ]);
 
   // mysql2 devuelve JSON como string en algunas versiones; el controller
-  // es responsable de hacer JSON.parse si fuera string. Acá lo dejamos
+  // es responsable de hacer JSON.parse si fuera string. Aquí lo dejamos
   // crudo para que el frontend reciba la forma que la DB le da.
   return { logs, total: countRow?.total || 0 };
 }

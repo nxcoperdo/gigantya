@@ -100,7 +100,7 @@ export default function ConfigForm() {
         <h2 className="text-lg font-heading font-semibold">Configuración del POS</h2>
         {!isOwner && (
           <span className="ml-auto text-xs px-2 py-1 rounded bg-amber-100 text-amber-800">
-            Solo lectura (no sos dueño)
+            Solo lectura (no eres dueño)
           </span>
         )}
       </div>

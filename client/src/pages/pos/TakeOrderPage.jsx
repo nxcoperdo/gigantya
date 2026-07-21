@@ -203,7 +203,7 @@ function TakeOrderInner() {
           tipKey="tomar_pedido"
           title="¿Cómo tomo un pedido?"
           steps={[
-            'Elegí si es mesa, recoger o domicilio (arriba a la derecha)',
+            'Elige si es mesa, recoger o domicilio (arriba a la derecha)',
             'Buscá productos en el buscador o tocá una categoría',
             'Tocá un producto para sumarlo al pedido',
             'Revisá el total a la derecha y enviá a cocina',

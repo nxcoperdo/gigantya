@@ -61,7 +61,7 @@ export async function createPosOrder(req, res) {
     const restauranteId = resolveRestauranteId(req);
     if (!restauranteId) {
       return res.status(400).json({
-        error: 'No se pudo determinar el restaurante. Si sos admin, pasá ?restaurante_id=X'
+        error: 'No se pudo determinar el restaurante. Si eres admin, pasa ?restaurante_id=X'
       });
     }
 
@@ -150,7 +150,7 @@ export async function createPosOrder(req, res) {
     });
 
     // Avisar a la cocina que hay un PDF de comanda listo. La URL la arma
-    // el frontend (con su Authorization header) — acá solo informamos
+    // el frontend (con su Authorization header) — aquí solo informamos
     // el ID del pedido. El PDF no requiere token en URL: el cliente
     // hace GET con `Authorization: Bearer ...` y `responseType: 'blob'`,
     // luego crea un object URL y lo embebe en un iframe.

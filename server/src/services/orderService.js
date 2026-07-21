@@ -38,7 +38,7 @@
  *
  * Decisiones:
  *   - NO re-validamos la modalidad (`es_retiro_local`, `es_consumo_en_local`):
- *     el caller ya la calculó según la regla del local. Acá solo persistimos.
+ *     el caller ya la calculó según la regla del local. Aquí solo persistimos.
  *   - La reserva de mesa (`UPDATE mesas SET estado='ocupada'`) se hace SOLO
  *     si `mesa_id` viene y la operación es dine-in. Si la mesa no existe o
  *     ya está ocupada, la transacción hace rollback.
@@ -363,7 +363,7 @@ export async function createOrderCore(orderData, options = {}) {
     //     La función devuelve un resumen con el detalle de ingredientes
     //     tocados (incluye stock_anterior / stock_nuevo / stock_minimo)
     //     que usamos post-commit para emitir los sockets. NO emitimos
-    //     sockets acá porque estamos dentro de la transacción.
+    //     sockets aquí porque estamos dentro de la transacción.
     const descuentoStock = await posInventoryService.descontarStockPorPedido({
       pedidoId,
       restauranteId: Number(restaurante_id),
@@ -425,7 +425,7 @@ export async function notificarNuevoPedido(pedidoId) {
   try {
     const pedido = await OrderModel.getOrderById(pedidoId);
     if (!pedido) return;
-    // Cortar acá si es un pedido POS. Ver JSDoc arriba.
+    // Cortar aquí si es un pedido POS. Ver JSDoc arriba.
     if (pedido.canal === 'pos') return;
 
     const restauranteData = await RestaurantModel.getRestaurantById(pedido.restaurante_id);

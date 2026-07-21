@@ -16,13 +16,13 @@
  *                                El UNIQUE(restaurante_id, codigo) lo
  *                                define la migration 0609000001 (que
  *                                ya pasó sin error: usa hasTable guard).
- *                                Acá lo creamos nosotros directamente
+ *                                Aquí lo creamos nosotros directamente
  *                                para que la tabla sea autocontenida
  *                                y la migration 0609000001 haga su
  *                                ALTER idempotente (no-op porque ya
  *                                existe el UNIQUE). Para evitar el
  *                                ALTER redundante, NO definimos el
- *                                UNIQUE acá: la 0609000001 lo crea
+ *                                UNIQUE aquí: la 0609000001 lo crea
  *                                y queda en una sola fuente de verdad.
  *   2. cupones_usados         → tabla referenciada por test-helper.js
  *                                (TRUNCATE) y por convención del
@@ -53,7 +53,7 @@ export async function up(knex) {
       table.increments('id').primary();
       // restaurante_id NULL para cupones globales (es_global = 1).
       // La FK a restaurantes la crea y dropea la migration
-      // 0700005_add_es_global_to_cupones; acá la dejamos nullable
+      // 0700005_add_es_global_to_cupones; aquí la dejamos nullable
       // y sin FK para que la 0900001 y la 0700005 manejen su ciclo
       // de vida sin chocarse.
       table.integer('restaurante_id').unsigned().nullable();

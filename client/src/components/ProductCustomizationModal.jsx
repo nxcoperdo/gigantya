@@ -363,7 +363,7 @@ export default function ProductCustomizationModal({
     // Mapa id → nombre del grupo, para que cada adición lleve el
     // nombre de su grupo en el payload del carrito. El backend hace
     // el snapshot final en `items_pedido_adiciones.grupo_nombre` (con
-    // LEFT JOIN a producto_grupos_adiciones), pero acá también lo
+    // LEFT JOIN a producto_grupos_adiciones), pero aquí también lo
     // dejamos para que el carrito del cliente lo pueda renderizar
     // sin tener que esperar al backend.
     const grupoNombreById = new Map(

@@ -201,7 +201,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
           tiposVisibles = null; // null = sin filtro
         } else if (restaurante.es_mercado_abarrotes) {
           // Mercado sigue siendo nicho excluyente: aunque tuviera panadería
-          // activada por error en la UI, acá solo mostramos categorías de
+          // activada por error en la UI, aquí solo mostramos categorías de
           // mercado.
           tiposVisibles = ['mercado'];
         } else if (restaurante.es_restaurante && restaurante.es_comida_rapida && restaurante.es_panaderia_pasteleria) {
@@ -299,7 +299,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product = null, 
       const res = await productService.getPaqueteModificadores(productId);
       const config = res.data?.configuracion || { grupos: [], adiciones: [], removibles: [] };
       // El backend devuelve todas las adiciones juntas (con y sin grupo).
-      // Acá las partimos: las de grupo_id NULL van a adicionesSueltas, el
+      // Aquí las partimos: las de grupo_id NULL van a adicionesSueltas, el
       // resto a su grupo correspondiente.
       //
       // Fase 10: leer las 3 columnas nuevas con fallback a defaults

@@ -260,7 +260,7 @@ export async function seed(knex) {
   // b) Check plan Free (límite de 10 productos activos).
   //
   //    OJO: este check se hace AL FINAL del seed, después del loop de
-  //    productos (sección h). Si lo dejara acá arriba, bloquearía
+  //    productos (sección h). Si lo dejara aquí arriba, bloquearía
   //    corridas idempotentes (la segunda vez que se corre, ya hay 78
   //    productos y tiraría error aunque no se fuera a insertar nada
   //    nuevo, solo a actualizar descripciones).

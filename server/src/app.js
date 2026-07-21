@@ -221,7 +221,7 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
 //
 // La carpeta se crea automáticamente al inicializar el uploader
 // (ver `createUploader` en uploadMiddleware.js:46-50), así que no
-// hace falta crearla a mano acá. `UPLOADS_DIR` ya se importa arriba.
+// hace falta crearla a mano aquí. `UPLOADS_DIR` ya se importa arriba.
 const PUBLIC_MEDIA_DIR = path.join(UPLOADS_DIR, 'home-media-uploaded');
 app.use('/media', express.static(PUBLIC_MEDIA_DIR, {
   maxAge: '7d',
@@ -268,7 +268,7 @@ app.use('/api/legal', legalRoutes);
 //   2) requirePlanFeatureForStaff('pos') (gate de plan, con req.user ya seteado)
 // Si mañana hay que tocar el gating del POS, se hace en un solo lugar.
 //
-// Por qué `verifyToken` va ACÁ y no en cada sub-router: cuando movimos el
+// Por qué `verifyToken` va AQUÍ y no en cada sub-router: cuando movimos el
 // gate de plan al prefix, descubrimos que `requirePlanFeatureForStaff` necesita
 // `req.user.tipo_usuario` para decidir. Si el gate corre antes de verifyToken,
 // `req.user` es `undefined` y el gate responde 403 sin que el log aparezca.

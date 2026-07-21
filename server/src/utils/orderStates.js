@@ -7,7 +7,7 @@
  *
  * Esta utilidad se duplica en el cliente (client/src/utils/orderStates.js)
  * para mantener el mapeo sincronizado sin tener que compartir runtime.
- * Si cambias algo acá, replica en el cliente.
+ * Si cambias algo aquí, replica en el cliente.
  *
  * Convenciones:
  *   - Valores crudos coinciden con los de `OrderModel.ORDER_STATES`.

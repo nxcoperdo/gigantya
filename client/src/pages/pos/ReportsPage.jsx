@@ -53,7 +53,7 @@ function fmtCOP(n) {
 function fmtFecha(f) {
   if (!f) return '';
   // Para "semana" viene como 202627 (YEARWEEK). Lo mostramos tal cual
-  // porque interpretarlo acá sería adivinar calendario.
+  // porque interpretarlo aquí sería adivinar calendario.
   if (/^\d{6}$/.test(String(f))) return `Sem ${String(f).slice(4)}`;
   if (/^\d{4}-\d{2}$/.test(String(f))) {
     const [y, m] = String(f).split('-');
@@ -122,7 +122,7 @@ export default function ReportsPage() {
         tipKey="ver_reportes"
         title="Cómo leer tus reportes"
         steps={[
-          'Elegí el rango de fechas (arriba a la derecha)',
+          'Elige el rango de fechas (arriba a la derecha)',
           'Revisá las 4 cards de KPIs (pedidos, ventas, ticket, items)',
           'El gráfico de líneas muestra la venta por día/semana/mes',
           'Abajo: top 10 productos y métodos de pago',

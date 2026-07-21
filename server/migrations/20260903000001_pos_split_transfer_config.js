@@ -24,7 +24,7 @@
  * Convenciones de tipo (importantes — ver [[gigantya-pos-mvp]]):
  *   - `mesas.id` es `INT UNSIGNED`, por eso `transferido_de_mesa_id`
  *     también debe ser UNSIGNED (match exacto con la FK).
- *   - `restaurantes.id` es `INT` (signed) — no aplica acá pero está
+ *   - `restaurantes.id` es `INT` (signed) — no aplica aquí pero está
  *     documentado para próximas migraciones.
  *
  * Patrón idempotente: cada cambio verifica existencia vía
@@ -75,7 +75,7 @@ export async function down(knex) {
 }
 
 // ========== Helpers idempotentes ==========
-// (Mismos que en 20260801000004_pedido_pos_fields.js; copiados acá
+// (Mismos que en 20260801000004_pedido_pos_fields.js; copiados aquí
 //  para que esta migración sea autocontenida y no rompa si el archivo
 //  original se renombra.)
 

@@ -29,7 +29,7 @@ httpServer.requestTimeout = 300000;
 httpServer.timeout = 300000;
 
 // CORS_ORIGIN admite un único origin o lista separada por comas (ver
-// la validación completa en app.js). Acá solo la parseamos para que el
+// la validación completa en app.js). Aquí solo la parseamos para que el
 // handshake de Socket.IO refleje el origin del request cuando hay
 // varios permitidos.
 const RAW_CORS_ORIGIN_SOCK = process.env.CORS_ORIGIN || 'http://localhost:5173';

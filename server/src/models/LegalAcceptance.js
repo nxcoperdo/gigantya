@@ -22,7 +22,7 @@
  */
 import { query, queryOne } from '../config/database.js';
 
-// Versión actual de cada documento. Se centraliza acá para que el
+// Versión actual de cada documento. Se centraliza aquí para que el
 // frontend y backend consulten la misma fuente de verdad.
 // Si en el futuro se actualiza un documento, solo se cambia esta constante
 // y se documenta en el changelog.

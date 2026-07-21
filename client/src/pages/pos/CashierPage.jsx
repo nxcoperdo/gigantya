@@ -238,7 +238,7 @@ export default function CashierPage() {
           tipKey="abrir_caja"
           title="¿Cómo abro la caja?"
           steps={[
-            'Hacé click en "Abrir caja"',
+            'Haz click en "Abrir caja"',
             'Pon el fondo inicial (lo que hay en la registradora al empezar el día)',
             'Confirma — ya puedes empezar a cobrar los pedidos pendientes',
           ]}
@@ -422,7 +422,7 @@ function PedidosPendientes({ pedidos, onCharge }) {
         <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
         <p className="text-base font-semibold text-[color:var(--text)]">No hay pedidos pendientes</p>
         <p className="text-sm text-[color:var(--text-muted)] mt-1">
-          Los pedidos que estén en estado "Listo" aparecerán acá para cobrar.
+          Los pedidos que estén en estado "Listo" aparecerán aquí para cobrar.
         </p>
       </div>
     );
@@ -478,7 +478,7 @@ function PedidosCobrados({ pedidos, onReprint }) {
         <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
         <p className="text-base font-semibold text-[color:var(--text)]">Aún no se cobraron pedidos hoy</p>
         <p className="text-sm text-[color:var(--text-muted)] mt-1">
-          Cuando cobres tu primer pedido, aparecerá acá.
+          Cuando cobres tu primer pedido, aparecerá aquí.
         </p>
       </div>
     );

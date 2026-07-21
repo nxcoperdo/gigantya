@@ -439,7 +439,7 @@ export async function descontarStockPorPedido({ pedidoId, restauranteId, creadoP
     });
   }
 
-  // 5) NO emitimos sockets acá: estamos DENTRO de la transacción del
+  // 5) NO emitimos sockets aquí: estamos DENTRO de la transacción del
   //    caller. Si emitimos antes del commit y rollback tira el pedido,
   //    los clientes verían un stock que no se aplicó. El caller
   //    (orderService) emite los sockets DESPUÉS del commit.

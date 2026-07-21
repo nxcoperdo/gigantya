@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 /**
  * Destino de `GOOGLE_REDIRECT_URI` tras el paso 2 del login con Google por
  * redirect (ver `googleOAuthCallback` en el server). Google ya volvió al
- * backend, que canjeó el code y redirigió acá con el resultado en el
+ * backend, que canjeó el code y redirigió aquí con el resultado en el
  * fragment de la URL (`#token=...&refreshToken=...&redirect=/algo` o
  * `#error=mensaje`). Usamos el fragment (no query string) para que el JWT
  * nunca quede en logs de acceso ni en el header Referer.

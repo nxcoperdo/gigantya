@@ -9,7 +9,7 @@ import { formatCurrency } from '../utils/formatHelper';
  * Vista de comprobantes de pago para el admin (panel global).
  *
  * A diferencia de `PaymentProofsView` (que filtra por el restaurante del
- * usuario logueado), acá el admin ve TODOS los comprobantes de la
+ * usuario logueado), aquí el admin ve TODOS los comprobantes de la
  * plataforma, con filtros por:
  *  - estado (todos / pendiente / aprobado / rechazado)
  *  - método de pago

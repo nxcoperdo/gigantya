@@ -108,7 +108,7 @@ export default function UnidadesVentaPreset({ isOpen, onClose, onConfirm, grupoY
             <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Este producto ya tiene un grupo "{GRUPO_PRESENTACION_NOMBRE}".</p>
-              <p className="mt-0.5">Las unidades que elijas acá se <strong>agregarán</strong> a las existentes (no se reemplazan).</p>
+              <p className="mt-0.5">Las unidades que elijas aquí se <strong>agregarán</strong> a las existentes (no se reemplazan).</p>
             </div>
           </div>
         )}

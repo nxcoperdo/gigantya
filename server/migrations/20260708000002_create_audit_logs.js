@@ -3,7 +3,7 @@
  *
  * Cada vez que un admin (o un sistema) hace una mutación importante
  * (aprobar un local, suspender un usuario, validar un comprobante,
- * cambiar un plan, togglear una modalidad), se inserta una fila acá
+ * cambiar un plan, togglear una modalidad), se inserta una fila aquí
  * con un snapshot del antes/después. Permite reconstruir el historial
  * de cambios y hacer forensics si un admin malicioso hace daño.
  *

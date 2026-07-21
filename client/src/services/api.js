@@ -339,7 +339,7 @@ export const couponService = {
     api.get('/coupons/validate', { params: { codigo, restaurante_id, total_pedido } }),
   // Búsqueda forzada de cupones globales (ignora restaurante_id).
   // Usado como fallback después de un validate normal que no encontró
-  // el cupón en el local actual: si es global, debería matchear acá.
+  // el cupón en el local actual: si es global, debería matchear aquí.
   // Ver `CheckoutPage.handleApplyCoupon` para el flujo completo.
   validateGlobal: (codigo, total_pedido) =>
     api.get('/coupons/validate', {
@@ -573,7 +573,7 @@ export const posConfigService = {
 
 // ========== HOME (Fase 12) ==========
 // Servicio público (sin auth) para la home del sitio. La HomePage
-// consume el banner activo desde acá. El admin del sistema lo
+// consume el banner activo desde aquí. El admin del sistema lo
 // gestiona con `adminService.uploadHomeMedia` / `activateHomeMedia`.
 export const homeService = {
   // Devuelve { media: null } si no hay banner activo, o

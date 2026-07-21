@@ -365,7 +365,7 @@ export async function updateRestaurant(req, res) {
  * - Premium: estadísticas completas avanzadas
  *
  * El control de acceso está centralizado en `resolveStatsForRestaurant`
- * (server/src/utils/statsAccess.js). No duplicar la lógica acá.
+ * (server/src/utils/statsAccess.js). No duplicar la lógica aquí.
  */
 export async function getRestaurantStats(req, res) {
   try {

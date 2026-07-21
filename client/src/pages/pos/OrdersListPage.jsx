@@ -223,7 +223,7 @@ export default function OrdersListPage() {
               <ClipboardList className="w-8 h-8 mb-2 opacity-40" aria-hidden="true" />
               <p className="text-sm font-medium">No hay pedidos en esta vista</p>
               <p className="text-xs mt-1">
-                {tab === 'activos' ? 'Tocá "Tomar pedido" para crear uno.' : 'Los pedidos cerrados aparecerán acá.'}
+                {tab === 'activos' ? 'Toca "Tomar pedido" para crear uno.' : 'Los pedidos cerrados aparecerán aquí.'}
               </p>
             </li>
           )}

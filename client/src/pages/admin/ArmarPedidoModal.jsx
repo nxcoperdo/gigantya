@@ -31,7 +31,7 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
 
   // Comprobante opcional de pago digital (Nequi / Daviplata / Bre-B).
   // Si el cliente mandó la captura por WhatsApp, el local puede adjuntarla
-  // acá mismo. Se sube DESPUÉS de crear el pedido, con un endpoint
+  // aquí mismo. Se sube DESPUÉS de crear el pedido, con un endpoint
   // dedicado del staff (`paymentService.uploadProofAsStaff`).
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [comprobantePreview, setComprobantePreview] = useState(null);
@@ -163,7 +163,7 @@ export default function ArmarPedidoModal({ conversacion, onClose, onCreated }) {
         } catch (proofErr) {
           console.error('[ArmarPedidoModal] Error subiendo comprobante:', proofErr);
           setComprobanteError(
-            'Pedido creado, pero no se pudo subir el comprobante. Podés adjuntarlo después desde la Recepción.'
+            'Pedido creado, pero no se pudo subir el comprobante. Puedes adjuntarlo después desde la Recepción.'
           );
           // Igual notificamos al padre para que refresque; el toast va aparte.
           onCreated(pedidoId);

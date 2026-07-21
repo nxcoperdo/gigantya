@@ -21,7 +21,7 @@ import { formatCurrency } from '../utils/formatHelper';
  *     de /cart). Esto es más robusto: la fuente de verdad es CartContext.
  *
  * Solo mobile: en desktop ya hay un header con el contador en el ícono
- * del carrito, no se duplica acá.
+ * del carrito, no se duplica aquí.
  *
  * A11y: el botón completo es un único foco tab. aria-label describe
  * cuántos items hay para screen readers (el conteo visual es decorativo).

@@ -29,7 +29,7 @@ const GOOGLE_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutos: alcanza de sobra para
  * (botón/One Tap de GIS, ID token vía iframe) y el flujo "redirect"
  * (Authorization Code, para cuando la PWA corre instalada y GIS no puede
  * mostrar el selector de cuentas). Ambos flujos verifican el ID token con
- * `googleClient.verifyIdToken` y llegan acá con el mismo shape de payload.
+ * `googleClient.verifyIdToken` y llegan aquí con el mismo shape de payload.
  *
  * Lanza un error con `statusCode` (401/403) si el token/cuenta no son
  * válidos, para que el caller decida cómo responder (JSON vs redirect).
@@ -112,7 +112,7 @@ export async function register(req, res) {
     // `barrio_id` es obligatorio en el flujo actual del cliente: el formulario
     // de registro siempre pide elegir un sector y un barrio del catálogo
     // (ver `client/src/pages/RegisterPage.jsx`). Si en algún momento vuelve a
-    // haber un flujo alternativo (texto libre sin coordenadas), exigir acá
+    // haber un flujo alternativo (texto libre sin coordenadas), exigir aquí
     // las coordenadas válidas como respaldo.
     if (!barrio_id) {
       const tieneCoordenadas =
@@ -376,7 +376,7 @@ export async function googleLogin(req, res) {
  * una navegación de página completa a accounts.google.com (no un iframe
  * embebido), que sí puede leer la sesión real del navegador.
  *
- * El frontend solo redirige acá (GET, no fetch) con un `redirect`
+ * El frontend solo redirige aquí (GET, no fetch) con un `redirect`
  * opcional (a dónde volver tras loguearse). Guardamos un nonce + ese
  * `redirect` en una cookie httpOnly de corta duración para validar el
  * `state` en el callback (protección CSRF tipo "double submit cookie").
@@ -416,7 +416,7 @@ export function googleOAuthStart(req, res) {
 }
 
 /**
- * Paso 2 del login con Google por redirect: Google vuelve acá con
+ * Paso 2 del login con Google por redirect: Google vuelve aquí con
  * `code`+`state` (o `error` si el usuario canceló). Canjeamos el code
  * por tokens server-to-server, verificamos el ID token igual que en
  * `googleLogin`, resolvemos el usuario con la misma lógica compartida

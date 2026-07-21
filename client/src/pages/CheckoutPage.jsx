@@ -412,7 +412,7 @@ export default function CheckoutPage() {
       // Modalidad del pedido: si la modalidad es sin envío (retiro o
       // consumo en el local), NO exigimos dirección ni barrio y enviamos
       // costo_envio=0. El backend igual va a forzar los nulls aunque el
-      // body los traiga poblados, pero los mandamos limpios desde acá para
+      // body los traiga poblados, pero los mandamos limpios desde aquí para
       // evitar inconsistencias y para que el cliente no vea formularios
       // que no aplican.
       // (esRetiroLocal / esConsumoEnLocal / esModalidadSinEnvio están

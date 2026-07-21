@@ -28,7 +28,7 @@ export default function ScrollToTopButton({ threshold = 400, className = '' }) {
   useEffect(() => {
     const onScroll = () => {
       // `passive: true` para que el browser no tenga que esperar a ver si
-      // vamos a llamar preventDefault — el scroll nunca se cancela acá.
+      // vamos a llamar preventDefault — el scroll nunca se cancela aquí.
       setVisible(window.scrollY > threshold);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -41,7 +41,7 @@ export default function ScrollToTopButton({ threshold = 400, className = '' }) {
 
   const handleClick = () => {
     // scroll-behavior: smooth del CSS global; el fallback `behavior: 'smooth'`
-    // acá es para navegadores viejos. En prefers-reduced-motion el global
+    // aquí es para navegadores viejos. En prefers-reduced-motion el global
     // pone scroll-behavior: auto, así que salta sin animación.
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

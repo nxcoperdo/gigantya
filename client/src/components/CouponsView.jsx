@@ -85,7 +85,7 @@ function CouponModal({ isOpen, onClose, onSave, coupon, mode = 'restaurant', res
         if (!payload.es_global) {
           // Cupón de local específico: necesitamos restaurante_id
           if (!formData.restaurante_id) {
-            setError('Seleccioná un local para el cupón');
+            setError('Selecciona un local para el cupón');
             setLoading(false);
             return;
           }
@@ -198,7 +198,7 @@ function CouponModal({ isOpen, onClose, onSave, coupon, mode = 'restaurant', res
                       className="w-full px-3 py-2 border border-[color:var(--border-default)] bg-[color:var(--bg-elevated)] text-[color:var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                       required
                     >
-                      <option value="">Seleccioná un local</option>
+                      <option value="">Selecciona un local</option>
                       {Array.isArray(restaurants) && restaurants.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.nombre}
@@ -676,7 +676,7 @@ export default function CouponsView({ mode = 'restaurant', restaurant, refreshDa
     ? 'No hay cupones en la plataforma'
     : 'No tienes cupones creados todavía';
   const emptyHint = isAdmin
-    ? 'Creá el primer cupón global para ofrecer descuentos a todos los clientes'
+    ? 'Crea el primer cupón global para ofrecer descuentos a todos los clientes'
     : 'Crea tu primer cupón para ofrecer descuentos a tus clientes';
 
   return (
@@ -1055,7 +1055,7 @@ function CouponUsagesView({
           <p className="text-sm text-[color:var(--text-muted)] mt-1">
             {hasAnyFilter
               ? 'Prueba limpiar los filtros o ampliar el rango de fechas'
-              : 'Los pedidos que apliquen un cupón aparecerán acá'}
+              : 'Los pedidos que apliquen un cupón aparecerán aquí'}
           </p>
         </div>
       ) : (

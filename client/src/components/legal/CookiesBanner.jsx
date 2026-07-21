@@ -22,7 +22,7 @@ import { legalService } from '../../services/api.js';
  * El gating real de scripts opcionales (analytics, pixel) debe estar en
  * un componente separado <CookieGatedScripts /> que lea este state y
  * monte los scripts solo si el usuario aceptó. No se monta nada por
- * defecto acá — el componente es solo el banner de UI.
+ * defecto aquí — el componente es solo el banner de UI.
  */
 const STORAGE_KEY = 'gigantya.cookieConsent';
 const MAX_AGE_DAYS = 365; // recomendación SIC: re-preguntar cada 12 meses

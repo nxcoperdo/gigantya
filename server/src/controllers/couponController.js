@@ -51,7 +51,7 @@ function canMutateCoupon(cupon, restaurante) {
  * Reglas:
  *   - Caller debe ser tipo_usuario='restaurante'.
  *   - Plan debe ser 'profesional' o 'premium' (gateado en el route
- *     por requirePlanFeature y reforzado acá por seguridad).
+ *     por requirePlanFeature y reforzado aquí por seguridad).
  *   - El cupón SIEMPRE es de local (es_global forzado a false aunque
  *     llegue true en el body — los locales no pueden crear cupones
  *     globales, eso es solo del admin).
@@ -146,7 +146,7 @@ export async function updateCoupon(req, res) {
     }
     if (!canMutateCoupon(cupon, restaurante)) {
       // El cupón existe pero no le pertenece al caller. El cliente
-      // genérico recibe 404 para no leakear la existencia; acá
+      // genérico recibe 404 para no leakear la existencia; aquí
       // 403 está bien porque es un local autenticado intentando
       // tocar algo que no es suyo (o un global).
       return res.status(403).json({ error: 'No tienes permiso para editar este cupón' });
@@ -318,7 +318,7 @@ export async function adminUpdateCoupon(req, res) {
     }
 
     // Si el admin quiere cambiar de local a global (o vice versa),
-    // el modelo se encarga del invariante; acá solo validamos que
+    // el modelo se encarga del invariante; aquí solo validamos que
     // restaurante_id, si viene, exista.
     if (updateData.restaurante_id !== undefined && updateData.restaurante_id !== null) {
       const r = await RestaurantModel.getRestaurantById(updateData.restaurante_id);

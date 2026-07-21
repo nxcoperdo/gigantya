@@ -420,7 +420,7 @@ const EmailTemplates = {
         </a>
       </p>
       <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
-        Recibiste este email porque sos dueño de un local con la función de chat habilitada en GigantYA.
+        Recibiste este email porque eres dueño de un local con la función de chat habilitada en GigantYA.
       </p>
     </div>
   `,
@@ -471,7 +471,7 @@ const EmailTemplates = {
       <h1 style="color: #1f2937; font-size: 22px; margin: 0 0 8px;">Hola ${escapeHtml(String(nombre).split(' ')[0])} 👋</h1>
       <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
         Hace tiempo que no entras a GigantYA para revisar <strong>${escapeHtml(restaurante)}</strong>.
-        Acá van 3 tips rápidos que te pueden servir:
+        Aquí van 3 tips rápidos que te pueden servir:
       </p>
       ${tips.map(t => `
         <div style="border-left: 4px solid #FF6B00; background: #fff7ed; padding: 14px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">

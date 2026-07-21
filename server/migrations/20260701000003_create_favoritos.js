@@ -25,7 +25,7 @@
  * Nota sobre el nombre: la tabla se llama `favoritos` (español) porque
  * así la referencia el modelo. Otras tablas del proyecto usan nombres
  * en inglés (users, restaurants). Esta inconsistencia es preexistente
- * y no la corrijo acá — solo creo lo que el código necesita.
+ * y no la corrijo aquí — solo creo lo que el código necesita.
  */
 
 export async function up(knex) {

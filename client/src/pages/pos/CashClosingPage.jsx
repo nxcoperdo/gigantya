@@ -1,7 +1,7 @@
 /**
  * CashClosingPage (Fase 5).
  *
- * Vista de detalle de un cierre de caja. Se llega acá desde la
+ * Vista de detalle de un cierre de caja. Se llega aquí desde la
  * CashierPage después de cerrar (con `state.sesion` en la navegación)
  * o directamente con `:sesionId` (re-cargar la página, ver histórico).
  *

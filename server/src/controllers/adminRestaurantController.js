@@ -80,7 +80,7 @@ export async function updateRestaurant(req, res) {
     // Si el cliente mandó custom_config u otros campos prohibidos,
     // los descartamos SIN error (UX: el form no debería mandarlos,
     // pero si los manda por error, no rompemos la request).
-    // Si quieres ser estricto y devolver 400, acá iría un check de
+    // Si quieres ser estricto y devolver 400, aquí iría un check de
     // "campos no permitidos".
 
     if (Object.keys(updateData).length === 0 && !imagenFile && !bannerFile) {
@@ -132,7 +132,7 @@ export async function updateRestaurant(req, res) {
     // Usamos la ruta con subdir para que el express.static('/uploads')
     // pueda servirla. El factory createUploader guarda el archivo
     // en uploads/<subdir>/<random>.<ext> y expone solo el basename
-    // en req.file.filename — por eso construimos la URL completa acá.
+    // en req.file.filename — por eso construimos la URL completa aquí.
     const filesChanged = [];
     if (imagenFile) {
       const filePath = `/uploads/restaurant-assets-admin/${imagenFile.filename}`;

@@ -33,7 +33,7 @@ function resolveRestauranteId(req) {
 function requireRest(req, res) {
   const rid = resolveRestauranteId(req);
   if (!rid) {
-    res.status(400).json({ error: 'No se pudo determinar el restaurante. Si sos admin, pasá ?restaurante_id=X' });
+    res.status(400).json({ error: 'No se pudo determinar el restaurante. Si eres admin, pasa ?restaurante_id=X' });
     return null;
   }
   return rid;
