@@ -5,30 +5,38 @@
  *   1. Los productos se venden por presentación (libra, kilo, unidad, etc.)
  *   2. Puede chatear con el local para coordinar tamaño / peso / extras
  *
- * ## Layout: por qué `fixed` y no `sticky`
+ * ## Apilamiento móvil (single source of truth = CSS vars)
  *
- * El componente se monta dentro de `<RestaurantDetailsPage>` que envuelve
- * todo en `<div className="min-h-screen ...">`. Un `sticky top-0` en ese
- * contexto se comporta bien en desktop (el contenedor padre es alto) pero
- * en mobile muchos usuarios reportaban que el banner se "iba" al hacer
- * scroll porque quedaba atado al contenedor scrollable, no al viewport.
+ * Este banner es uno de TRES elementos fijos en la parte superior de la
+ * página en mobile. Para que NO se solapen entre sí, cada uno usa
+ * `top: calc(...)` con las CSS vars publicadas por sus padres:
  *
- * Solución: `position: fixed; top: 0` con `z-50` para que flote sobre
- * TODA la app y siempre esté visible. En mobile sumamos
- * `env(safe-area-inset-top)` para no chocar con el notch / status bar
- * en iPhone y Android con corte.
+ *   Header             → top: 0                                  (z-50, sticky)
+ *   MarketInfoBanner   → top: calc(var(--header-height)
+ *                                   + env(safe-area-inset-top))   (z-49, fixed)
+ *   MobileMenuNav      → top: calc(var(--header-height)
+ *                                   + var(--market-banner-h, 0px)
+ *                                   + env(safe-area-inset-top))   (z-48, fixed)
  *
- * Como `fixed` saca al elemento del flujo, el `<RestaurantDetailsPage>`
- * necesita empujar el contenido hacia abajo con `padding-top` igual a la
- * altura del banner. El padre aplica `pt-[var(--market-banner-h)]` solo
- * cuando el banner está visible (ver `useMarketBannerOffset` en
- * `RestaurantDetailsPage`).
+ * El `padding-top` del contenedor raíz suma los tres + safe-area, y
+ * este banner publica `var(--market-banner-h)` con su altura real
+ * (medida con ResizeObserver) para que MobileMenuNav la consuma y
+ * para que el padre compense el layout.
  *
- * ## Persistencia
+ * ## Por qué `position: fixed` y no `sticky`
  *
- * Estado "cerrado" se guarda en sessionStorage por restaurante_id (no
- * localStorage: si el cliente vuelve otro día queremos que lo vea de
- * nuevo — es un local nuevo desde su perspectiva).
+ * Versión anterior usaba `sticky top-0` pero quedaba atado al
+ * contenedor `<div className="min-h-screen">` y se "iba" con el scroll
+ * en mobile. `position: fixed` lo saca del flujo y lo pega al viewport
+ * de verdad. Tradeoff: como fixed no ocupa espacio en el flujo, el
+ * padre tiene que aplicar `padding-top` con la altura real (eso se
+ * resuelve con la CSS var `--market-banner-h`).
+ *
+ * ## Persistencia de "cerrado"
+ *
+ * sessionStorage por restaurante_id (no localStorage: si el cliente
+ * vuelve otro día queremos que lo vea de nuevo, es un local nuevo
+ * desde su perspectiva).
  */
 import { useEffect, useRef, useState } from 'react';
 import { ShoppingBasket, MessageCircle, X } from 'lucide-react';
@@ -37,13 +45,9 @@ const STORAGE_KEY_PREFIX = 'market_banner_dismissed_';
 
 export default function MarketInfoBanner({ restauranteId }) {
   const [visible, setVisible] = useState(false);
-  // Altura real del banner en px (medida con ResizeObserver) para que el
-  // padre pueda hacer padding-top exacto sin adivinar. Exportada vía
-  // window.__marketBannerHeight para que el padre la lea sin prop drilling.
-  // Es un hack aceptable porque solo hay UN banner de mercado activo a
-  // la vez en toda la app.
   const ref = useRef(null);
 
+  // Hidratar visibilidad desde sessionStorage
   useEffect(() => {
     if (!restauranteId) return;
     try {
@@ -54,24 +58,31 @@ export default function MarketInfoBanner({ restauranteId }) {
     }
   }, [restauranteId]);
 
-  // Mide la altura real del banner y la publica en window para que el
-  // padre pueda offsetear su contenido. ResizeObserver cubre los casos
-  // de rotación de pantalla, cambio de tamaño de fuente del browser, etc.
+  // Mide la altura real y la publica en CSS var + window global.
+  // El padre la usa para padding-top; MobileMenuNav la usa para su top.
   useEffect(() => {
     if (!visible || !ref.current) return undefined;
     const el = ref.current;
-    const publish = () => {
-      const h = el.getBoundingClientRect().height;
+    const publish = (h) => {
+      document.documentElement.style.setProperty('--market-banner-h', `${h}px`);
       window.__marketBannerHeight = h;
-      // Disparamos un evento custom para que el padre (u otros listeners)
-      // reaccione sin tener que polear.
       window.dispatchEvent(new CustomEvent('market-banner-resize', { detail: { height: h } }));
     };
-    publish();
-    const ro = new ResizeObserver(publish);
+    // Sync inicial
+    publish(el.getBoundingClientRect().height);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        publish(entry.contentRect.height);
+      }
+    });
     ro.observe(el);
     return () => {
       ro.disconnect();
+      // Limpieza: el padre va a recalcular --sticky-mobile-offset en
+      // el próximo resize event, pero dejamos la var en 0 explícitamente
+      // para que cualquier cálculo que dependa de ella no quede con un
+      // valor fantasma.
+      document.documentElement.style.setProperty('--market-banner-h', '0px');
       window.__marketBannerHeight = 0;
       window.dispatchEvent(new CustomEvent('market-banner-resize', { detail: { height: 0 } }));
     };
@@ -84,7 +95,6 @@ export default function MarketInfoBanner({ restauranteId }) {
       sessionStorage.setItem(`${STORAGE_KEY_PREFIX}${restauranteId}`, '1');
     } catch {
       // Si sessionStorage falla, el próximo mount lo muestra de nuevo.
-      // No es bloqueante.
     }
   };
 
@@ -95,13 +105,14 @@ export default function MarketInfoBanner({ restauranteId }) {
       ref={ref}
       role="note"
       aria-label="Información del local de mercado"
-      // fixed + z-50 → flota sobre toda la página y NO se va con scroll.
-      // En mobile respeta el safe-area del notch/status bar.
-      // En desktop top:0 directo.
-      className="fixed top-0 left-0 right-0 z-50 shadow-md"
+      // z-49 para que esté DEBAJO del header (z-50) y ARRIBA del nav
+      // mobile (z-48). El `top` usa calc para apilar debajo del header
+      // respetando el safe-area del notch. En desktop el banner se
+      // podría ver en una página de admin, pero en el flujo cliente
+      // (donde se monta) mobile-only, así que el cálculo funciona bien.
+      className="fixed left-0 right-0 z-[49] shadow-sm"
       style={{
-        top: 'max(0px, env(safe-area-inset-top))',
-        paddingTop: 'env(safe-area-inset-top)',
+        top: 'calc(var(--header-height, 60px) + env(safe-area-inset-top, 0px))',
         backgroundColor: 'var(--warning-bg, #FEF3C7)',
         borderBottom: '1px solid var(--warning-border, #FCD34D)',
         color: 'var(--warning-text, #92400E)',
@@ -117,7 +128,9 @@ export default function MarketInfoBanner({ restauranteId }) {
           />
         </div>
 
-        {/* Texto principal — más compacto en mobile */}
+        {/* Texto principal — en mobile solo el título, en desktop el
+            subtítulo completo. Touch-friendly: padding generoso y
+            el texto no se trunca en 360px. */}
         <div className="flex-1 min-w-0 text-[11px] sm:text-sm leading-snug">
           <p className="font-bold flex items-center gap-1 sm:gap-1.5">
             <MessageCircle
@@ -127,8 +140,6 @@ export default function MarketInfoBanner({ restauranteId }) {
             />
             <span className="truncate">¿Tamaño, peso o extra? Chatea con el local</span>
           </p>
-          {/* Descripción larga: solo desktop. En mobile el título ya
-              transmite la idea y ahorramos espacio vertical. */}
           <p
             className="hidden sm:block opacity-90 mt-0.5"
             style={{ color: 'var(--warning-text, #92400E)' }}
@@ -139,12 +150,12 @@ export default function MarketInfoBanner({ restauranteId }) {
           </p>
         </div>
 
-        {/* Botón cerrar — touch target mínimo 32px (Apple HIG) */}
+        {/* Botón cerrar — touch target 44×44px (Apple HIG). */}
         <button
           type="button"
           onClick={handleDismiss}
           aria-label="Cerrar aviso"
-          className="flex-shrink-0 p-1.5 sm:p-1 rounded-full hover:bg-black/10 active:bg-black/20 transition-colors -mr-1 min-w-[32px] min-h-[32px] flex items-center justify-center"
+          className="flex-shrink-0 p-2.5 sm:p-2 rounded-full hover:bg-black/10 active:bg-black/20 transition-colors -mr-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
           style={{ color: 'var(--warning-text, #92400E)' }}
         >
           <X size={16} className="sm:!w-5 sm:!h-5" />

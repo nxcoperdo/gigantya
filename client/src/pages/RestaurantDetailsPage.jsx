@@ -306,56 +306,61 @@ export default function RestaurantDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatHabilitado, restaurante?.id]);
 
-  // Altura del MarketInfoBanner para empujar el contenido cuando está
-  // visible. Como el banner usa `position: fixed`, queda fuera del flujo
-  // y necesitamos padding-top dinámico. MarketInfoBanner publica la
-  // altura vía window.__marketBannerHeight + un evento custom
-  // 'market-banner-resize' (ver el componente para más detalle).
-  // Solo aplicamos offset si el local es de mercado/abarrotes.
-  const [marketBannerHeight, setMarketBannerHeight] = useState(0);
-  useEffect(() => {
-    if (!esMercadoAbarrotes) return undefined;
-    const onResize = (e) => setMarketBannerHeight(e.detail?.height || 0);
-    // Sync inicial por si el banner ya estaba montado y publicó altura
-    // antes de que este effect se ejecutara.
-    if (typeof window !== 'undefined' && window.__marketBannerHeight) {
-      setMarketBannerHeight(window.__marketBannerHeight);
-    }
-    window.addEventListener('market-banner-resize', onResize);
-    return () => window.removeEventListener('market-banner-resize', onResize);
-  }, [esMercadoAbarrotes]);
-
-  // Altura de la nav mobile de categorías (MobileMenuNav). Mismo patrón
-  // que el market banner: la nav es `position: fixed` y publica su
-  // altura vía window.__mobileMenuHeight + evento 'mobile-menu-resize'.
-  // En desktop el componente no se monta (md:hidden) y la altura
-  // queda en 0, así que es seguro tenerlo siempre activo.
-  const [mobileMenuHeight, setMobileMenuHeight] = useState(0);
-  useEffect(() => {
-    const onResize = (e) => setMobileMenuHeight(e.detail?.height || 0);
-    if (typeof window !== 'undefined' && window.__mobileMenuHeight) {
-      setMobileMenuHeight(window.__mobileMenuHeight);
-    }
-    window.addEventListener('mobile-menu-resize', onResize);
-    return () => window.removeEventListener('mobile-menu-resize', onResize);
-  }, []);
-
-  // Suma de alturas sticky en mobile. La publicamos como CSS var
-  // --sticky-mobile-offset para que el contenedor raíz la use en su
-  // paddingTop / marginTop. Solo en mobile (en desktop mobileMenuHeight=0
-  // y marketBannerHeight=0, así que el offset es 0). Para escritorio
-  // forzamos 0 explícitamente con el media query abajo.
+  // Suma de alturas del stack superior en mobile.
+  //
+  // Single source of truth: la publicamos como CSS var
+  // --sticky-mobile-offset para que el contenedor raíz la use en
+  // paddingTop / marginTop.
+  //
+  // Stack (de arriba a abajo) en mobile:
+  //   1. Header (60px en mobile)             → siempre
+  //   2. MarketInfoBanner (var(--market-banner-h)) → solo mercados
+  //   3. MobileMenuNav (var(--mobile-menu-h)) → siempre en mobile (md:hidden)
+  //   4. safe-area-inset-top (notch / status bar) → solo mobile
+  //
+  // En desktop todas las vars de banner+nav quedan en 0 y el header
+  // es el único elemento fijo (60/72px según breakpoint), así que el
+  // padding-top sigue siendo correcto sin lógica adicional.
+  //
+  // El useEffect escucha los eventos de resize de banner y nav, más el
+  // window resize (por si cambia el breakpoint desktop↔mobile), y
+  // actualiza la var con `requestAnimationFrame` para evitar layout
+  // thrashing en cadenas de eventos rápidas (UX rule "reduce-reflows").
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
+    let rafId = null;
+
     const update = () => {
+      rafId = null;
       const isMobile = window.matchMedia('(max-width: 767px)').matches;
-      const total = isMobile ? (marketBannerHeight + mobileMenuHeight) : 0;
-      document.documentElement.style.setProperty('--sticky-mobile-offset', `${total}px`);
+      const root = document.documentElement;
+      const headerH = parseInt(getComputedStyle(root).getPropertyValue('--header-height'), 10) || 60;
+      const bannerH = parseInt(getComputedStyle(root).getPropertyValue('--market-banner-h'), 10) || 0;
+      const navH = parseInt(getComputedStyle(root).getPropertyValue('--mobile-menu-h'), 10) || 0;
+      // En desktop: solo el header ocupa espacio fixed (las otras dos
+      // vars quedan en 0). En mobile: header + (banner si aplica) + nav
+      // + safe-area.
+      const safeArea = isMobile ? 'env(safe-area-inset-top, 0px)' : '0px';
+      const total = `calc(${headerH}px + ${bannerH}px + ${navH}px + ${safeArea})`;
+      root.style.setProperty('--sticky-mobile-offset', total);
     };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, [marketBannerHeight, mobileMenuHeight]);
+    const scheduleUpdate = () => {
+      if (rafId != null) return;
+      rafId = requestAnimationFrame(update);
+    };
+
+    // Sync inicial
+    scheduleUpdate();
+    window.addEventListener('market-banner-resize', scheduleUpdate);
+    window.addEventListener('mobile-menu-resize', scheduleUpdate);
+    window.addEventListener('resize', scheduleUpdate);
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      window.removeEventListener('market-banner-resize', scheduleUpdate);
+      window.removeEventListener('mobile-menu-resize', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+    };
+  }, []);
 
   if (loading) return <Loading />;
 
@@ -380,18 +385,21 @@ export default function RestaurantDetailsPage() {
 
    return (
      <div
-       className="min-h-screen bg-[color:var(--bg-subtle)]"
+       className="min-h-screen bg-[color:var(--bg-subtle)] transition-[padding-top] duration-200 ease-out"
        style={{
          ...dynamicStyles,
          fontFamily: 'var(--font-family), sans-serif',
          // Empuja el contenido hacia abajo para que las barras fijas
-         // mobile (MarketInfoBanner + MobileMenuNav) no tapen el hero
-         // ni el card de info. En desktop ambas son 0 (md:hidden) y el
-         // padding queda en 0, sin afectar el layout.
-         // El total es la suma de las dos alturas. Usamos CSS var
-         // --sticky-mobile-offset que el padre recalcula dinámicamente
-         // vía los listeners 'market-banner-resize' y 'mobile-menu-resize'
-         // (ver useEffects arriba).
+         // mobile (Header + MarketInfoBanner + MobileMenuNav + safe-area)
+         // no tapen el hero ni el card de info.
+         //
+         // --sticky-mobile-offset = header + banner + nav + safe-area-top
+         // La actualiza un useEffect arriba (ver bloque "Single source of
+         // truth"). En desktop el listener mobile-menu-resize nunca se
+         // dispara (md:hidden), así que el padding queda en el valor del
+         // header + safe-area. transition-[padding-top] hace que cuando
+         // el cliente cierra el banner con la X, el contenido suba
+         // suavemente en vez de saltar (UX rule: "motion-meaning").
          paddingTop: 'var(--sticky-mobile-offset, 0px)',
          // Compensa el padding con margen negativo para que min-h-screen
          // siga cubriendo toda la ventana (sino aparece una franja vacía
@@ -574,7 +582,6 @@ export default function RestaurantDetailsPage() {
              categories={sortedCategories.map(([id, cat]) => ({ id, nombre: cat.nombre }))}
              productos={productos}
              onSearchChange={setSearchQuery}
-             marketBannerHeight={marketBannerHeight}
            />
          )}
 

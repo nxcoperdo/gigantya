@@ -4,54 +4,38 @@ import { Search, X } from 'lucide-react';
 /**
  * Nav de categorías + buscador (mobile-only).
  *
- * ## Layout: por qué `fixed` y no `sticky`
+ * ## Apilamiento móvil (single source of truth = CSS vars)
  *
- * Antes era `sticky top-[var(--header-height)]`. En mobile el contenedor
- * padre `<div className="min-h-screen ...">` lo liberaba al hacer scroll
- * y el cliente reportaba que "el seleccionador se iba con el scroll".
+ * Esta nav es el TERCER elemento fijo en mobile. Su `top` se calcula
+ * con las CSS vars publicadas por sus padres:
  *
- * Solución: `position: fixed` con `z-40` y `top` dinámico que apila
- * correctamente header + MarketInfoBanner (cuando está visible en
- * locales de mercado) + esta nav. La nav publica su altura vía
- * `window.__mobileMenuHeight` + evento `mobile-menu-resize` para que
- * el padre compense con `padding-top` exacto.
+ *   top = var(--header-height) + var(--market-banner-h, 0px)
+ *         + env(safe-area-inset-top, 0px)
  *
- * Apilamiento en mobile (top → bottom):
- *   - Header (z-50, altura en --header-height)
- *   - MarketInfoBanner (z-50, altura en window.__marketBannerHeight, solo mercados)
- *   - Esta nav (z-40)
+ * Publica su propia altura vía `var(--mobile-menu-h)` para que el
+ * `padding-top` del contenedor raíz la sume y no tape contenido.
  *
- * En desktop la nav NO se monta (`md:hidden`).
+ *   Header             → top: 0                                  (z-50, sticky)
+ *   MarketInfoBanner   → top: calc(header + safe-area)           (z-49, fixed)
+ *   MobileMenuNav      → top: calc(header + banner + safe-area)   (z-48, fixed)
+ *
+ * ## Por qué `position: fixed`
+ *
+ * Versión anterior usaba `sticky top-[var(--header-height)]`. En
+ * mobile el contenedor padre `<div className="min-h-screen">` lo
+ * liberaba al hacer scroll y el cliente reportaba que "el
+ * seleccionador se iba con el scroll". `position: fixed` lo pega
+ * al viewport. Tradeoff: el padre aplica `padding-top` con la
+ * altura real para que el contenido no quede tapado.
  *
  * ## 3 piezas funcionales
  *
- * 1. **Buscador** (línea ~190): input controlado con `useDeferredValue`
- *    para que el filter no bloquee el typing. Solo se muestra si hay
- *    +12 productos.
- *
- * 2. **Pills de categorías** (línea ~235): scroll horizontal, la activa
- *    se resalta con `var(--color-primary)`.
- *
- * 3. **Scrollspy con IntersectionObserver** (línea ~80): detecta qué
- *    categoría está visible. Usa un guard `isScrollingRef` para evitar
- *    parpadeo durante smooth scroll programático.
- *
- * Props:
- *   - categories:        Array<{id, nombre}> — id estable del backend.
- *   - productos:         Array de productos completos (filtro del buscador).
- *   - onSearchChange?:   (query) => void — notifica al padre.
- *   - marketBannerHeight?: number — altura del MarketInfoBanner (si está
- *                                   visible en locales de mercado). Default 0.
+ *   1. Buscador (useDeferredValue para no bloquear typing en +12 productos)
+ *   2. Pills de categorías con scroll horizontal
+ *   3. Scrollspy con IntersectionObserver
  */
-export default function MobileMenuNav({
-  categories,
-  productos,
-  onSearchChange,
-  marketBannerHeight = 0,
-}) {
+export default function MobileMenuNav({ categories, productos, onSearchChange }) {
   const [query, setQuery] = useState('');
-  // useDeferredValue retrasa el filter para que el typing no sufra lag
-  // en listas grandes. React 18+, ya disponible en el proyecto (18.2).
   const deferredQuery = useDeferredValue(query);
   const isStale = query !== deferredQuery;
   const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id ?? null);
@@ -62,67 +46,64 @@ export default function MobileMenuNav({
     if (onSearchChange) onSearchChange(deferredQuery);
   }, [deferredQuery, onSearchChange]);
 
-  // -----------------------------------------------------------------
-  // Publicar la altura de esta nav para que el padre compense el
-  // padding-top del contenido. ResizeObserver cubre rotación de
-  // pantalla, cambios de fuente del browser, mostrar/ocultar buscador
-  // según scroll, etc.
-  // -----------------------------------------------------------------
+  // Publica la altura de esta nav en CSS var + window. ResizeObserver
+  // cubre el caso de mostrar/ocultar buscador según productos.length > 12
+  // y la rotación de pantalla.
   useEffect(() => {
     if (typeof window === 'undefined' || !ref.current) return undefined;
     const el = ref.current;
-    const publish = () => {
-      const h = el.getBoundingClientRect().height;
+    const publish = (h) => {
+      document.documentElement.style.setProperty('--mobile-menu-h', `${h}px`);
       window.__mobileMenuHeight = h;
       window.dispatchEvent(new CustomEvent('mobile-menu-resize', { detail: { height: h } }));
     };
-    publish();
-    const ro = new ResizeObserver(publish);
+    publish(el.getBoundingClientRect().height);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) publish(entry.contentRect.height);
+    });
     ro.observe(el);
     return () => {
       ro.disconnect();
+      document.documentElement.style.setProperty('--mobile-menu-h', '0px');
       window.__mobileMenuHeight = 0;
       window.dispatchEvent(new CustomEvent('mobile-menu-resize', { detail: { height: 0 } }));
     };
-  }, [deferredQuery]); // re-medir cuando cambia el contenido (buscador se muestra/oculta)
+  }, [deferredQuery]);
 
-  // -----------------------------------------------------------------
-  // Scrollspy con IntersectionObserver
-  // -----------------------------------------------------------------
+  // Scrollspy
   useEffect(() => {
     if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
-
     const sections = document.querySelectorAll('[data-cat-section]');
     if (sections.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (isScrollingRef.current) return;
-
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-
         if (visible) {
           const catId = visible.target.dataset.catSection;
           setSelectedCategory((prev) => (prev === catId ? prev : catId));
         }
       },
-      // rootMargin: descontamos la altura del header + la altura de ESTA nav +
-      // el market banner (si está). Sin este offset, la categoría se marca
-      // activa cuando apenas entra al viewport, lo que se siente "tarde".
-      { rootMargin: `-${60 + (typeof window !== 'undefined' ? (window.__mobileMenuHeight || 0) : 0) + marketBannerHeight}px 0px -60% 0px`, threshold: 0 }
+      // rootMargin descuenta el alto del header + esta nav + market banner
+      // (cuando esté visible) para que la categoría se marque activa
+      // cuando entra al viewport visible real, no apenas aparece.
+      {
+        rootMargin: `-${
+          60 + (typeof window !== 'undefined' ? (window.__mobileMenuHeight || 0) : 0) +
+          (typeof window !== 'undefined' ? (window.__marketBannerHeight || 0) : 0)
+        }px 0px -60% 0px`,
+        threshold: 0,
+      }
     );
 
     sections.forEach((s) => observer.observe(s));
     return () => observer.disconnect();
-  }, [categories, marketBannerHeight]);
+  }, [categories]);
 
-  // -----------------------------------------------------------------
-  // Click en pill → smooth scroll a la sección, compensando header +
-  // nav + market banner para que la sección no quede tapada por las
-  // barras fijas.
-  // -----------------------------------------------------------------
+  // Click en pill → smooth scroll compensando todas las barras fijas
   const handlePillClick = (catId) => {
     const target = document.getElementById(`cat-${catId}`);
     if (!target) return;
@@ -132,7 +113,8 @@ export default function MobileMenuNav({
 
     const headerH = getHeaderHeight();
     const navH = ref.current?.getBoundingClientRect().height || 0;
-    const offset = headerH + navH + marketBannerHeight;
+    const bannerH = typeof window !== 'undefined' ? (window.__marketBannerHeight || 0) : 0;
+    const offset = headerH + navH + bannerH;
     const top = target.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: 'smooth' });
 
@@ -147,108 +129,97 @@ export default function MobileMenuNav({
   return (
     <nav
       ref={ref}
-      // md:hidden — solo mobile. z-40 debajo del header y del market
-      // banner (ambos z-50) pero encima del contenido.
-      // top = header-height + market-banner-height (cuando aplica). En
-      // CSS usamos la var --header-height que emite el Header; para
-      // sumar el banner usamos un paddingTop interno equivalente.
-      className="md:hidden fixed left-0 right-0 z-40
-                 bg-[color:var(--bg-elevated)] border-b border-[color:var(--border-subtle)]
-                 backdrop-blur-md"
-      style={{
-        top: 'calc(var(--header-height, 60px) + 0px)',
-        // Si hay market banner, lo apilamos visualmente mediante un
-        // margin negativo NO (sería incorrecto) — en su lugar, el padre
-        // ajusta la posición de esta nav con la prop marketBannerHeight.
-        // Como `top` no acepta sumas dinámicas en CSS vars del runtime,
-        // lo manejamos con un transform translateY o, mejor, dejando
-        // que el padre renderice un wrapper. Pero para mantener este
-        // componente autocontenido, hacemos lo siguiente: el padre pasa
-        // marketBannerHeight como prop y la nav ajusta su `top` con
-        // calc inline abajo.
-      }}
       aria-label="Navegación del menú"
+      // z-48 debajo del header (z-50) y del banner (z-49). md:hidden lo
+      // oculta en desktop. top: calc(header + banner + safe-area).
+      // backgroundColor translúcido + backdrop-blur estilo app nativa:
+      // el contenido que pasa por debajo se ve borroso, no interrumpido.
+      className="md:hidden fixed left-0 right-0 z-[48] border-b border-[color:var(--border-subtle)]"
+      style={{
+        top: 'calc(var(--header-height, 60px) + var(--market-banner-h, 0px) + env(safe-area-inset-top, 0px))',
+        backgroundColor: 'color-mix(in srgb, var(--bg-elevated) 92%, transparent)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        backdropFilter: 'blur(12px) saturate(180%)',
+      }}
     >
-      {/* Wrapper interno: compensa el market banner cuando está visible
-          moviendo la nav hacia abajo con marginTop. Es más robusto que
-          pelearse con `top: calc(...)` porque `top` necesita ser
-          declarado en style y eso choca con el `className` Tailwind. */}
-      <div style={{ marginTop: marketBannerHeight > 0 ? `${marketBannerHeight}px` : 0 }}>
-        {/* Buscador (solo si hay +12 productos) */}
-        {showSearch && (
-          <div className="px-3 pt-2 pb-1">
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)] pointer-events-none"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar productos…"
-                className={`w-full pl-9 pr-9 py-2 rounded-lg text-sm
-                            bg-[color:var(--bg-subtle)] text-[color:var(--text-primary)]
-                            placeholder:text-[color:var(--text-muted)]
-                            focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]
-                            transition-opacity ${isStale ? 'opacity-60' : 'opacity-100'}`}
-                aria-label="Buscar productos en el menú"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Limpiar búsqueda"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full
-                             text-[color:var(--text-muted)] hover:bg-[color:var(--bg-muted)]
-                             active:scale-95 transition-transform
-                             min-w-[28px] min-h-[28px] flex items-center justify-center"
-                >
-                  <X size={14} aria-hidden="true" />
-                </button>
-              )}
-            </div>
+      {/* Buscador (solo si hay +12 productos) */}
+      {showSearch && (
+        <div className="px-3 pt-2 pb-1">
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)] pointer-events-none"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar productos…"
+              className={`w-full pl-9 pr-9 py-2.5 rounded-lg text-base
+                          bg-[color:var(--bg-subtle)] text-[color:var(--text-primary)]
+                          placeholder:text-[color:var(--text-muted)]
+                          focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]
+                          transition-opacity ${isStale ? 'opacity-60' : 'opacity-100'}`}
+              aria-label="Buscar productos en el menú"
+              // 16px base + py-2.5 = altura ~44px. iOS no auto-zoomea
+              // porque respetamos el mínimo de 16px (ver UX rule
+              // "readable-font-size").
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full
+                           text-[color:var(--text-muted)] hover:bg-[color:var(--bg-muted)]
+                           active:scale-95 transition-transform
+                           min-w-[32px] min-h-[32px] flex items-center justify-center"
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Pills de categorías — se ocultan cuando hay query activa */}
-        {!hasQuery && (
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-2 w-max px-3 pb-2 pt-1">
-              {categories.map((c) => {
-                const isActive = selectedCategory === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => handlePillClick(c.id)}
-                    aria-current={isActive ? 'true' : undefined}
-                    className={[
-                      'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap',
-                      'transition-colors min-h-[36px] min-w-[36px]',
-                      'focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]',
-                      isActive
-                        ? 'text-white shadow-sm'
-                        : 'bg-[color:var(--bg-subtle)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)]',
-                    ].join(' ')}
-                    style={isActive ? { backgroundColor: 'var(--color-primary)' } : undefined}
-                  >
-                    {c.nombre}
-                  </button>
-                );
-              })}
-            </div>
+      {/* Pills de categorías — se ocultan cuando hay query activa */}
+      {!hasQuery && (
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex gap-2 w-max px-3 pb-2 pt-1">
+            {categories.map((c) => {
+              const isActive = selectedCategory === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => handlePillClick(c.id)}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={[
+                    'px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap',
+                    'transition-colors',
+                    // min-h 36 + gap 8dp (gap-2 del contenedor) cumple
+                    // touch target + touch spacing de Apple HIG.
+                    'min-h-[36px]',
+                    'focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]',
+                    'active:scale-95 transition-transform',
+                    isActive
+                      ? 'text-white shadow-sm'
+                      : 'bg-[color:var(--bg-subtle)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)]',
+                  ].join(' ')}
+                  style={isActive ? { backgroundColor: 'var(--color-primary)' } : undefined}
+                >
+                  {c.nombre}
+                </button>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   );
 }
 
-// Lee --header-height de la CSS var que emite el Header. Si no existe
-// (SSR, tests), usa 60px como fallback. No usamos getComputedStyle en
-// un useEffect porque handlePillClick es un handler de evento síncrono.
 function getHeaderHeight() {
   if (typeof window === 'undefined') return 60;
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--header-height');
