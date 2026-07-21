@@ -237,6 +237,13 @@ export const adminService = {
   // DELETE usa el nombre del archivo.
   deleteHomeMedia: (archivo) => api.delete(`/admin/home-media/${encodeURIComponent(archivo)}`),
 
+  // Descarga de banners de locales destacados. Devuelve un Blob
+  // (application/zip) listo para guardarse con FileSaver. El endpoint
+  // valida que haya al menos 1 local destacado con banner en disco;
+  // si no, devuelve 404 con JSON de error (cuerpo NO es un Blob).
+  downloadFeaturedBannersZip: () =>
+    api.get('/admin/featured-banners/zip', { responseType: 'blob' }),
+
   // CMS Hero de Home (Fase 12d). El super-admin puede editar los 4
   // textos del hero (con toggle ON/OFF cada uno) y agregar N botones
   // custom que aparecen sobre el banner. La home pública los consume

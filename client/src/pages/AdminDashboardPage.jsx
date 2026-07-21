@@ -11,6 +11,7 @@ import AuditLogView from '../components/AuditLogView';
 import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 import ZonasAdmin from '../components/ZonasAdmin';
 import CouponsView from '../components/CouponsView';
+import FeaturedBannersDownloadButton from '../components/FeaturedBannersDownloadButton';
 import { formatDate } from '../utils/dateHelper';
 
 export default function AdminDashboardPage() {
@@ -429,6 +430,7 @@ export default function AdminDashboardPage() {
                 <ImageIcon size={16} />
                 Banner de Home
               </button>
+              <FeaturedBannersDownloadButton />
               <button
                 type="button"
                 onClick={() => navigate('/admin/home-hero')}
