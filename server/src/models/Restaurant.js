@@ -295,6 +295,40 @@ export async function getRestaurants(filtros = {}) {
 }
 
 /**
+ * Locales destacados con banner cargado (sección "destacados" del home).
+ *
+ * Devuelve solo locales con `plan` que habilita `banner_home` (premium o
+ * golden_plus), con cuenta activa y plan vigente. Se usa para alimentar
+ * el endpoint admin de descarga ZIP de banners.
+ *
+ * Espejo server-side del filtro `canAccessPlan(r.plan, 'banner_home')`
+ * que vive en `client/src/utils/planFeatures.js` y se aplica en
+ * `HomePage.jsx` para el carrusel público. Si se agrega un plan nuevo
+ * con `banner_home: true`, actualizar la whitelist del `WHERE`.
+ */
+export async function getFeaturedBannerLocals() {
+  const sql = `
+    SELECT r.id, r.nombre, r.plan, r.banner_url
+    FROM restaurantes r
+    JOIN usuarios u ON r.usuario_id = u.id
+    WHERE r.estado = 'activo'
+      AND r.aprobado = 1
+      AND u.estado = 'activo'
+      AND r.banner_url IS NOT NULL
+      AND r.banner_url <> ''
+      AND r.plan IN ('premium', 'golden_plus')
+      AND (r.fecha_vencimiento_plan IS NULL OR r.fecha_vencimiento_plan >= NOW())
+    ORDER BY FIELD(r.plan, 'golden_plus', 'premium'), r.nombre
+  `;
+
+  try {
+    return await query(sql);
+  } catch (error) {
+    throw new Error(`Error obteniendo locales destacados: ${error.message}`);
+  }
+}
+
+/**
  * Obtener restaurante por ID con sus productos
  */
 export async function getRestaurantById(id) {

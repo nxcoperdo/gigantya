@@ -10,6 +10,7 @@ import { query, queryOne } from '../config/database.js';
 import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 import * as adminHomeMediaController from '../controllers/adminHomeMediaController.js';
 import * as adminHomeHeroController from '../controllers/adminHomeHeroController.js';
+import * as featuredBannerController from '../controllers/featuredBannerController.js';
 import { createUploader } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
@@ -250,6 +251,11 @@ router.get('/home-media', adminHomeMediaController.list);
 router.post('/home-media', homeMediaUpload.single('file'), adminHomeMediaController.upload);
 router.put('/home-media/:archivo/activate', adminHomeMediaController.setActivo);
 router.delete('/home-media/:archivo', adminHomeMediaController.deleteMedia);
+
+// ========== Descarga ZIP de banners destacados ==========
+//   - GET /api/admin/featured-banners/zip → downloadFeaturedBanners
+//                                          (ZIP on-the-fly con archiver)
+router.get('/featured-banners/zip', featuredBannerController.downloadFeaturedBanners);
 
 // ========== CMS Hero de Home (Fase 12d) ==========
 // El super-admin puede editar los 4 textos del hero (con toggle ON/OFF
