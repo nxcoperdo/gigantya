@@ -306,62 +306,6 @@ export default function RestaurantDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatHabilitado, restaurante?.id]);
 
-  // Suma de alturas del stack superior en mobile.
-  //
-  // Single source of truth: la publicamos como CSS var
-  // --sticky-mobile-offset para que el contenedor raíz la use en
-  // paddingTop / marginTop.
-  //
-  // Stack (de arriba a abajo) en mobile:
-  //   1. Header (60px en mobile)             → siempre
-  //   2. MarketInfoBanner (var(--market-banner-h)) → solo mercados
-  //   3. MobileMenuNav (var(--mobile-menu-h)) → siempre en mobile (md:hidden)
-  //   4. safe-area-inset-top (notch / status bar) → solo mobile
-  //
-  // En desktop todas las vars de banner+nav quedan en 0 y el header
-  // es el único elemento fijo (60/72px según breakpoint), así que el
-  // padding-top sigue siendo correcto sin lógica adicional.
-  //
-  // El useEffect escucha los eventos de resize de banner y nav, más el
-  // window resize (por si cambia el breakpoint desktop↔mobile), y
-  // actualiza la var con `requestAnimationFrame` para evitar layout
-  // thrashing en cadenas de eventos rápidas (UX rule "reduce-reflows").
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    let rafId = null;
-
-    const update = () => {
-      rafId = null;
-      const isMobile = window.matchMedia('(max-width: 767px)').matches;
-      const root = document.documentElement;
-      const headerH = parseInt(getComputedStyle(root).getPropertyValue('--header-height'), 10) || 60;
-      const bannerH = parseInt(getComputedStyle(root).getPropertyValue('--market-banner-h'), 10) || 0;
-      const navH = parseInt(getComputedStyle(root).getPropertyValue('--mobile-menu-h'), 10) || 0;
-      // En desktop: solo el header ocupa espacio fixed (las otras dos
-      // vars quedan en 0). En mobile: header + (banner si aplica) + nav
-      // + safe-area.
-      const safeArea = isMobile ? 'env(safe-area-inset-top, 0px)' : '0px';
-      const total = `calc(${headerH}px + ${bannerH}px + ${navH}px + ${safeArea})`;
-      root.style.setProperty('--sticky-mobile-offset', total);
-    };
-    const scheduleUpdate = () => {
-      if (rafId != null) return;
-      rafId = requestAnimationFrame(update);
-    };
-
-    // Sync inicial
-    scheduleUpdate();
-    window.addEventListener('market-banner-resize', scheduleUpdate);
-    window.addEventListener('mobile-menu-resize', scheduleUpdate);
-    window.addEventListener('resize', scheduleUpdate);
-    return () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      window.removeEventListener('market-banner-resize', scheduleUpdate);
-      window.removeEventListener('mobile-menu-resize', scheduleUpdate);
-      window.removeEventListener('resize', scheduleUpdate);
-    };
-  }, []);
-
   if (loading) return <Loading />;
 
   if (!restaurante) {
@@ -385,26 +329,10 @@ export default function RestaurantDetailsPage() {
 
    return (
      <div
-       className="min-h-screen bg-[color:var(--bg-subtle)] transition-[padding-top] duration-200 ease-out"
+       className="min-h-screen bg-[color:var(--bg-subtle)]"
        style={{
          ...dynamicStyles,
-         fontFamily: 'var(--font-family), sans-serif',
-         // Empuja el contenido hacia abajo para que las barras fijas
-         // mobile (Header + MarketInfoBanner + MobileMenuNav + safe-area)
-         // no tapen el hero ni el card de info.
-         //
-         // --sticky-mobile-offset = header + banner + nav + safe-area-top
-         // La actualiza un useEffect arriba (ver bloque "Single source of
-         // truth"). En desktop el listener mobile-menu-resize nunca se
-         // dispara (md:hidden), así que el padding queda en el valor del
-         // header + safe-area. transition-[padding-top] hace que cuando
-         // el cliente cierra el banner con la X, el contenido suba
-         // suavemente en vez de saltar (UX rule: "motion-meaning").
-         paddingTop: 'var(--sticky-mobile-offset, 0px)',
-         // Compensa el padding con margen negativo para que min-h-screen
-         // siga cubriendo toda la ventana (sino aparece una franja vacía
-         // al hacer scroll rápido al fondo).
-         marginTop: 'calc(var(--sticky-mobile-offset, 0px) * -1)',
+         fontFamily: 'var(--font-family), sans-serif'
        }}
      >
        {/* Modal de Confirmación */}
@@ -899,7 +827,7 @@ function DescripcionProducto({ texto, expandido, onToggle }) {
  *     legibilidad — eliminar la feature sería una regresión.
  *   - Botón "+" se vuelve circular compacto en mobile (full-width en sm+).
  *   - Si el counter `cantidades[id] > 0`, el botón muestra un counter
- *     `+/N/+` (estado futuro si quieres sumar/restar sin abrir modal).
+ *     `+/N/+` (estado futuro si querés sumar/restar sin abrir modal).
  *   - Imagen oculta si `!imagen_url` (no mostramos el 🍽️ de 160px en
  *     mobile porque en 80x80 queda horrible).
  */
