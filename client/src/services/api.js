@@ -196,6 +196,23 @@ export const adminService = {
     api.put(`/admin/restaurants/${id}/es-panaderia-pasteleria`, { es_panaderia_pasteleria }),
   getRestaurantSubscriptions: (id) => api.get(`/admin/restaurants/${id}/subscriptions`),
   updateRestaurantConfig: (id, payload) => api.put(`/admin/restaurants/${id}/config`, payload),
+  // Edición completa de un local desde el panel admin: subida de
+  // imagen_url y/o banner_url + edición de campos en un solo submit.
+  // Mismo patrón que `uploadHomeMedia` para el progreso (con modo
+  // indeterminado si la request no trae Content-Length).
+  updateRestaurantAdmin: (id, formData, onUploadProgress) =>
+    api.put(`/admin/restaurants/${id}`, formData, onUploadProgress ? {
+      onUploadProgress: (e) => {
+        if (typeof onUploadProgress === 'function') {
+          if (e.total) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onUploadProgress(percent, e.loaded, e.total);
+          } else {
+            onUploadProgress(-1, e.loaded || 0, 0);
+          }
+        }
+      },
+    } : undefined),
   // Coupon management (admin) — cupones globales y de cualquier local
   getCoupons: (params = {}) => api.get('/admin/coupons', { params }),
   createCoupon: (data) => api.post('/admin/coupons', data),

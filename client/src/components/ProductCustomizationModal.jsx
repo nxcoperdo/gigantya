@@ -18,11 +18,22 @@ import { formatCurrency } from '../utils/formatHelper';
  * La forma del payload que entrega onAdd está alineada con la shape
  * que consume CartContext.addToCart.
  *
- * Comportamiento por grupo (matriz de Fase 10):
+ * Comportamiento por grupo (matriz de Fase 10 + fix cantidad × opciones):
  *   - obligatorio=0, min=0, max=1   → radio chips, opción "Sin [grupo]"
  *   - obligatorio=0, min=0, max>=2  → +/- por adición
  *   - obligatorio=1, min=1, max=1   → radio chips (no se deselecciona)
  *   - obligatorio=1, min=1, max>=2  → +/- por adición
+ *
+ * Regla "isSingle × cantidad" (fix del menú del día):
+ *   Cuando el modal tiene cantidad > 1 y el grupo es isSingle (max=1),
+ *   se renderizan N sub-grupos (1 por unidad del combo) y el cliente
+ *   elige 1 opción POR CADA unidad. El payload que entrega onAdd sigue
+ *   siendo la shape legacy `{adicion_id, cantidad}`: el frontend emite
+ *   1 entrada por cada opción DISTINTA elegida, colapsando repeticiones
+ *   de la misma adicion_id (ej: 2x Rancheros en vez de 2 entradas
+ *   separadas de cantidad 1). El backend re-valida que la cantidad de
+ *   entradas distintas del grupo cubra `item.cantidad` (ver
+ *   `validateAdicionesYRemovibles` en `orderService.js`).
  *
  * El botón "Agregar" queda disabled si algún grupo obligatorio está
  * incompleto (count < min_selecciones). El backend re-valida como
@@ -36,37 +47,71 @@ import { formatCurrency } from '../utils/formatHelper';
  * necesita. Maneja grupos sin las 3 columnas nuevas (shape viejo):
  * en ese caso devuelve defaults `false / 0 / 99` (comportamiento
  * idéntico al pre-existente).
+ *
+ * `messageLabel` es consciente de la cantidad: cuando el modal tiene
+ * cantidad > 1 y el grupo es `isSingle` (elige 1), el label avisa
+ * que la selección se replica por unidad ("Elige 1 opción por unidad
+ * (total: N)"). Para cantidad 1 el label es el de siempre.
  */
-function getGrupoConfig(grupo) {
+function getGrupoConfig(grupo, cantidad = 1) {
   const obligatorio = !!grupo.obligatorio;
   const min = Math.max(0, Math.floor(Number(grupo.min_selecciones) || 0));
   const maxRaw = Math.floor(Number(grupo.max_selecciones) || 99);
   // Defensa: si max < min (config inválida del admin), ajustar a min.
   const max = Math.max(maxRaw, min);
   const isSingle = max === 1;
+  // Cuando la cantidad > 1 y el grupo es de "elige 1", la regla del
+  // local se multiplica por la cantidad. Avisamos al cliente para que
+  // sepa que debe elegir 1 opción POR CADA combo (no una sola para todos).
+  const perUnidad = isSingle && cantidad > 1;
 
   let messageLabel = '';
   if (obligatorio) {
-    if (min === 1 && max === 1) messageLabel = 'Obligatorio · elige 1 opción';
+    if (perUnidad) messageLabel = `Obligatorio · elige 1 opción por cada unidad (${cantidad} en total)`;
+    else if (min === 1 && max === 1) messageLabel = 'Obligatorio · elige 1 opción';
     else if (min === max) messageLabel = `Obligatorio · elige ${max} opciones`;
     else messageLabel = `Obligatorio · elige ${min}-${max} opciones`;
   } else {
-    if (min === 0 && max === 1) messageLabel = 'Opcional';
+    if (perUnidad) messageLabel = `Opcional · puedes elegir 1 opción por unidad (${cantidad} en total)`;
+    else if (min === 0 && max === 1) messageLabel = 'Opcional';
     else if (min === 0 && max >= 2) messageLabel = `Opcional · puedes elegir hasta ${max}`;
     else messageLabel = `Opcional · elige ${min}-${max} opciones`;
   }
 
-  return { id: grupo.id, nombre: grupo.nombre, obligatorio, min, max, isSingle, messageLabel };
+  return { id: grupo.id, nombre: grupo.nombre, obligatorio, min, max, isSingle, perUnidad, messageLabel };
 }
 
 /**
- * Suma las cantidades de adiciones que pertenecen a `grupoId` en el
- * state de UI. Devuelve 0 si el grupo no tiene adiciones elegidas.
+ * Cuenta cuántas "unidades" del grupo están cubiertas por la selección
+ * actual. Para grupos isSingle (perUnidad) el "completo" significa que
+ * las N unidades (cantidad del modal) tengan una opción asignada cada
+ * una, no que la suma de cantidades llegue a N.
+ *
+ * Lee dos estados posibles:
+ * - `selPorUnidad`: Map<grupoId, Array<adicionId | null>> con length === cantidad
+ * - `adicionesQty`: Map<adicionId, qty> (legacy / no-single)
+ *
+ * @param {object} grupoCfg  - salida de getGrupoConfig
+ * @param {Map<number, number>} adicionesQty
+ * @param {Array<{id, grupo_id}>} todasAdiciones
+ * @param {Map<number, Array<number|null>>|null} selPorUnidad
+ * @param {number} cantidad - cantidad del modal (1..99)
+ * @returns {number} unidades cubiertas (0..cantidad para isSingle, suma para los demás)
  */
-function getGrupoCount(grupoId, adicionesQty, todasAdiciones) {
+function getGrupoCount(grupoCfg, adicionesQty, todasAdiciones, selPorUnidad, cantidad) {
+  if (grupoCfg.perUnidad && selPorUnidad) {
+    const arr = selPorUnidad.get(grupoCfg.id) || [];
+    // Cubiertas = posiciones con adicionId no-null
+    let cubiertas = 0;
+    for (const v of arr) {
+      if (v != null) cubiertas += 1;
+    }
+    return Math.min(cubiertas, cantidad);
+  }
+  // Legacy: sumar cantidades de adiciones del grupo (para grupos no-single).
   let count = 0;
   for (const a of todasAdiciones) {
-    if (Number(a.grupo_id) === Number(grupoId)) {
+    if (Number(a.grupo_id) === Number(grupoCfg.id)) {
       count += Number(adicionesQty[a.id] || 0);
     }
   }
@@ -76,10 +121,14 @@ function getGrupoCount(grupoId, adicionesQty, todasAdiciones) {
 /**
  * ¿El grupo está completo según las reglas del local?
  * - Si no es obligatorio, siempre está completo (puede elegir 0).
- * - Si es obligatorio, count >= min_selecciones.
+ * - Si es obligatorio y perUnidad: las N unidades deben tener una
+ *   opción asignada (count === cantidad).
+ * - Si es obligatorio y NO perUnidad: count >= min_selecciones.
  */
-function isGrupoCompleto(grupoCfg, count) {
-  return grupoCfg.obligatorio ? count >= grupoCfg.min : true;
+function isGrupoCompleto(grupoCfg, count, cantidad) {
+  if (!grupoCfg.obligatorio) return true;
+  if (grupoCfg.perUnidad) return count >= cantidad;
+  return count >= grupoCfg.min;
 }
 export default function ProductCustomizationModal({
   isOpen,
@@ -89,8 +138,13 @@ export default function ProductCustomizationModal({
   onAdd,
 }) {
   const [cantidad, setCantidad] = useState(1);
-  // Map<adicion_id, cantidad> con valores >= 0
+  // Map<adicion_id, cantidad> con valores >= 0 (legacy, para grupos
+  // max>=2 y adiciones sueltas).
   const [adicionesQty, setAdicionesQty] = useState({});
+  // Para grupos isSingle (max=1) la cantidad de unidades importa:
+  // guardamos Map<grupoId, Array<adicionId | null>> con length === cantidad.
+  // Inicializar/limpiar al cambiar de producto o de cantidad.
+  const [selPorUnidad, setSelPorUnidad] = useState(new Map());
   // Set<removible_id> de los removibles que el cliente desmarcó
   const [removidos, setRemovidos] = useState(new Set());
   const [nota, setNota] = useState('');
@@ -100,6 +154,7 @@ export default function ProductCustomizationModal({
     if (isOpen) {
       setCantidad(1);
       setAdicionesQty({});
+      setSelPorUnidad(new Map());
       setRemovidos(new Set());
       setNota('');
     }
@@ -135,13 +190,42 @@ export default function ProductCustomizationModal({
     }, 0);
   }, [todasAdiciones, adicionesQty]);
 
-  const precioUnitarioFinal = Number(producto?.precio || 0) + sumaAdiciones;
+  // Suma de las selecciones perUnidad (precio_extra × veces que se eligió
+  // cada adición en el array selPorUnidad). Necesario para que el subtotal
+  // del modal refleje el costo de las opciones perUnidad elegidas, ya que
+  // esas selecciones NO viven en adicionesQty.
+  const sumaPerUnidad = useMemo(() => {
+    let total = 0;
+    for (const [grupoId, arr] of selPorUnidad.entries()) {
+      const cfg = gruposConEstado.find((g) => g.id === grupoId);
+      if (!cfg?.perUnidad) continue;
+      for (const adId of arr) {
+        if (adId == null) continue;
+        const a = todasAdiciones.find((x) => Number(x.id) === Number(adId));
+        if (!a) continue;
+        const precio = a.precio_extra == null ? 0 : Number(a.precio_extra);
+        total += precio;
+      }
+    }
+    return total;
+  }, [selPorUnidad, todasAdiciones, gruposConEstado]);
+
+  const precioUnitarioFinal = Number(producto?.precio || 0) + sumaAdiciones + sumaPerUnidad;
   const subtotalItem = precioUnitarioFinal * Number(cantidad);
 
   const hayAdicionesElegidas = useMemo(
     () => Object.values(adicionesQty).some((q) => Number(q) > 0),
     [adicionesQty]
   );
+  // Para grupos perUnidad, también cuentan como "elegidas" las
+  // selecciones del state selPorUnidad (no se reflejan en
+  // adicionesQty, que solo lleva el legacy +/-).
+  const haySelPorUnidad = useMemo(() => {
+    for (const arr of selPorUnidad.values()) {
+      if (arr.some((v) => v != null)) return true;
+    }
+    return false;
+  }, [selPorUnidad]);
   const hayRemovidos = removidos.size > 0;
   const hayNota = nota.trim().length > 0;
 
@@ -151,45 +235,94 @@ export default function ProductCustomizationModal({
   // todos los grupos están completos. El backend re-valida.
   const gruposConEstado = useMemo(() => {
     return grupos.map((g) => {
-      const cfg = getGrupoConfig(g);
+      const cfg = getGrupoConfig(g, cantidad);
       const adicionesDelGrupo = todasAdiciones.filter(
         (a) => Number(a.grupo_id) === Number(g.id)
       );
-      const count = getGrupoCount(g.id, adicionesQty, todasAdiciones);
-      const completado = isGrupoCompleto(cfg, count);
+      const count = getGrupoCount(cfg, adicionesQty, todasAdiciones, selPorUnidad, cantidad);
+      const completado = isGrupoCompleto(cfg, count, cantidad);
       return { ...cfg, adicionesDelGrupo, count, completado };
     });
-  }, [grupos, todasAdiciones, adicionesQty]);
+  }, [grupos, todasAdiciones, adicionesQty, selPorUnidad, cantidad]);
 
   const puedeAgregar = useMemo(
     () => gruposConEstado.every((g) => g.completado),
     [gruposConEstado]
   );
 
-  // Limpia todas las adiciones de un grupo específico. Usado por el
-  // chip "Sin [grupo]" cuando se deselecciona la única opción elegida.
-  const clearGrupo = (grupoId) => {
-    setAdicionesQty((prev) => {
-      const next = { ...prev };
-      for (const a of todasAdiciones) {
-        if (Number(a.grupo_id) === Number(grupoId)) delete next[a.id];
+  // Sincronizar selPorUnidad con la cantidad del modal: cuando la
+  // cantidad sube, extender los arrays; cuando baja, recortar.
+  // No pisamos selecciones existentes.
+  useEffect(() => {
+    setSelPorUnidad((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const g of grupos) {
+        const cfg = getGrupoConfig(g, cantidad);
+        if (!cfg.perUnidad) continue;
+        const current = next.get(cfg.id) || [];
+        if (current.length === cantidad) continue;
+        if (current.length < cantidad) {
+          // Extender con null hasta llegar a `cantidad`
+          const extended = [...current, ...Array(cantidad - current.length).fill(null)];
+          next.set(cfg.id, extended);
+          changed = true;
+        } else {
+          // Recortar (cliente bajó la cantidad). Perder las unidades
+          // sobrantes es esperable: ya eligió menos combos.
+          next.set(cfg.id, current.slice(0, cantidad));
+          changed = true;
+        }
       }
-      return next;
+      return changed ? next : prev;
     });
+  }, [cantidad, grupos]);
+
+  // Limpia todas las unidades de un grupo perUnidad. Si el grupo NO es
+  // perUnidad, limpia las adiciones que pertenecen al grupo en
+  // adicionesQty (legacy, para grupos no-single).
+  const clearGrupo = (grupoId) => {
+    const cfg = gruposConEstado.find((g) => g.id === grupoId);
+    if (cfg?.perUnidad) {
+      setSelPorUnidad((prev) => {
+        const next = new Map(prev);
+        next.set(grupoId, Array(cantidad).fill(null));
+        return next;
+      });
+    } else {
+      setAdicionesQty((prev) => {
+        const next = { ...prev };
+        for (const a of todasAdiciones) {
+          if (Number(a.grupo_id) === Number(grupoId)) delete next[a.id];
+        }
+        return next;
+      });
+    }
   };
 
-  // Para radio (max=1): selecciona UNA opción del grupo. Si es la
-  // misma que ya estaba elegida, no hace nada (los obligatorios no se
-  // pueden deseleccionar; los opcionales tampoco, porque max=1 y borrar
-  // no tiene sentido — está el chip "Sin [grupo]").
-  const selectSingleEnGrupo = (grupoId, adicionId) => {
-    setAdicionesQty((prev) => {
-      const next = { ...prev };
-      // Limpiar todas las adiciones del grupo, después setear la nueva
-      for (const a of todasAdiciones) {
-        if (Number(a.grupo_id) === Number(grupoId)) delete next[a.id];
+  // Para radio (perUnidad): asigna adicionId a la unidad `unidadIdx` de
+  // un grupo perUnidad. Si la adición ya estaba elegida en OTRA unidad,
+  // la quita de ahí (no se puede repetir la misma opción si la cantidad
+  // lo permite, pero el cliente está cambiando de idea).
+  const selectSingleEnUnidad = (grupoId, unidadIdx, adicionId) => {
+    setSelPorUnidad((prev) => {
+      const next = new Map(prev);
+      const current = (next.get(grupoId) || Array(cantidad).fill(null)).slice();
+      // Quitar la adición de cualquier otra unidad
+      for (let i = 0; i < current.length; i += 1) {
+        if (current[i] === adicionId) current[i] = null;
       }
-      next[adicionId] = 1;
+      // Toggle: si la unidad clickeada ya tenía esta opción, la quitamos
+      // (sólo permitido en grupos opcionales; los obligatorios quedan
+      // cubiertos por la validación de "completado" igual).
+      if (current[unidadIdx] === adicionId) {
+        current[unidadIdx] = null;
+      } else {
+        current[unidadIdx] = adicionId;
+      }
+      // Garantizar length === cantidad
+      while (current.length < cantidad) current.push(null);
+      next.set(grupoId, current);
       return next;
     });
   };
@@ -229,8 +362,43 @@ export default function ProductCustomizationModal({
     const grupoNombreById = new Map(
       (paquete?.grupos || []).map((g) => [g.id, g.nombre])
     );
-    const adicionesSeleccionadas = todasAdiciones
-      .filter((a) => Number(adicionesQty[a.id] || 0) > 0)
+
+    // ---- 1) Adiciones de grupos perUnidad (isSingle × cantidad) ----
+    // Transformar Map<grupoId, Array<adicionId | null>> en una lista
+    // de {adicion_id, cantidad} legacy. Colapsamos selecciones
+    // repetidas de la misma opción en una entrada con cantidad N
+    // (ej: 2x Rancheros en vez de 2 entradas separadas de cantidad 1).
+    const adicionesDePerUnidad = [];
+    for (const g of grupos) {
+      const cfg = getGrupoConfig(g, cantidad);
+      if (!cfg.perUnidad) continue;
+      const sel = selPorUnidad.get(cfg.id) || [];
+      // Conteo de cuántas veces se eligió cada adicionId (ignorando null)
+      const conteo = new Map();
+      for (const adId of sel) {
+        if (adId == null) continue;
+        conteo.set(adId, (conteo.get(adId) || 0) + 1);
+      }
+      for (const [adId, qty] of conteo.entries()) {
+        const a = todasAdiciones.find((x) => Number(x.id) === Number(adId));
+        if (!a) continue;
+        const precio = a.precio_extra == null ? 0 : Number(a.precio_extra);
+        adicionesDePerUnidad.push({
+          adicion_id: a.id,
+          nombre: a.nombre,
+          grupo_nombre: grupoNombreById.get(a.grupo_id) || cfg.nombre,
+          precio_extra: precio,
+          cantidad: qty,
+          subtotal: precio * qty,
+        });
+      }
+    }
+
+    // ---- 2) Adiciones de grupos NO-perUnidad (legacy +/-) ----
+    // Suma simple de cantidades por adicion_id.
+    const idsYaContados = new Set(adicionesDePerUnidad.map((a) => Number(a.adicion_id)));
+    const adicionesLegacy = todasAdiciones
+      .filter((a) => Number(adicionesQty[a.id] || 0) > 0 && !idsYaContados.has(Number(a.id)))
       .map((a) => {
         const qty = Number(adicionesQty[a.id] || 0);
         const precio = a.precio_extra == null ? 0 : Number(a.precio_extra);
@@ -243,6 +411,9 @@ export default function ProductCustomizationModal({
           subtotal: precio * qty,
         };
       });
+
+    const adicionesSeleccionadas = [...adicionesDePerUnidad, ...adicionesLegacy];
+
     const removidosSeleccionados = removibles
       .filter((r) => removidos.has(r.id))
       .map((r) => ({ id: r.id, nombre: r.nombre }));
@@ -335,10 +506,79 @@ export default function ProductCustomizationModal({
                       {g.messageLabel}
                     </p>
                     <div className="space-y-2">
-                      {g.isSingle ? (
-                        // ===== Radio chips (max=1) =====
+                      {g.perUnidad ? (
+                        // ===== Radio per-unidad (isSingle × cantidad) =====
+                        // El local configuró "elige 1". Como la cantidad
+                        // del modal es N, hay que elegir 1 opción por
+                        // cada unidad. Renderizamos N sub-grupos con su
+                        // propio header "Unidad X/N" y los mismos chips.
+                        (() => {
+                          const selArr = selPorUnidad.get(g.id) || Array(cantidad).fill(null);
+                          return Array.from({ length: cantidad }, (_, unidadIdx) => {
+                            const seleccionada = selArr[unidadIdx];
+                            return (
+                              <div
+                                key={`${g.id}-u-${unidadIdx}`}
+                                className="rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-subtle)]/40 p-2"
+                              >
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[color:var(--bg-muted)] text-[color:var(--text-secondary)]">
+                                    Unidad {unidadIdx + 1}/{cantidad}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {/* Chip "Sin [grupo]" SOLO en la primera
+                                      unidad para grupos opcionales: limpia
+                                      todas las unidades a la vez. */}
+                                  {!g.obligatorio && unidadIdx === 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => clearGrupo(g.id)}
+                                      aria-pressed={selArr.every((v) => v == null)}
+                                      className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                                        selArr.every((v) => v == null)
+                                          ? 'bg-[color:var(--primary,#3b82f6)]/15 border-[color:var(--primary,#3b82f6)] text-[color:var(--primary,#3b82f6)]'
+                                          : 'border-[color:var(--border-default)] text-[color:var(--text-primary)] hover:border-[color:var(--primary,#3b82f6)]/60'
+                                      }`}
+                                    >
+                                      Sin {g.nombre}
+                                    </button>
+                                  )}
+                                  {g.adicionesDelGrupo.map((a) => {
+                                    const isSelected = Number(seleccionada) === Number(a.id);
+                                    const precio = a.precio_extra == null ? null : Number(a.precio_extra);
+                                    return (
+                                      <button
+                                        key={a.id}
+                                        type="button"
+                                        onClick={() => selectSingleEnUnidad(g.id, unidadIdx, a.id)}
+                                        aria-pressed={isSelected}
+                                        aria-label={`Unidad ${unidadIdx + 1}: ${a.nombre}`}
+                                        className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors inline-flex items-center gap-1 ${
+                                          isSelected
+                                            ? 'bg-[color:var(--primary,#3b82f6)]/15 border-[color:var(--primary,#3b82f6)] text-[color:var(--primary,#3b82f6)]'
+                                            : 'border-[color:var(--border-default)] text-[color:var(--text-primary)] hover:border-[color:var(--primary,#3b82f6)]/60'
+                                        }`}
+                                      >
+                                        {isSelected && <Check size={14} aria-hidden="true" />}
+                                        {a.nombre}
+                                        {precio != null && precio > 0 && (
+                                          <span className="text-[10px] font-mono opacity-75">
+                                            + {formatCurrency(precio)}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()
+                      ) : g.isSingle ? (
+                        // ===== Radio chips (max=1) — comportamiento legacy
+                        // para cuando la cantidad del modal es 1.
                         <div className="flex flex-wrap gap-2">
-                          {/* Chip "Sin [grupo]" solo para grupos opcionales */}
                           {!g.obligatorio && (
                             <button
                               type="button"
@@ -360,7 +600,14 @@ export default function ProductCustomizationModal({
                               <button
                                 key={a.id}
                                 type="button"
-                                onClick={() => selectSingleEnGrupo(g.id, a.id)}
+                                onClick={() => setAdicionesQty((prev) => {
+                                  const next = { ...prev };
+                                  for (const aa of todasAdiciones) {
+                                    if (Number(aa.grupo_id) === Number(g.id)) delete next[aa.id];
+                                  }
+                                  next[a.id] = 1;
+                                  return next;
+                                })}
                                 aria-pressed={seleccionado}
                                 className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors inline-flex items-center gap-1 ${
                                   seleccionado
@@ -471,7 +718,7 @@ export default function ProductCustomizationModal({
             </section>
 
             {/* Resumen interno de la customización */}
-            {(hayAdicionesElegidas || hayRemovidos || hayNota) && (
+            {(hayAdicionesElegidas || haySelPorUnidad || hayRemovidos || hayNota) && (
               <div
                 className="rounded-lg p-3 space-y-1.5"
                 style={{ backgroundColor: 'var(--bg-subtle)' }}
@@ -482,13 +729,29 @@ export default function ProductCustomizationModal({
                     Tu selección
                   </h4>
                 </div>
-                {hayAdicionesElegidas && (
+                {(hayAdicionesElegidas || haySelPorUnidad) && (
                   <p className="text-xs text-[color:var(--text-secondary)]">
                     <span className="font-semibold">Adiciones:</span>{' '}
-                    {todasAdiciones
-                      .filter((a) => Number(adicionesQty[a.id] || 0) > 0)
-                      .map((a) => `${adicionesQty[a.id]}x ${a.nombre}`)
-                      .join(', ')}
+                    {[
+                      // Selecciones de grupos perUnidad (cada unidad
+                      // se cuenta como 1 entrada; el cliente las ve
+                      // listadas una vez por unidad).
+                      ...Array.from(selPorUnidad.entries()).flatMap(([grupoId, arr]) => {
+                        const cfg = gruposConEstado.find((g) => g.id === grupoId);
+                        if (!cfg || !cfg.perUnidad) return [];
+                        return arr
+                          .filter((v) => v != null)
+                          .map((adId) => {
+                            const a = todasAdiciones.find((x) => Number(x.id) === Number(adId));
+                            return a ? `1x ${a.nombre}` : null;
+                          })
+                          .filter(Boolean);
+                      }),
+                      // Adiciones legacy (+/-) y sueltas
+                      ...todasAdiciones
+                        .filter((a) => Number(adicionesQty[a.id] || 0) > 0)
+                        .map((a) => `${adicionesQty[a.id]}x ${a.nombre}`),
+                    ].join(', ')}
                   </p>
                 )}
                 {hayRemovidos && (

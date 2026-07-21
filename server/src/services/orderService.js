@@ -498,14 +498,30 @@ async function validateAdicionesYRemovibles(connection, pricedItems) {
           obligatorio: !!g.obligatorio,
           min: Number(g.min_selecciones) || 0,
           max: Number(g.max_selecciones) || 99,
+          isSingle: (Number(g.max_selecciones) || 99) === 1,
+          // Para grupos isSingle, el frontend puede mandar N entradas
+          // (una por unidad del combo, con opciones distintas o no).
+          // `unidadesCubiertas` cuenta entradas DISTINTAS: si el cliente
+          // eligió "Rancheros" para la unidad 1 y "Fritos" para la 2,
+          // el grupo tiene 2 unidades cubiertas (no 1, ni tampoco 2
+          // entradas con la misma adicion_id).
+          unidadesCubiertas: 0,
           count: 0,
         }])
       );
 
       if (adiciones.length === 0) {
         // Sin adiciones: validamos obligatoriedad de los grupos del producto.
+        // Para grupos isSingle, "completo" significa unidadesCubiertas === item.cantidad.
         for (const g of gruposById.values()) {
-          if (g.obligatorio && g.count < g.min) {
+          if (!g.obligatorio) continue;
+          if (g.isSingle) {
+            if ((g.unidadesCubiertas || 0) < item.cantidad) {
+              throw createValidationError(
+                `Grupo "${g.nombre}": debe elegir 1 opción por unidad (${item.cantidad} unidades, eligió 0)`
+              );
+            }
+          } else if (g.count < g.min) {
             throw createValidationError(
               `Grupo "${g.nombre}": debe elegir al menos ${g.min} opción(es) (eligió 0)`
             );
@@ -539,7 +555,15 @@ async function validateAdicionesYRemovibles(connection, pricedItems) {
         // grupo). Adiciones sueltas (grupo_id null) no entran al map.
         if (row.grupo_id != null) {
           const g = gruposById.get(Number(row.grupo_id));
-          if (g) g.count += Number(a.cantidad) || 0;
+          if (g) {
+            g.count += Number(a.cantidad) || 0;
+            // Para grupos isSingle, contar cada entrada del cliente
+            // como 1 unidad cubierta (el frontend manda 1 entrada por
+            // unidad del combo, incluso si repite la misma adicion_id).
+            if (g.isSingle) {
+              g.unidadesCubiertas = (g.unidadesCubiertas || 0) + 1;
+            }
+          }
         }
         snapshot.push({
           adicion_id: a.adicion_id,
@@ -555,16 +579,31 @@ async function validateAdicionesYRemovibles(connection, pricedItems) {
       // 2) Validar min/max por grupo (Fase 10). Recorremos los grupos del
       //    producto, no solo los que el cliente eligió, así detectamos
       //    obligatorios vacíos.
+      //    Para grupos isSingle (max=1) la regla se multiplica por la
+      //    cantidad del item: el cliente debe haber cubierto TODAS las
+      //    unidades (unidadesCubiertas === item.cantidad).
       for (const g of gruposById.values()) {
-        if (g.obligatorio && g.count < g.min) {
-          throw createValidationError(
-            `Grupo "${g.nombre}": debe elegir al menos ${g.min} opción(es) (eligió ${g.count})`
-          );
-        }
-        if (g.count > g.max) {
-          throw createValidationError(
-            `Grupo "${g.nombre}": puede elegir como máximo ${g.max} opción(es) (eligió ${g.count})`
-          );
+        if (g.isSingle) {
+          if (g.obligatorio && (g.unidadesCubiertas || 0) < item.cantidad) {
+            throw createValidationError(
+              `Grupo "${g.nombre}": debe elegir 1 opción por unidad (${item.cantidad} unidades, eligió ${g.unidadesCubiertas || 0})`
+            );
+          }
+          // No aplicamos g.count > g.max: el "max=1" del grupo se
+          // refiere a opciones DISTINTAS por unidad, y la cantidad del
+          // combo es lo que define cuántas entradas aceptamos. Esto se
+          // valida con la regla de arriba.
+        } else {
+          if (g.obligatorio && g.count < g.min) {
+            throw createValidationError(
+              `Grupo "${g.nombre}": debe elegir al menos ${g.min} opción(es) (eligió ${g.count})`
+            );
+          }
+          if (g.count > g.max) {
+            throw createValidationError(
+              `Grupo "${g.nombre}": puede elegir como máximo ${g.max} opción(es) (eligió ${g.count})`
+            );
+          }
         }
       }
 

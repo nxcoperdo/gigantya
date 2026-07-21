@@ -11,6 +11,7 @@ import { verifyToken, requireAdmin } from '../middleware/authMiddleware.js';
 import * as adminHomeMediaController from '../controllers/adminHomeMediaController.js';
 import * as adminHomeHeroController from '../controllers/adminHomeHeroController.js';
 import * as featuredBannerController from '../controllers/featuredBannerController.js';
+import * as adminRestaurantController from '../controllers/adminRestaurantController.js';
 import { createUploader } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
@@ -147,6 +148,33 @@ router.put('/restaurants/:id/es-mercado-abarrotes', adminController.updateRestau
 router.put('/restaurants/:id/es-comida-rapida', adminController.updateRestaurantEsComidaRapida);
 router.put('/restaurants/:id/es-restaurante', adminController.updateRestaurantEsRestaurante);
 router.put('/restaurants/:id/es-panaderia-pasteleria', adminController.updateRestaurantEsPanaderiaPasteleria);
+
+/**
+ * Edición completa de un local desde el panel admin.
+ *
+ * Acepta multipart con `imagen_url` y/o `banner_url` (archivos)
+ * + un body con los campos editables. La whitelist vive en
+ * `adminRestaurantController.ADMIN_EDITABLE_FIELDS` (excluye plan,
+ * fecha_vencimiento_plan, custom_config, estado, aprobado y
+ * calificacion — esos tienen endpoints dedicados).
+ *
+ * Los archivos van a `uploads/restaurant-assets-admin/`. Subdir
+ * dedicado para que sea fácil de backupear/limpiar sin tocar los
+ * assets subidos por los dueños (que van a `uploads/` raíz).
+ */
+const adminRestaurantUpload = createUploader({
+  subdir: 'restaurant-assets-admin',
+  allowedTypes: /jpeg|jpg|png|webp/,
+  maxSize: 10 * 1024 * 1024,
+});
+router.put(
+  '/restaurants/:id',
+  adminRestaurantUpload.fields([
+    { name: 'imagen_url', maxCount: 1 },
+    { name: 'banner_url', maxCount: 1 },
+  ]),
+  adminRestaurantController.updateRestaurant
+);
 
 /**
  * Rutas de Costos de Envío por Sector (por restaurante)

@@ -12,6 +12,7 @@ import TaxShippingConfigModal from '../components/TaxShippingConfigModal';
 import ZonasAdmin from '../components/ZonasAdmin';
 import CouponsView from '../components/CouponsView';
 import FeaturedBannersDownloadButton from '../components/FeaturedBannersDownloadButton';
+import AdminRestaurantDetailModal from '../components/AdminRestaurantDetailModal';
 import { formatDate } from '../utils/dateHelper';
 
 export default function AdminDashboardPage() {
@@ -43,6 +44,9 @@ export default function AdminDashboardPage() {
   const [userToEdit, setUserToEdit] = useState(null);
   // ID del usuario cuyo detalle se está viendo (null = modal cerrado).
   const [userDetailId, setUserDetailId] = useState(null);
+  // ID del local cuyo detalle/admin-edit modal está abierto
+  // (null = modal cerrado). Patrón equivalente al del UserDetailModal.
+  const [restaurantDetailId, setRestaurantDetailId] = useState(null);
   // Conteo de comprobantes pendientes para el badge del tab "Comprobantes".
   // Se llena desde AdminPaymentProofsView.onCountChange.
   const [pendingComprobantesCount, setPendingComprobantesCount] = useState(0);
@@ -1155,6 +1159,13 @@ export default function AdminDashboardPage() {
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <button
+                                  onClick={() => setRestaurantDetailId(res.id)}
+                                  className="p-2 text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-muted)] rounded-lg"
+                                  title="Ver detalle y editar local"
+                                >
+                                  <Eye size={18} />
+                                </button>
+                                <button
                                   onClick={() => {
                                     setRestaurantToConfig(res);
                                     setIsTaxShippingModalOpen(true);
@@ -1487,6 +1498,13 @@ export default function AdminDashboardPage() {
         <UserDetailModal
           userId={userDetailId}
           onClose={() => setUserDetailId(null)}
+        />
+
+        {/* MODAL ADMIN: detalle + edición de local (incluye upload de imagen y banner) */}
+        <AdminRestaurantDetailModal
+          restaurantId={restaurantDetailId}
+          onClose={() => setRestaurantDetailId(null)}
+          onSaved={() => { setRestaurantDetailId(null); loadData(); }}
         />
 
         {/* TAX & SHIPPING CONFIG MODAL */}
